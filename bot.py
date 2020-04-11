@@ -1,8 +1,9 @@
 from kaggle_environments import evaluate, make
-from kaggle_environments.envs.halite.halite import Board, get_to_pos
+from kaggle_environments.envs.halite.halite import Board, get_to_pos, get_col_row
 from random import choice, shuffle
 from collections import defaultdict
 from math import ceil, floor
+import numpy as np
 
 
 env = make("halite", debug=True)
@@ -11,14 +12,24 @@ DIRECTIONS = ['NORTH', 'EAST', 'SOUTH', 'WEST']
 NEIGHBOURS = None
 POSITIONS = list()
 SHIPYARD_POSITIONS = list()  # our own shipyards
+SIZE = 15
+HYPERPARAMETERS = {
+    'return_time_penalty_factor': 1.1,
+    'mining_absolute_halite_threshold': 25,
+    'return_absolute_halite': 2000,
+    'max_halite': 4000
+}
+
+MAX_HALITE = 0  # the maximum amount of halite on one field
+HALITE_MAP = None
 
 
-def compute_neighbours(size):
+def compute_neighbours():
     global POSITIONS, NEIGHBOURS
-    POSITIONS = list(range(size**2))
+    POSITIONS = list(range(SIZE**2))
     NEIGHBOURS = dict()
     for position in POSITIONS:
-        NEIGHBOURS[position] = [get_to_pos(size, position, direction) for direction in DIRECTIONS]
+        NEIGHBOURS[position] = [get_to_pos(SIZE, position, direction) for direction in DIRECTIONS]
 
 
 def handle_special_steps(obs, config, board: Board):
@@ -72,11 +83,36 @@ def move_ships(obs, config, board: Board):
             board.move(uid, move)
 
 
+def calculate_distance(source, target):
+    """
+    Compute the Manhattan distance between two positions.
+    :param source: The source from where to calculate
+    :param target: The target to where calculate
+    :return: The distance between the two positions
+    """
+    source_x, source_y = get_col_row(SIZE, source)
+    target_x, target_y = get_col_row(SIZE, target)
+    delta_x = min(abs(source_x - target_x), SIZE - abs(source_x - target_x))
+    delta_y = min(abs(source_y - target_y), SIZE - abs(source_y - target_y))
+    return delta_x + delta_y
+
+
+def get_nearest_shipyard_position(pos):
+    min_distance = float('inf')
+    nearest_shipyard = None
+    for shipyard_position in SHIPYARD_POSITIONS:
+        distance = calculate_distance(pos, shipyard_position)
+        if distance < min_distance:
+            min_distance = distance
+            nearest_shipyard = shipyard_position
+    return nearest_shipyard, min_distance
+
+
 def get_move_costs(obs, config, pos, start_halite):
     """implements Djikstra's algorithm"""
     halite_map = obs.halite
-    move_cost = defaultdict(lambda: float('inf'))
-    ship_halite = defaultdict(lambda: 0)
+    move_cost = np.full(shape=(len(POSITIONS),), fill_value=999999, dtype=np.int)
+    ship_halite = np.full(shape=(len(POSITIONS),), fill_value=0.0, dtype=np.float)
     prev = defaultdict(lambda: None)
     Q = POSITIONS.copy()
     move_cost[pos] = 0
@@ -89,7 +125,7 @@ def get_move_costs(obs, config, pos, start_halite):
             u_halite = halite_map[u] * (1 + config.regenRate) ** move_cost[u]  # halite on the position u
             must_stay = u_halite * config.moveCost > ship_halite[u]
             alternative = move_cost[u] + (1 if not must_stay else 2)
-            # TODO: consider enemies
+            # TODO: consider enemies and own ships
             if alternative < move_cost[neighbour]:
                 move_cost[neighbour] = alternative
                 prev[neighbour] = u
@@ -103,6 +139,13 @@ def get_move_costs(obs, config, pos, start_halite):
     return move_cost, prev, ship_halite
 
 
+def get_scores(obs, config, pos, start_halite):
+    move_costs, _, ship_halite = get_move_costs(obs, config, pos, start_halite)
+    return_distances = np.asarray([get_nearest_shipyard_position(p)[1] for p in POSITIONS])
+    scores = HYPERPARAMETERS['return_time_penalty_factor'] * return_distances + move_costs * (HYPERPARAMETERS['max_halite'] - start_halite) / (HALITE_MAP + 1e-4)  # avoid division by zero
+    return scores
+
+
 def agent(obs, config):
     player = obs.player
     step = obs.step
@@ -110,14 +153,18 @@ def agent(obs, config):
     board = Board(obs, config)
     player_halite, shipyards, ships = obs.players[obs.player]
 
-    global SHIPYARD_POSITIONS
+    global SHIPYARD_POSITIONS, HALITE_MAP, MAX_HALITE
     for uid, pos in shipyards.items():
         if pos not in SHIPYARD_POSITIONS:
             SHIPYARD_POSITIONS.append(pos)
+    HALITE_MAP = np.asarray(obs.halite)
+    MAX_HALITE = np.max(HALITE_MAP)
 
     if NEIGHBOURS is None:
-        compute_neighbours(size)
-
+        global SIZE
+        SIZE = size
+        compute_neighbours()
+    get_scores(obs, config, 0, 20)
     handle_special_steps(obs, config, board)
     spawn_ships(obs, config, board)
     move_ships(obs, config, board)
