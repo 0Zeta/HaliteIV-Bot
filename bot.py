@@ -1,9 +1,22 @@
 from kaggle_environments import evaluate, make
 from kaggle_environments.envs.halite.halite import Board, get_to_pos
 from random import choice, shuffle
+from collections import defaultdict
 
 
 env = make("halite", debug=True)
+DIRECTIONS = ['NORTH', 'EAST', 'SOUTH', 'WEST']
+# compute neighbouring fields for every position
+NEIGHBOURS = None
+POSITIONS = list()
+
+
+def compute_neighbours(size):
+    global POSITIONS, NEIGHBOURS
+    POSITIONS = list(range(size**2))
+    NEIGHBOURS = dict()
+    for position in POSITIONS:
+        NEIGHBOURS[position] = [get_to_pos(size, position, direction) for direction in DIRECTIONS]
 
 
 def handle_special_steps(obs, config, board: Board):
@@ -57,6 +70,34 @@ def move_ships(obs, config, board: Board):
             board.move(uid, move)
 
 
+def get_move_costs(obs, config, pos, start_halite):
+    """implements Djikstra's algorithm"""
+    halite_map = obs.halite
+    move_cost = defaultdict(lambda: float('inf'))
+    ship_halite = defaultdict(lambda: 0)
+    prev = defaultdict(lambda: None)
+    Q = POSITIONS.copy()
+    move_cost[pos] = 0
+    ship_halite[pos] = start_halite
+
+    while len(Q) > 0:
+        u = sorted(Q, key=lambda p: move_cost[p])[0]
+        Q.remove(u)
+        for neighbour in NEIGHBOURS[u]:
+            must_stay = halite_map[u] * config.moveCost > ship_halite[u]
+            alternative = move_cost[u] + (1 if not must_stay else 2)
+            # TODO: consider enemies
+            if alternative < move_cost[neighbour]:
+                move_cost[neighbour] = alternative
+                prev[neighbour] = u
+                if must_stay:
+                    ship_halite[neighbour] = ship_halite[u] + halite_map[u] * config.collectRate - halite_map[u] * (1 - config.collectRate) * config.moveCost
+                else:
+                    ship_halite[neighbour] = ship_halite[u] - halite_map[u] * config.moveCost
+
+    return move_cost, prev
+
+
 def agent(obs, config):
     player = obs.player
     step = obs.step
@@ -64,8 +105,10 @@ def agent(obs, config):
     board = Board(obs, config)
     player_halite, shipyards, ships = obs.players[obs.player]
 
+    if NEIGHBOURS is None:
+        compute_neighbours(size)
+
     handle_special_steps(obs, config, board)
     spawn_ships(obs, config, board)
-    print(board.ships_by_uid)
     move_ships(obs, config, board)
     return board.action
