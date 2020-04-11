@@ -2,6 +2,7 @@ from kaggle_environments import evaluate, make
 from kaggle_environments.envs.halite.halite import Board, get_to_pos
 from random import choice, shuffle
 from collections import defaultdict
+from math import ceil, floor
 
 
 env = make("halite", debug=True)
@@ -9,6 +10,7 @@ DIRECTIONS = ['NORTH', 'EAST', 'SOUTH', 'WEST']
 # compute neighbouring fields for every position
 NEIGHBOURS = None
 POSITIONS = list()
+SHIPYARD_POSITIONS = list()  # our own shipyards
 
 
 def compute_neighbours(size):
@@ -84,18 +86,21 @@ def get_move_costs(obs, config, pos, start_halite):
         u = sorted(Q, key=lambda p: move_cost[p])[0]
         Q.remove(u)
         for neighbour in NEIGHBOURS[u]:
-            must_stay = halite_map[u] * config.moveCost > ship_halite[u]
+            u_halite = halite_map[u] * (1 + config.regenRate) ** move_cost[u]  # halite on the position u
+            must_stay = u_halite * config.moveCost > ship_halite[u]
             alternative = move_cost[u] + (1 if not must_stay else 2)
             # TODO: consider enemies
             if alternative < move_cost[neighbour]:
                 move_cost[neighbour] = alternative
                 prev[neighbour] = u
-                if must_stay:
-                    ship_halite[neighbour] = ship_halite[u] + halite_map[u] * config.collectRate - halite_map[u] * (1 - config.collectRate) * config.moveCost
+                if neighbour in SHIPYARD_POSITIONS:
+                    ship_halite[neighbour] = 0
+                elif must_stay:
+                    ship_halite[neighbour] = ship_halite[u] + ceil(u_halite * config.collectRate) - (floor(u_halite * (1 - config.collectRate)) * (1 + config.regenRate) * config.moveCost)
                 else:
-                    ship_halite[neighbour] = ship_halite[u] - halite_map[u] * config.moveCost
+                    ship_halite[neighbour] = ship_halite[u] - u_halite * config.moveCost
 
-    return move_cost, prev
+    return move_cost, prev, ship_halite
 
 
 def agent(obs, config):
@@ -104,6 +109,11 @@ def agent(obs, config):
     size = config.size
     board = Board(obs, config)
     player_halite, shipyards, ships = obs.players[obs.player]
+
+    global SHIPYARD_POSITIONS
+    for uid, pos in shipyards.items():
+        if pos not in SHIPYARD_POSITIONS:
+            SHIPYARD_POSITIONS.append(pos)
 
     if NEIGHBOURS is None:
         compute_neighbours(size)
