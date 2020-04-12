@@ -30,6 +30,7 @@ HALITE_SUM = 0  # the sum of all halite on the map
 HALITE_MAP = None
 
 PLANNED_MOVES = list()  # a list of positions where our ships will be in the next step
+UNABLE_TO_MOVE = list()
 
 
 def compute_neighbours():
@@ -46,6 +47,17 @@ def handle_special_steps(obs, config, board: Board):
         ship_id, ship = ships_items[0]
         board.convert(ship_id)
         # TODO: add shipyard to list of shipyards
+
+
+def handle_ships_unable_to_move(obs, config):
+    ships = list(obs.players[obs.player][2].items())
+    if len(ships) == 0:
+        return
+    for uid, ship in ships:
+        pos, halite = ship
+        if halite < obs.halite[pos] * config.moveCost:
+            PLANNED_MOVES.append(pos)  # TODO: the ship could also convert into a shipyard
+            UNABLE_TO_MOVE.append(uid)
 
 
 def spawn_ships(obs, config, board: Board):
@@ -75,7 +87,7 @@ def move_ships(obs, config, board: Board):
     prevs = dict()
 
     for uid, ship in ships:
-        if uid in board.action.keys() and board.action[uid] is not None:
+        if (uid in board.action.keys() and board.action[uid] is not None) or uid in UNABLE_TO_MOVE:
             mining_ships.remove((uid, ship))
             continue
         pos, ship_halite = ship
@@ -210,8 +222,9 @@ def agent(obs, config):
     board = Board(obs, config)
     player_halite, shipyards, ships = obs.players[obs.player]
 
-    global SHIPYARD_POSITIONS, ENEMY_SHIPYARD_POSITIONS, HALITE_MAP, MAX_HALITE, HALITE_SUM, PLANNED_MOVES, FIRST_MAP
+    global SHIPYARD_POSITIONS, ENEMY_SHIPYARD_POSITIONS, HALITE_MAP, MAX_HALITE, HALITE_SUM, PLANNED_MOVES, UNABLE_TO_MOVE
     PLANNED_MOVES = list()
+    UNABLE_TO_MOVE = list()
     for uid, pos in shipyards.items():
         if pos not in SHIPYARD_POSITIONS:
             SHIPYARD_POSITIONS.append(pos)
@@ -226,8 +239,9 @@ def agent(obs, config):
         global SIZE
         SIZE = size
         compute_neighbours()
-    get_scores(obs, config, 0, 20)
+
     handle_special_steps(obs, config, board)
+    handle_ships_unable_to_move(obs)
     spawn_ships(obs, config, board)
     move_ships(obs, config, board)
     return board.action
