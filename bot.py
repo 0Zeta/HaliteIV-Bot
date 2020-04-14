@@ -4,8 +4,10 @@ from random import choice, shuffle
 from collections import defaultdict, Counter
 from math import ceil, floor
 import numpy as np
+import logging
 
 
+logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 DIRECTIONS = ['NORTH', 'EAST', 'SOUTH', 'WEST']
 # compute neighbouring fields for every position
@@ -17,9 +19,9 @@ SIZE = 15
 HYPERPARAMETERS = {
     'return_time_penalty_factor': 1.1,
     'mining_absolute_halite_threshold': 25,
-    'return_absolute_halite': 2000,
+    'return_absolute_halite': 500,
     'max_halite': 4000,
-    'halite_score_factor': 0.05,
+    'halite_score_factor': 0.04,
     'score_preferences_length': 20,
     'score_preferences_stay': 5,
     'max_score_optimization_depth': 100
@@ -30,7 +32,8 @@ HALITE_SUM = 0  # the sum of all halite on the map
 HALITE_MAP = None
 
 PLANNED_MOVES = list()  # a list of positions where our ships will be in the next step
-UNABLE_TO_MOVE = list()
+RETURNING_SHIPS = list()
+DEPOSITING_SHIPS = list()
 
 
 def compute_neighbours():
@@ -49,35 +52,34 @@ def handle_special_steps(obs, config, board: Board):
         # TODO: add shipyard to list of shipyards
 
 
-def handle_ships_unable_to_move(obs, config):
-    ships = list(obs.players[obs.player][2].items())
-    if len(ships) == 0:
-        return
-    for uid, ship in ships:
-        pos, halite = ship
-        if halite < obs.halite[pos] * config.moveCost:
-            PLANNED_MOVES.append(pos)  # TODO: the ship could also convert into a shipyard
-            UNABLE_TO_MOVE.append(uid)
+def handle_halite_deposits():
+    for uid, ship in RETURNING_SHIPS:
+        pos, ship_halite = ship
+        if pos in SHIPYARD_POSITIONS:
+            RETURNING_SHIPS.remove((uid, ship))
+            PLANNED_MOVES.append(pos)
+            DEPOSITING_SHIPS.append(uid)
+            logging.debug("DEPOSIT: " + uid + " stays at " + str(pos))
 
 
 def spawn_ships(obs, config, board: Board):
     player = obs.player
-    opponent = 1 if player == 0 else 0  # Adapt to work with multiple opponents
     player_halite = obs.players[player][0]
     shipyards = obs.players[player][1]
 
     player_ship_count = len(obs.players[player][2])
-    opponent_ship_count = len(obs.players[opponent][2])
     for uid, pos in shipyards.items():
-        if board.ships[pos] is None and player_halite >= config.spawnCost and player_ship_count < (opponent_ship_count + 3):
+        if board.ships[pos] is None and player_halite >= config.spawnCost and obs.step < 230 and pos not in PLANNED_MOVES:
             board.spawn(uid)
             PLANNED_MOVES.append(pos)
             player_ship_count += 1
+            logging.debug("SPAWN: " + uid + " spawns ship at " + str(pos))
 
 
 def move_ships(obs, config, board: Board):
     size = config.size
     ships = list(obs.players[obs.player][2].items())
+    logging.debug("ship count: " + str(len(ships)))
     if len(ships) == 0:
         return
     mining_ships = ships.copy()
@@ -87,16 +89,36 @@ def move_ships(obs, config, board: Board):
     prevs = dict()
 
     for uid, ship in ships:
-        if (uid in board.action.keys() and board.action[uid] is not None) or uid in UNABLE_TO_MOVE:
+        if (uid in board.action.keys() and board.action[uid] is not None) or uid in DEPOSITING_SHIPS:
             mining_ships.remove((uid, ship))
             continue
         pos, ship_halite = ship
+        if ship_halite > HYPERPARAMETERS['return_absolute_halite'] or (uid, ship) in RETURNING_SHIPS:
+            mining_ships.remove((uid, ship))
+            if (uid, ship) not in RETURNING_SHIPS:
+                RETURNING_SHIPS.append((uid, ship))
+            nearest_shipyard, _ = get_nearest_shipyard_position(pos)
+            possible_moves = navigate_to(pos, nearest_shipyard)
+            moved = False
+            for direction in possible_moves:
+                to_pos = get_to_pos(SIZE, pos, direction)
+                if to_pos in PLANNED_MOVES or to_pos in ENEMY_SHIPYARD_POSITIONS:
+                    continue
+                board.move(uid, direction)
+                PLANNED_MOVES.append(to_pos)
+                logging.debug("RETURN: " + uid + " moves to " + str(to_pos))
+                moved = True
+                break
+
+            if not moved:
+                PLANNED_MOVES.append(pos)
+                logging.debug("RETURN: " + uid + " stays at " + str(pos))
+            continue
+
         scores, prev = get_scores(obs, config, pos, ship_halite)
-        preferences[uid] = np.argsort(scores)[:HYPERPARAMETERS['score_preferences_length']]
+        ship_prefs = np.argsort(scores)
+        preferences[uid] = ship_prefs[~np.isin(ship_prefs, SHIPYARD_POSITIONS+ENEMY_SHIPYARD_POSITIONS)][:HYPERPARAMETERS['score_preferences_length']]
         prevs[uid] = prev
-        if pos in preferences[uid][:HYPERPARAMETERS['score_preferences_stay']]:
-            PLANNED_MOVES.append(pos)
-            targets[uid] = pos
 
     for uid, pref in preferences.items():
         targets[uid] = pref[0]  # Assign every ship the position with the best score
@@ -106,8 +128,10 @@ def move_ships(obs, config, board: Board):
     while len(mining_ships) > len(set(targets.values())) and i < HYPERPARAMETERS['max_score_optimization_depth']:
         i += 1
         c = Counter(targets.values())
-        for pos in [k for k in c.keys() if c[k] > 1]:
-            conflicting_ships = [(uid, ship[0]) for uid, ship in ships if targets[uid] == pos]
+        conflicting_positions = [k for k in c.keys() if c[k] > 1]
+        while len(conflicting_positions) > 0:
+            pos = conflicting_positions[0]
+            conflicting_ships = [(uid, ship[0]) for uid, ship in mining_ships if targets[uid] == pos]
             ship_with_min_distance = None
             min_distance = float('inf')
             for uid, ship_position in conflicting_ships:
@@ -119,10 +143,13 @@ def move_ships(obs, config, board: Board):
             for uid, ship_position in conflicting_ships:
                 if preference_depth[uid] >= HYPERPARAMETERS['score_preferences_length'] - 1:
                     PLANNED_MOVES.append(ship_position)  # TODO: add behaviour for ships not getting any of their preferences
+                    logging.debug("MINING (no target): " + uid + " stays at " + str(pos))
                     targets[uid] = ship_position
                 else:
-                    preference_depth[uid] += 1
+                    preference_depth[uid] = preference_depth[uid] + 1
                     targets[uid] = preferences[uid][preference_depth[uid]]
+            c = Counter(targets.values())
+            conflicting_positions = [k for k in c.keys() if c[k] > 1]
 
     for uid, ship in mining_ships:
         pos = ship[0]
@@ -132,11 +159,32 @@ def move_ships(obs, config, board: Board):
         while prevs[uid][p] != pos:
             p = prevs[uid][p]
         if p in PLANNED_MOVES:
-            PLANNED_MOVES.append(pos)  # do nothing TODO: check for an alternative route
+            moved = False
+            p_moves = navigate_to(pos, target)
+            for possible_move in p_moves:
+                p2 = get_to_pos(SIZE, pos, possible_move)
+                if p2 not in PLANNED_MOVES:
+                    PLANNED_MOVES.append(p2)
+                    board.move(uid, possible_move)
+                    logging.debug("MINING (alternative route): " + uid + " moves to " + str(p2))
+                    moved = True
+                    break
+            if not moved:
+                for direction in DIRECTIONS:  # redundant
+                    p3 = get_to_pos(SIZE, pos, direction)
+                    if p3 not in PLANNED_MOVES:
+                        PLANNED_MOVES.append(p3)
+                        board.move(uid, direction)
+                        logging.debug("MINING (avoiding crash): " + uid + " moves to " + str(p3))
+                        moved = True
+                        break
+            if not moved:
+                logging.warning("MINING: crash of " + uid + " on position " + str(pos))
             continue
 
         if p == pos:
             PLANNED_MOVES.append(pos)
+            logging.debug("MINING (reached target): " + uid + " stays at " + str(pos))
             continue
 
         source_x, source_y = get_col_row(SIZE, pos)
@@ -147,6 +195,7 @@ def move_ships(obs, config, board: Board):
             move = 'SOUTH' if (source_y + 1) % SIZE == p_y else 'NORTH'
         PLANNED_MOVES.append(p)
         board.move(uid, move)
+        logging.debug("MINING (on the way): " + uid + " moves to " + str(p))
 
 
 def calculate_distance(source, target):
@@ -163,6 +212,26 @@ def calculate_distance(source, target):
     return delta_x + delta_y
 
 
+def navigate_to(source, target):
+    source_x, source_y = get_col_row(SIZE, source)
+    target_x, target_y = get_col_row(SIZE, target)
+    possible_moves = list()
+
+    if source_x != target_x:
+        if abs(source_x - target_x) < (SIZE - abs(source_x - target_x)):
+            ew = 'EAST' if source_x < target_x else 'WEST'
+        else:
+            ew = 'WEST' if source_x < target_x else 'EAST'
+        possible_moves.append(ew)
+    if source_y != target_y:
+        if abs(source_y - target_y) < (SIZE - abs(source_y - target_y)):
+            ns = 'SOUTH' if source_y < target_y else 'NORTH'
+        else:
+            ns = 'NORTH' if source_y < target_y else 'SOUTH'
+        possible_moves.append(ns)
+    return possible_moves
+
+
 def get_nearest_shipyard_position(pos):
     min_distance = float('inf')
     nearest_shipyard = None
@@ -176,7 +245,6 @@ def get_nearest_shipyard_position(pos):
 
 def get_move_costs(obs, config, pos, start_halite):
     """implements Djikstra's algorithm"""
-    halite_map = obs.halite
     move_cost = np.full(shape=(len(POSITIONS),), fill_value=999999, dtype=np.int)
     ship_halite = np.full(shape=(len(POSITIONS),), fill_value=0.0, dtype=np.float)
     prev = defaultdict(lambda: None)
@@ -191,19 +259,15 @@ def get_move_costs(obs, config, pos, start_halite):
         for neighbour in NEIGHBOURS[u]:
             if u in ENEMY_SHIPYARD_POSITIONS:
                 continue
-            u_halite = halite_map[u] * (1 + config.regenRate) ** move_cost[u]  # halite on the position u
-            must_stay = u_halite * config.moveCost > ship_halite[u]
-            alternative = move_cost[u] + (1 if not must_stay else 2)
+            alternative = move_cost[u] + 1
             # TODO: consider enemies and own ships
             if alternative < move_cost[neighbour]:
                 move_cost[neighbour] = alternative
                 prev[neighbour] = u
                 if neighbour in SHIPYARD_POSITIONS:
-                    ship_halite[neighbour] = 0
-                elif must_stay:
-                    ship_halite[neighbour] = ship_halite[u] + ceil(u_halite * config.collectRate) - (floor(u_halite * (1 - config.collectRate)) * (1 + config.regenRate) * config.moveCost)
+                    ship_halite[neighbour] = 0  # only if the ship stays
                 else:
-                    ship_halite[neighbour] = ship_halite[u] - u_halite * config.moveCost
+                    ship_halite[neighbour] = ship_halite[u] * (1 - config.moveCost)
 
     return move_cost, prev, ship_halite
 
@@ -216,15 +280,16 @@ def get_scores(obs, config, pos, start_halite):
 
 
 def agent(obs, config):
+    logging.debug("Begin step " + str(obs.step))
     player = obs.player
     step = obs.step
     size = config.size
     board = Board(obs, config)
     player_halite, shipyards, ships = obs.players[obs.player]
 
-    global SHIPYARD_POSITIONS, ENEMY_SHIPYARD_POSITIONS, HALITE_MAP, MAX_HALITE, HALITE_SUM, PLANNED_MOVES, UNABLE_TO_MOVE
+    global SHIPYARD_POSITIONS, ENEMY_SHIPYARD_POSITIONS, HALITE_MAP, MAX_HALITE, HALITE_SUM, PLANNED_MOVES, DEPOSITING_SHIPS
     PLANNED_MOVES = list()
-    UNABLE_TO_MOVE = list()
+    DEPOSITING_SHIPS = list()
     for uid, pos in shipyards.items():
         if pos not in SHIPYARD_POSITIONS:
             SHIPYARD_POSITIONS.append(pos)
@@ -241,7 +306,7 @@ def agent(obs, config):
         compute_neighbours()
 
     handle_special_steps(obs, config, board)
-    handle_ships_unable_to_move(obs)
+    handle_halite_deposits()
     spawn_ships(obs, config, board)
     move_ships(obs, config, board)
     return board.action
