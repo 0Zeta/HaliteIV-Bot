@@ -31,9 +31,13 @@ class HaliteBot(object):
 
         self.planned_moves = list()  # a list of positions where our ships will be in the next step
         self.hyperparameters = {
-            'spawn_till': 250,  # spawn ships till move 250
-            'mining_threshold': 0.7,
-            'return_halite': 350,
+            'spawn_till': 230,  # spawn ships till move 250
+            'spawn_step_multiplier': 5,
+            'shipyard_stop': 250,
+            'min_shipyard_distance': 10,
+            'mining_threshold': 0.8,
+            'min_mining_halite': 3,
+            'return_halite': 11,
             'exploring_window_size': 4,
             'distance_penalty': 0.5
         }
@@ -69,7 +73,8 @@ class HaliteBot(object):
         step = board.step
         if step < self.hyperparameters['spawn_till']:
             for shipyard in self.me.shipyards:
-                if self.halite < self.config.spawn_cost:
+                if self.halite < 2 * self.config.spawn_cost + board.step * self.hyperparameters[
+                    'spawn_step_multiplier']:
                     return
                 if shipyard.position not in self.planned_moves:
                     shipyard.next_action = ShipyardAction.SPAWN
@@ -81,10 +86,13 @@ class HaliteBot(object):
         returning_ships = list()
         mining_ships = list()
         exploring_ships = list()
+        building_shipyard = False
+
         for ship in self.me.ships:
-            if ship.halite > self.hyperparameters['return_halite']:
+            if ship.halite > average_halite_per_cell * self.hyperparameters['return_halite']:
                 returning_ships.append(ship)
-            elif ship.cell.halite >= average_halite_per_cell * self.hyperparameters['mining_threshold']:
+            elif ship.cell.halite >= max(average_halite_per_cell * self.hyperparameters['mining_threshold'],
+                                         self.hyperparameters['min_mining_halite']):
                 mining_ships.append(ship)
             else:
                 exploring_ships.append(ship)
@@ -102,6 +110,14 @@ class HaliteBot(object):
                     self.planned_moves.append(ship.position)
                 continue
             destination = destination.position
+            if board.step <= self.hyperparameters['shipyard_stop'] and calculate_distance(ship.position, destination,
+                                                                                          self.size) >= \
+                    self.hyperparameters['min_shipyard_distance'] \
+                    and self.halite >= self.config.convert_cost + self.config.spawn_cost and not building_shipyard:
+                ship.next_action = ShipAction.CONVERT
+                self.halite -= self.config.convert_cost
+                self.planned_moves.append(ship.position)
+                building_shipyard = True
             action = None
             next_pos = None
             preferred_moves = navigate(ship.position, destination, self.size)
