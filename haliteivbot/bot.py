@@ -27,7 +27,7 @@ BOT = None
 def agent(board: Board):
     global BOT
     if BOT is None:
-        BOT = HaliteBot(board)
+        BOT = HaliteBot()
 
     logging.debug("Begin step " + str(board.step))
     BOT.step(board)
@@ -79,6 +79,7 @@ class HaliteBot(object):
 
     def spawn_ships(self, board: Board):
         step = board.step
+        # TODO: spawn a ship if there are none
         if step < self.hyperparameters['spawn_till']:
             for shipyard in self.me.shipyards:
                 if self.halite < 2 * self.config.spawn_cost + board.step * self.hyperparameters[
