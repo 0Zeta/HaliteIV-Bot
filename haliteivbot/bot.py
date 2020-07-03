@@ -1,7 +1,7 @@
 import logging
 
 from kaggle_environments import make
-from kaggle_environments.envs.halite.helpers import Shipyard
+from kaggle_environments.envs.halite.helpers import Shipyard, Ship
 
 from haliteivbot.utils import *
 
@@ -9,8 +9,11 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'spawn_till': 314,
+    'spawn_till': 314,  # maybe remove later
     'spawn_step_multiplier': 0,
+    'min_ships': 10,
+    'ship_spawn_threshold': 0.4,
+    'shipyard_conversion_threshold': 2,
     'shipyard_stop': 197,
     'min_shipyard_distance': 5,
     'mining_threshold': 1.1906584887790534,
@@ -35,8 +38,12 @@ class HaliteBot(object):
         self.me = None
         self.player_id = 0
         self.halite = 5000
+        self.ship_count = 1
+        self.shipyard_count = 0
+        self.average_halite_per_cell = 0
 
         self.planned_moves = list()  # a list of positions where our ships will be in the next step
+        self.planned_shipyards = list()
 
         self.parameters = parameters
 
@@ -55,6 +62,12 @@ class HaliteBot(object):
         self.planned_moves.clear()
         self.me = board.current_player
         self.halite = self.me.halite
+        self.ship_count = len(self.me.ships)
+        self.shipyard_count = len(self.me.shipyards)
+        self.planned_shipyards = list()
+
+        self.average_halite_per_cell = sum([halite for halite in board.observation['halite']]) / self.size ** 2
+
         if self.handle_special_steps(board):
             return  # don't execute the functions below
         self.move_ships(board)
@@ -80,25 +93,29 @@ class HaliteBot(object):
                 self.spawn_ship(self.me.shipyards[0])
         if step < self.parameters['spawn_till']:
             for shipyard in self.me.shipyards:
+                if self.ship_count > self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
+                        self.parameters['ship_spawn_threshold']:
+                    break
                 if self.halite < 2 * self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
                     return
                 if shipyard.position not in self.planned_moves:
-                    self.spawn_ship(shipyard)
+                    if any(filter(lambda cell: (cell.ship is None and cell.position not in self.planned_moves) or (
+                            cell.ship is not None and cell.ship.player_id != self.player_id),
+                                  get_neighbours(shipyard.cell))):
+                        self.spawn_ship(shipyard)
 
     def move_ships(self, board: Board):
-        average_halite_per_cell = sum([halite for halite in board.observation['halite']]) / self.size ** 2
         returning_ships = list()
         mining_ships = list()
         exploring_ships = list()
         endangered_ships = list()
-        building_shipyard = False
 
-        for ship in self.me.ships:
-            if ship.halite > average_halite_per_cell * (
-            max(self.parameters['return_halite'] + self.parameters['return_halite_decay'] * board.step,
-                self.parameters['min_return_halite'])):
+        for ship in sorted(self.me.ships, key=lambda s: self.get_friendly_neighbour_count(s.cell), reverse=True):
+            if ship.halite > self.average_halite_per_cell * (
+                    max(self.parameters['return_halite'] + self.parameters['return_halite_decay'] * board.step,
+                        self.parameters['min_return_halite'])):
                 returning_ships.append(ship)
-            elif ship.cell.halite >= max(average_halite_per_cell * (
+            elif ship.cell.halite >= max(self.average_halite_per_cell * (
                     self.parameters['mining_threshold'] + self.parameters['mining_decay'] * board.step),
                                          self.parameters['min_mining_halite']):
                 mining_ships.append(ship)
@@ -123,18 +140,23 @@ class HaliteBot(object):
             destination = self.get_nearest_shipyard(ship.position)
             if destination is None:
                 if self.halite >= self.config.convert_cost:
-                    ship.next_action = ShipAction.CONVERT
-                    self.halite -= self.config.convert_cost
+                    if self.shipyard_count == 0:
+                        ship.next_action = ShipAction.CONVERT
+                        self.halite -= self.config.convert_cost
+                        continue
+                    else:
+                        destination = board.cells[self.planned_shipyards[0]]
                 else:
-                    self.planned_moves.append(ship.position)
-                continue
+                    self.planned_moves.append(ship.position)  # TODO: check cell safety
+                    continue
             destination = destination.position
             if board.step <= self.parameters['shipyard_stop'] and calculate_distance(ship.position, destination,
-                                                                                     self.size) >= \
-                    self.parameters['min_shipyard_distance'] \
-                    and self.halite >= self.config.convert_cost + self.config.spawn_cost and not building_shipyard:
-                self.convert_to_shipyard(ship)
-                building_shipyard = True
+                                                                                     self.size) >= self.parameters[
+                'min_shipyard_distance'] and self.halite >= self.config.convert_cost + self.config.spawn_cost:
+                if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
+                    'shipyard_conversion_threshold']:
+                    self.convert_to_shipyard(ship)
+                    continue
             action = None
             next_pos = None
             safe_cells, alternative_cells = self.get_safe_cells(ship)
@@ -262,16 +284,24 @@ class HaliteBot(object):
 
         return True
 
+    def get_friendly_neighbour_count(self, cell: Cell):
+        return sum(1 for _ in
+                   filter(lambda n: n.ship is not None and n.ship.player_id == self.player_id, get_neighbours(cell)))
+
     def convert_to_shipyard(self, ship: Ship):
         assert self.halite >= self.config.convert_cost
         ship.next_action = ShipAction.CONVERT
         self.halite -= self.config.convert_cost
+        self.ship_count -= 1
+        self.shipyard_count += 1
+        self.planned_shipyards.append(ship.position)
 
     def spawn_ship(self, shipyard: Shipyard):
         assert self.halite >= self.config.spawn_cost
         shipyard.next_action = ShipyardAction.SPAWN
         self.planned_moves.append(shipyard.position)
         self.halite -= self.config.spawn_cost
+        self.ship_count += 1
 
 
 @board_agent
