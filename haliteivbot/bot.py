@@ -8,6 +8,18 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 
+HYPERPARAMETERS = {
+    'spawn_till': 230,  # spawn ships till move 250
+    'spawn_step_multiplier': 5,
+    'shipyard_stop': 250,
+    'min_shipyard_distance': 10,
+    'mining_threshold': 0.8,
+    'min_mining_halite': 3,
+    'return_halite': 11,
+    'exploring_window_size': 4,
+    'distance_penalty': 0.5
+}
+
 BOT = None
 
 
@@ -23,24 +35,15 @@ def agent(board: Board):
 
 class HaliteBot(object):
 
-    def __init__(self, board: Board):
-        self.config = board.configuration
-        self.size = self.config.size
-        self.me = board.current_player
-        self.halite = self.config.starting_halite
+    def __init__(self, hyperparameters=HYPERPARAMETERS):
+        self.config = None
+        self.size = 21
+        self.me = None
+        self.halite = 5000
 
         self.planned_moves = list()  # a list of positions where our ships will be in the next step
-        self.hyperparameters = {
-            'spawn_till': 230,  # spawn ships till move 250
-            'spawn_step_multiplier': 5,
-            'shipyard_stop': 250,
-            'min_shipyard_distance': 10,
-            'mining_threshold': 0.8,
-            'min_mining_halite': 3,
-            'return_halite': 11,
-            'exploring_window_size': 4,
-            'distance_penalty': 0.5
-        }
+
+        self.hyperparameters = hyperparameters
 
         # Create exploring window
         window_size = self.hyperparameters['exploring_window_size']
@@ -49,6 +52,10 @@ class HaliteBot(object):
         self.exploring_window.remove(Point(0, 0))
 
     def step(self, board: Board):
+        if self.me is None:
+            self.me = board.current_player
+            self.config = board.configuration
+            self.size = self.config.size
         self.planned_moves.clear()
         self.me = board.current_player
         self.halite = self.me.halite
@@ -56,6 +63,7 @@ class HaliteBot(object):
             return  # don't execute the functions below
         self.move_ships(board)
         self.spawn_ships(board)
+        return self.me.next_actions
 
     def handle_special_steps(self, board: Board):
         step = board.step
