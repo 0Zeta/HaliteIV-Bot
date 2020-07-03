@@ -9,22 +9,24 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'spawn_till': 314,  # maybe remove later
+    'spawn_till': 290,
     'spawn_step_multiplier': 0,
-    'min_ships': 10,
-    'ship_spawn_threshold': 0.4,
-    'shipyard_conversion_threshold': 2,
-    'shipyard_stop': 197,
-    'min_shipyard_distance': 5,
-    'mining_threshold': 1.1906584887790534,
-    'mining_decay': -0.002,
-    'min_mining_halite': 1,
-    'return_halite': 3.484636163966175,
-    'return_halite_decay': -0.005,
-    'min_return_halite': 0.01,
-    'exploring_window_size': 6,
-    'convert_when_attacked_threshold': 400,
-    'distance_penalty': 0.19172389911637758
+    'min_ships': 13,
+    'ship_spawn_threshold': 0.5029560770386772,
+    'shipyard_conversion_threshold': 3.1031254707686524,
+    'ships_shipyards_threshold': 1,
+    'shipyard_stop': 175,
+    'min_shipyard_distance': 7,
+    'mining_threshold': 1.0388008062420975,
+    'mining_decay': -0.006900507899132262,
+    'min_mining_halite': 5,
+    'return_halite': 3.1,
+    'return_halite_decay': -0.005099217813007813,
+    'min_return_halite': 0.12837363338533517,
+    'exploring_window_size': 5,
+    'convert_when_attacked_threshold': 321,
+    'max_halite_attack_shipyard': 50,
+    'distance_penalty': 1.1
 }
 
 BOT = None
@@ -81,9 +83,6 @@ class HaliteBot(object):
             self.convert_to_shipyard(self.me.ships[0])
             return True
         return False
-
-    def handle_halite_deposits(self, board: Board):
-        pass
 
     def spawn_ships(self, board: Board):
         step = board.step
@@ -154,7 +153,8 @@ class HaliteBot(object):
                                                                                      self.size) >= self.parameters[
                 'min_shipyard_distance'] and self.halite >= self.config.convert_cost + self.config.spawn_cost:
                 if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
-                    'shipyard_conversion_threshold']:
+                    'shipyard_conversion_threshold'] \
+                        and self.shipyard_count / self.ship_count < self.parameters['ships_shipyards_threshold']:
                     self.convert_to_shipyard(ship)
                     continue
             action = None
@@ -226,7 +226,7 @@ class HaliteBot(object):
                                              [board.cells[(ship.position + w) % self.size] for w in
                                               self.exploring_window]),
                                       key=lambda cell: cell.halite / (
-                                              self.parameters['distance_penalty'] * calculate_distance(
+                                              self.parameters['distance_penalty'] ** calculate_distance(
                                           ship.position, cell.position, self.size)),
                                       reverse=True)  # optimize with target selection
 
@@ -271,11 +271,14 @@ class HaliteBot(object):
         return true_safe_cells, not_so_safe_cells
 
     def is_safe(self, ship: Ship, cell: Cell):
-        # TODO: add logic for enemy shipyards
         if cell.position in self.planned_moves:
             return False
 
         if cell.ship is not None and cell.ship.player_id != self.player_id and cell.ship.halite < ship.halite:
+            return False
+
+        if cell.shipyard is not None and cell.shipyard.player_id != self.player_id and ship.halite > self.parameters[
+            'max_halite_attack_shipyard']:
             return False
 
         for neighbour in get_neighbours(cell):
