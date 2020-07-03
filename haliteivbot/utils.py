@@ -1,5 +1,8 @@
 from kaggle_environments.envs.halite.halite import *
-from kaggle_environments.envs.halite.helpers import Point
+from kaggle_environments.envs.halite.helpers import Point, Cell
+
+DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
+NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
 
 
 def navigate(source: Point, target: Point, size: int):
@@ -31,3 +34,7 @@ def calculate_distance(source: Point, target: Point, size):
     delta_x = min(abs(source.x - target.x), size - abs(source.x - target.x))
     delta_y = min(abs(source.y - target.y), size - abs(source.y - target.y))
     return delta_x + delta_y
+
+
+def get_neighbours(cell: Cell):
+    return [cell.neighbor(point) for point in NEIGHBOURS]

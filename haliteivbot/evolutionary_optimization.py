@@ -23,35 +23,46 @@ hyperparameters = {
     'shipyard_stop': ('int', (100, 380)),
     'min_shipyard_distance': ('int', (0, 35)),
     'mining_threshold': ('float', (0.2, 5.0)),
+    'mining_decay': ('float', (-0.05, 0)),
     'min_mining_halite': ('int', (1, 30)),
     'return_halite': ('float', (3.0, 30.0)),
+    'return_halite_decay': ('float', (-0.08, 0)),
+    'min_return_halite': ('float', (0, 3.0)),
     'exploring_window_size': ('int', (1, 15)),
+    'convert_when_attacked_threshold': ('int', (100, 600)),
     'distance_penalty': ('float', (0.01, 3.0)),
 }
 
 first_genome = {
-    'spawn_till': 200,
-    'spawn_step_multiplier': 5,
-    'shipyard_stop': 200,
-    'min_shipyard_distance': 8,
-    'mining_threshold': 0.7,
-    'min_mining_halite': 3,
-    'return_halite': 8,
-    'exploring_window_size': 4,
-    'distance_penalty': 0.35
+    'spawn_till': 314,
+    'spawn_step_multiplier': 0,
+    'shipyard_stop': 197,
+    'min_shipyard_distance': 5,
+    'mining_threshold': 1.1906584887790534,
+    'mining_decay': -0.002,
+    'min_mining_halite': 1,
+    'return_halite': 3.484636163966175,
+    'return_halite_decay': -0.005,
+    'min_return_halite': 0.01,
+    'exploring_window_size': 6,
+    'convert_when_attacked_threshold': 400,
+    'distance_penalty': 0.19172389911637758
 }
 
 second_genome = {
-    'spawn_till': 350,
-    'spawn_step_multiplier': 20,
-    'shipyard_stop': 300,
-    'min_shipyard_distance': 15,
-    'mining_threshold': 1.5,
-    'min_mining_halite': 5,
-    'return_halite': 15,
+    'spawn_till': 314,
+    'spawn_step_multiplier': 0,
+    'shipyard_stop': 197,
+    'min_shipyard_distance': 5,
+    'mining_threshold': 1.1906584887790534,
+    'mining_decay': -0.003,
+    'min_mining_halite': 1,
+    'return_halite': 3.484636163966175,
+    'return_halite_decay': -0.003,
+    'min_return_halite': 0.05,
     'exploring_window_size': 6,
-    'distance_penalty': 0.7
-}
+    'convert_when_attacked_threshold': 250,
+    'distance_penalty': 0.19172389911637758}
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=False)
 

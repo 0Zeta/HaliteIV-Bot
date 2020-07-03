@@ -1,52 +1,47 @@
 import logging
 
 from kaggle_environments import make
+from kaggle_environments.envs.halite.helpers import Shipyard
 
 from haliteivbot.utils import *
 
 logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
-DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 
-HYPERPARAMETERS = {
-    'spawn_till': 230,  # spawn ships till move 250
-    'spawn_step_multiplier': 5,
-    'shipyard_stop': 250,
-    'min_shipyard_distance': 10,
-    'mining_threshold': 0.8,
-    'min_mining_halite': 3,
-    'return_halite': 11,
-    'exploring_window_size': 4,
-    'distance_penalty': 0.5
+PARAMETERS = {
+    'spawn_till': 314,
+    'spawn_step_multiplier': 0,
+    'shipyard_stop': 197,
+    'min_shipyard_distance': 5,
+    'mining_threshold': 1.1906584887790534,
+    'mining_decay': -0.002,
+    'min_mining_halite': 1,
+    'return_halite': 3.484636163966175,
+    'return_halite_decay': -0.005,
+    'min_return_halite': 0.01,
+    'exploring_window_size': 6,
+    'convert_when_attacked_threshold': 400,
+    'distance_penalty': 0.19172389911637758
 }
 
 BOT = None
 
 
-@board_agent
-def agent(board: Board):
-    global BOT
-    if BOT is None:
-        BOT = HaliteBot()
-
-    logging.debug("Begin step " + str(board.step))
-    BOT.step(board)
-
-
 class HaliteBot(object):
 
-    def __init__(self, hyperparameters=HYPERPARAMETERS):
+    def __init__(self, parameters):
         self.config = None
         self.size = 21
         self.me = None
+        self.player_id = 0
         self.halite = 5000
 
         self.planned_moves = list()  # a list of positions where our ships will be in the next step
 
-        self.hyperparameters = hyperparameters
+        self.parameters = parameters
 
         # Create exploring window
-        window_size = self.hyperparameters['exploring_window_size']
+        window_size = self.parameters['exploring_window_size']
         self.exploring_window = [Point(x, y) for x in range(-window_size, window_size + 1) for y in
                                  range(-window_size, window_size + 1)]
         self.exploring_window.remove(Point(0, 0))
@@ -54,6 +49,7 @@ class HaliteBot(object):
     def step(self, board: Board):
         if self.me is None:
             self.me = board.current_player
+            self.player_id = board.current_player_id
             self.config = board.configuration
             self.size = self.config.size
         self.planned_moves.clear()
@@ -69,8 +65,7 @@ class HaliteBot(object):
         step = board.step
         if step == 0:
             # Immediately spawn a shipyard
-            self.me.ships[0].next_action = ShipAction.CONVERT
-            self.halite -= self.config.convert_cost
+            self.convert_to_shipyard(self.me.ships[0])
             return True
         return False
 
@@ -79,35 +74,50 @@ class HaliteBot(object):
 
     def spawn_ships(self, board: Board):
         step = board.step
-        # TODO: spawn a ship if there are none
-        if step < self.hyperparameters['spawn_till']:
+        # Spawn a ship if there are none left
+        if len(self.me.ships) == 0:
+            if len(self.me.shipyards) > 0:
+                self.spawn_ship(self.me.shipyards[0])
+        if step < self.parameters['spawn_till']:
             for shipyard in self.me.shipyards:
-                if self.halite < 2 * self.config.spawn_cost + board.step * self.hyperparameters[
-                    'spawn_step_multiplier']:
+                if self.halite < 2 * self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
                     return
                 if shipyard.position not in self.planned_moves:
-                    shipyard.next_action = ShipyardAction.SPAWN
-                    self.halite -= self.config.spawn_cost
-                    self.planned_moves.append(shipyard.position)
+                    self.spawn_ship(shipyard)
 
     def move_ships(self, board: Board):
         average_halite_per_cell = sum([halite for halite in board.observation['halite']]) / self.size ** 2
         returning_ships = list()
         mining_ships = list()
         exploring_ships = list()
+        endangered_ships = list()
         building_shipyard = False
 
         for ship in self.me.ships:
-            if ship.halite > average_halite_per_cell * self.hyperparameters['return_halite']:
+            if ship.halite > average_halite_per_cell * (
+            max(self.parameters['return_halite'] + self.parameters['return_halite_decay'] * board.step,
+                self.parameters['min_return_halite'])):
                 returning_ships.append(ship)
-            elif ship.cell.halite >= max(average_halite_per_cell * self.hyperparameters['mining_threshold'],
-                                         self.hyperparameters['min_mining_halite']):
+            elif ship.cell.halite >= max(average_halite_per_cell * (
+                    self.parameters['mining_threshold'] + self.parameters['mining_decay'] * board.step),
+                                         self.parameters['min_mining_halite']):
                 mining_ships.append(ship)
             else:
                 exploring_ships.append(ship)
 
         for ship in mining_ships:
-            self.planned_moves.append(ship.position)
+            safe_cells, alternative_cells = self.get_safe_cells(ship)
+            if ship.cell in safe_cells:
+                self.planned_moves.append(ship.position)
+                continue
+
+            if len(safe_cells) > 0:
+                target = sorted(safe_cells, key=lambda cell: cell.halite, reverse=True)[0].position
+                self.planned_moves.append(target)
+                ship.next_action = navigate(ship.position, target, self.size)[0]
+                continue
+
+            endangered_ships.append(ship)
 
         for ship in returning_ships:
             destination = self.get_nearest_shipyard(ship.position)
@@ -119,43 +129,82 @@ class HaliteBot(object):
                     self.planned_moves.append(ship.position)
                 continue
             destination = destination.position
-            if board.step <= self.hyperparameters['shipyard_stop'] and calculate_distance(ship.position, destination,
-                                                                                          self.size) >= \
-                    self.hyperparameters['min_shipyard_distance'] \
+            if board.step <= self.parameters['shipyard_stop'] and calculate_distance(ship.position, destination,
+                                                                                     self.size) >= \
+                    self.parameters['min_shipyard_distance'] \
                     and self.halite >= self.config.convert_cost + self.config.spawn_cost and not building_shipyard:
-                ship.next_action = ShipAction.CONVERT
-                self.halite -= self.config.convert_cost
-                self.planned_moves.append(ship.position)
+                self.convert_to_shipyard(ship)
                 building_shipyard = True
             action = None
             next_pos = None
+            safe_cells, alternative_cells = self.get_safe_cells(ship)
             preferred_moves = navigate(ship.position, destination, self.size)
             for direction in preferred_moves:
                 next_pos = (ship.position + direction.to_point()) % self.size
-                if next_pos not in self.planned_moves:
+                if next_pos not in self.planned_moves and board.cells[next_pos] in safe_cells:
                     action = direction
                     break
             if action is None:
-                if ship.position not in self.planned_moves:
+                if ship.cell in safe_cells:
                     next_pos = ship.position  # do nothing
+                elif len(safe_cells) > 0:
+                    action = navigate(ship.position, safe_cells[0].position, self.size)[0]
+                    next_pos = safe_cells[0].position
                 else:
-                    possible_moves = [x for x in DIRECTIONS if x not in preferred_moves and (
-                            ship.position + x.to_point()) % self.size not in self.planned_moves]
-                    if len(possible_moves) > 0:
-                        action = possible_moves[0]
-                        next_pos = (ship.position + possible_moves[0].to_point()) % self.size
-                    else:
-                        logging.warning("Collision unavoidable: ", ship.id)
+                    endangered_ships.append(ship)
+                    continue
 
             ship.next_action = action
             self.planned_moves.append(next_pos)
+
+        for ship in sorted(endangered_ships, key=lambda es: es.halite, reverse=True):
+            # Convert endangered ships to shipyards
+            if ship.halite >= self.parameters[
+                'convert_when_attacked_threshold'] and self.halite >= self.config.convert_cost:
+                self.convert_to_shipyard(ship)
+                continue
+
+            _, not_so_safe_cells = self.get_safe_cells(ship)
+            solved = False
+
+            if ship in returning_ships:
+                destination = self.get_nearest_shipyard(ship.position).position
+                for action in navigate(ship.position, destination, self.size):
+                    new_pos = (ship.position + action.to_point()) % self.size
+                    if board.cells[new_pos] in not_so_safe_cells:
+                        ship.next_action = action
+                        self.planned_moves.append(new_pos)
+                        solved = True
+                        break
+                if solved:
+                    continue
+
+            # TODO: maybe implement attacking other ships
+            if len(not_so_safe_cells) > 0:
+                if ship.cell in not_so_safe_cells:
+                    # do nothing
+                    self.planned_moves.append(ship.position)
+                else:
+                    target = choice(not_so_safe_cells).position
+                    ship.next_action = navigate(ship.position, target, self.size)[0]
+                    self.planned_moves.append(target)
+                continue
+
+            for neighbour in get_neighbours(ship.cell):
+                if neighbour.position not in self.planned_moves:
+                    self.planned_moves.append(neighbour.position)
+                    ship.next_action = navigate(ship.position, neighbour.position, self.size)[0]
+                    solved = True
+                    break
+            if not solved:
+                logging.warning("Collision unavoidable:", ship.position)
 
         for ship in exploring_ships:
             possible_targets = sorted(filter(lambda cell: cell.position not in self.planned_moves,
                                              [board.cells[(ship.position + w) % self.size] for w in
                                               self.exploring_window]),
                                       key=lambda cell: cell.halite / (
-                                              self.hyperparameters['distance_penalty'] * calculate_distance(
+                                              self.parameters['distance_penalty'] * calculate_distance(
                                           ship.position, cell.position, self.size)),
                                       reverse=True)  # optimize with target selection
 
@@ -178,3 +227,58 @@ class HaliteBot(object):
                 min_distance = distance
                 nearest_shipyard = shipyard
         return nearest_shipyard
+
+    def get_safe_cells(self, ship: Ship):
+        neighbours = get_neighbours(ship.cell)
+        # cells to which no dangerous enemy ship can get in the next move, but enemies could still convert their ships
+        true_safe_cells = []
+        # cells on which no dangerous enemy ships are
+        not_so_safe_cells = []
+        if self.is_safe(ship, ship.cell):
+            true_safe_cells.append(ship.cell)
+        else:
+            not_so_safe_cells.append(ship.cell)
+
+        for neighbour in neighbours:
+            if self.is_safe(ship, neighbour):
+                true_safe_cells.append(neighbour)
+            elif (neighbour.ship is None or (
+                    neighbour.ship.player_id != self.player_id and neighbour.ship.halite > ship.halite)
+                  or neighbour.ship.player_id == self.player_id) and neighbour.position not in self.planned_moves:
+                not_so_safe_cells.append(neighbour)
+        return true_safe_cells, not_so_safe_cells
+
+    def is_safe(self, ship: Ship, cell: Cell):
+        # TODO: add logic for enemy shipyards
+        if cell.position in self.planned_moves:
+            return False
+
+        if cell.ship is not None and cell.ship.player_id != self.player_id and cell.ship.halite < ship.halite:
+            return False
+
+        for neighbour in get_neighbours(cell):
+            if neighbour.ship is not None and neighbour.ship.player_id != self.player_id and neighbour.ship.halite < ship.halite:
+                return False
+
+        return True
+
+    def convert_to_shipyard(self, ship: Ship):
+        assert self.halite >= self.config.convert_cost
+        ship.next_action = ShipAction.CONVERT
+        self.halite -= self.config.convert_cost
+
+    def spawn_ship(self, shipyard: Shipyard):
+        assert self.halite >= self.config.spawn_cost
+        shipyard.next_action = ShipyardAction.SPAWN
+        self.planned_moves.append(shipyard.position)
+        self.halite -= self.config.spawn_cost
+
+
+@board_agent
+def agent(board: Board):
+    global BOT
+    if BOT is None:
+        BOT = HaliteBot(PARAMETERS)
+
+    logging.debug("Begin step " + str(board.step))
+    BOT.step(board)
