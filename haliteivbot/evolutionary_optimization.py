@@ -15,16 +15,16 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 4
 
-POOL_NAME = ""
+POOL_NAME = "2020-07-04 16-32"
 
 hyperparameters = {
-    'spawn_till': ('int', (100, 390)),
+    'spawn_till': ('int', (200, 390)),
     'spawn_step_multiplier': ('int', (0, 30)),
     'min_ships': ('int', (8, 40)),
     'ship_spawn_threshold': ('float', (0.1, 4.0)),
     'shipyard_conversion_threshold': ('float', (0.3, 10)),
     'ships_shipyards_threshold': ('float', (0.05, 1.2)),
-    'shipyard_stop': ('int', (100, 380)),
+    'shipyard_stop': ('int', (200, 390)),
     'min_shipyard_distance': ('int', (0, 35)),
     'mining_threshold': ('float', (0.2, 5.0)),
     'mining_decay': ('float', (-0.05, 0)),
