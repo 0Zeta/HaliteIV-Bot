@@ -5,7 +5,7 @@ from kaggle_environments.envs.halite.helpers import Shipyard, Ship
 
 from haliteivbot.utils import *
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {'spawn_till': 247, 'spawn_step_multiplier': 0, 'min_ships': 29,
@@ -284,12 +284,27 @@ class HaliteBot(object):
                 solved = True
                 break
             if not solved:
+                if len(positions_to_check) == 0:
+                    unsafe_positions = [cell.position for cell in get_neighbours(ship.cell) if
+                                        cell.position not in self.planned_moves]
+                    if len(unsafe_positions) > 0:
+                        next_pos = choice(unsafe_positions)
+                        self.planned_moves.append(next_pos)
+                        ship.next_action = navigate(ship.position, next_pos, self.size)[0]
+                        logging.debug(
+                            "Exploring ship " + str(ship.id) + " has nowhere to go and acquires unsafe position " + str(
+                                next_pos) + ".")
+                    else:
+                        logging.warning("Exploring ship " + str(
+                            ship.id) + " has nowhere to go and causes a collision at position " + str(
+                            ship.position) + ".")
+                    continue
                 next_pos = choice(positions_to_check)
                 self.planned_moves.append(next_pos)
                 if next_pos != ship.position:
                     ship.next_action = navigate(ship.position, next_pos, self.size)[0]
                 logging.debug(
-                    "Exploring ship " + str(ship.id) + " has no target and acquired position " + str(next_pos) + ".")
+                    "Exploring ship " + str(ship.id) + " has no target and acquires position " + str(next_pos) + ".")
 
     def get_nearest_shipyard(self, pos: Point):
         min_distance = float('inf')
@@ -313,7 +328,7 @@ class HaliteBot(object):
         not_so_safe_cells = []
         if self.is_safe(ship, ship.cell):
             true_safe_cells.append(ship.cell)
-        else:
+        elif ship.cell.position not in self.planned_moves:
             not_so_safe_cells.append(ship.cell)
 
         for neighbour in neighbours:
