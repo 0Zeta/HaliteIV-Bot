@@ -187,7 +187,6 @@ class HaliteBot(object):
 
         for ship in sorted(endangered_ships, key=lambda es: es.halite, reverse=True):
             # Convert endangered ships to shipyards
-            # TODO: Prevent other bots from abusing this by staying next to the shipyard and waiting (blocking the shipyard)
             if ship.halite >= self.parameters[
                 'convert_when_attacked_threshold'] and self.halite >= self.config.convert_cost:
                 self.convert_to_shipyard(ship)
@@ -231,10 +230,19 @@ class HaliteBot(object):
         for ship in exploring_ships:
             # Guard the shipyard currently on
             if ship.cell.shipyard is not None and ship.position not in self.planned_moves:
-                if any(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
-                              get_neighbours(ship.cell))):
-                    # An enemy ship is nearby. We stay on the shipyard to protect it.
-                    self.planned_moves.append(ship.position)
+                enemies = set(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
+                                     get_neighbours(ship.cell)))
+                if len(enemies) > 0:
+                    # An enemy ship is nearby. We stay on the shipyard to protect it or attack it.
+                    unattacked_enemies = [enemy for enemy in enemies if enemy.position not in self.planned_moves]
+                    if self.halite < self.config.spawn_cost or len(unattacked_enemies) == 0:
+                        self.planned_moves.append(ship.position)
+                    else:
+                        # attack the ship and immediately spawn a new ship on the shipyard to protect it
+                        target_to_attack = choice(unattacked_enemies).position
+                        self.planned_moves.append(target_to_attack)
+                        ship.next_action = navigate(ship.position, target_to_attack, self.size)[0]
+                        self.spawn_ship(ship.cell.shipyard)
                     continue
 
             possible_targets = sorted(filter(lambda cell: cell.position not in self.planned_moves,
