@@ -90,18 +90,24 @@ class HaliteBot(object):
         if len(self.me.ships) == 0:
             if len(self.me.shipyards) > 0:
                 self.spawn_ship(self.me.shipyards[0])
-        if step < self.parameters['spawn_till']:
-            for shipyard in self.me.shipyards:
-                if self.ship_count > self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
-                        self.parameters['ship_spawn_threshold']:
-                    break
-                if self.halite < 2 * self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
-                    return
-                if shipyard.position not in self.planned_moves:
-                    if any(filter(lambda cell: (cell.ship is None and cell.position not in self.planned_moves) or (
-                            cell.ship is not None and cell.ship.player_id != self.player_id),
-                                  get_neighbours(shipyard.cell))):
-                        self.spawn_ship(shipyard)
+        natural_spawn_limit = step < self.parameters['spawn_till']
+        for shipyard in self.me.shipyards:
+            if self.halite < 2 * self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
+                return
+            if shipyard.position in self.planned_moves:
+                continue
+            if any(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
+                          get_neighbours(shipyard.cell))):
+                self.spawn_ship(shipyard)
+                continue
+            if natural_spawn_limit:
+                continue
+            if self.ship_count > self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
+                    self.parameters['ship_spawn_threshold']:
+                continue
+            if any(filter(lambda cell: cell.ship is None and cell.position not in self.planned_moves,
+                          get_neighbours(shipyard.cell))):
+                self.spawn_ship(shipyard)
 
     def move_ships(self, board: Board):
         returning_ships = list()
@@ -181,6 +187,7 @@ class HaliteBot(object):
 
         for ship in sorted(endangered_ships, key=lambda es: es.halite, reverse=True):
             # Convert endangered ships to shipyards
+            # TODO: Prevent other bots from abusing this by staying next to the shipyard and waiting (blocking the shipyard)
             if ship.halite >= self.parameters[
                 'convert_when_attacked_threshold'] and self.halite >= self.config.convert_cost:
                 self.convert_to_shipyard(ship)
@@ -222,6 +229,14 @@ class HaliteBot(object):
                 logging.warning("Collision unavoidable:", ship.position)
 
         for ship in exploring_ships:
+            # Guard the shipyard currently on
+            if ship.cell.shipyard is not None and ship.position not in self.planned_moves:
+                if any(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
+                              get_neighbours(ship.cell))):
+                    # An enemy ship is nearby. We stay on the shipyard to protect it.
+                    self.planned_moves.append(ship.position)
+                    continue
+
             possible_targets = sorted(filter(lambda cell: cell.position not in self.planned_moves,
                                              [board.cells[(ship.position + w) % self.size] for w in
                                               self.exploring_window]),
