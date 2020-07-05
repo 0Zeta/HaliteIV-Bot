@@ -9,24 +9,28 @@ from haliteivbot.utils import *
 logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
-PARAMETERS = {'spawn_till': 280,
-              'spawn_step_multiplier': 0,
-              'min_ships': 25,
-              'ship_spawn_threshold': 1.040101225356633,
-              'shipyard_conversion_threshold': 3.2,
-              'ships_shipyards_threshold': 0.9486078337088742,
-              'shipyard_stop': 364,
-              'min_shipyard_distance': 14,
-              'mining_threshold': 1.0068566355668074,
-              'mining_decay': -1.8074500234144282e-05,
-              'min_mining_halite': 2,
-              'return_halite': 4.804004233593588,
-              'return_halite_decay': 0.0,
-              'min_return_halite': 0.0,
-              'exploring_window_size': 5,
-              'convert_when_attacked_threshold': 399,
-              'max_halite_attack_shipyard': 20,
-              'distance_penalty': 1.3476785688056414}
+PARAMETERS = {
+    'spawn_till': 280,
+    'spawn_step_multiplier': 0,
+    'min_ships': 25,
+    'ship_spawn_threshold': 1.040101225356633,
+    'shipyard_conversion_threshold': 3.2,
+    'ships_shipyards_threshold': 0.9486078337088742,
+    'shipyard_stop': 364,
+    'min_shipyard_distance': 14,
+    'mining_threshold': 1.0068566355668074,
+    'mining_decay': -1.8074500234144282e-05,
+    'min_mining_halite': 2,
+    'return_halite': 4.804004233593588,
+    'return_halite_decay': 0.0,
+    'min_return_halite': 0.0,
+    'exploring_window_size': 5,
+    'convert_when_attacked_threshold': 399,
+    'max_halite_attack_shipyard': 20,
+    'distance_penalty': 1.3476785688056414,
+    'mining_score_alpha': 0.5,
+    'mining_score_gamma': 0.98
+}
 
 BOT = None
 
@@ -65,6 +69,10 @@ class HaliteBot(object):
         self.exploring_window = [Point(x, y) for x in range(-window_size, window_size + 1) for y in
                                  range(-window_size, window_size + 1)]
         self.exploring_window.remove(Point(0, 0))
+
+        self.optimal_mining_steps = create_optimal_mining_steps_matrix(self.parameters['mining_score_alpha'],
+                                                                       self.parameters['mining_score_gamma'])
+        create_distance_list(self.size)
 
     def step(self, board: Board):
         if self.me is None:
@@ -220,9 +228,9 @@ class HaliteBot(object):
                         ship.position) + ".")
                 return
         destination = destination.position
-        if board.step <= self.parameters['shipyard_stop'] and calculate_distance(ship.position, destination,
-                                                                                 self.size) >= self.parameters[
-            'min_shipyard_distance'] and self.halite >= self.config.convert_cost + self.config.spawn_cost:
+        if board.step <= self.parameters['shipyard_stop'] and calculate_distance(ship.position, destination) >= \
+                self.parameters[
+                    'min_shipyard_distance'] and self.halite >= self.config.convert_cost + self.config.spawn_cost:
             if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
                 'shipyard_conversion_threshold'] \
                     and self.shipyard_count / self.ship_count < self.parameters['ships_shipyards_threshold']:
@@ -281,7 +289,7 @@ class HaliteBot(object):
                                           self.exploring_window]),
                                   key=lambda cell: cell.halite / (
                                           self.parameters['distance_penalty'] ** calculate_distance(
-                                      ship.position, cell.position, self.size)),
+                                      ship.position, cell.position)),
                                   reverse=True)  # optimize with target selection
 
         safe_positions, not_so_safe_positions = self.get_safe_positions(ship)
@@ -380,7 +388,7 @@ class HaliteBot(object):
         min_distance = float('inf')
         nearest_shipyard = None
         for shipyard in self.me.shipyards:
-            distance = calculate_distance(pos, shipyard.position, self.size)
+            distance = calculate_distance(pos, shipyard.position)
             if distance < min_distance:
                 min_distance = distance
                 nearest_shipyard = shipyard

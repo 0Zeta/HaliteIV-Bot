@@ -15,7 +15,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 4
 
-POOL_NAME = "2020-07-05 01-47"
+POOL_NAME = ""
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),
@@ -32,10 +32,12 @@ hyperparameters = {
     'return_halite': ('float', (3.0, 30.0)),
     'return_halite_decay': ('float', (-0.08, 0)),
     'min_return_halite': ('float', (0, 3.0)),
-    'exploring_window_size': ('int', (1, 15)),
+    'exploring_window_size': ('int', (5, 10)),
     'convert_when_attacked_threshold': ('int', (100, 600)),
     'max_halite_attack_shipyard': ('int', (10, 250)),
     'distance_penalty': ('float', (1.0, 2.0)),
+    'mining_score_alpha': ('float', (0.4, 0.9)),
+    'mining_score_gamma': ('float', (0.92, 0.999))
 }
 
 first_genome = {
