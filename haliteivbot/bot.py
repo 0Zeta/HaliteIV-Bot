@@ -173,13 +173,14 @@ class HaliteBot(object):
         if ship.halite > self.average_halite_per_cell * (
                 max(self.parameters['return_halite'] + self.parameters['return_halite_decay'] * board.step,
                     self.parameters['min_return_halite'])):
-            if ship.cell.halite > self.average_halite_per_cell * self.parameters['mining_threshold'] and self.is_safe(
-                    ship, ship.cell):
+            if ship.cell.halite > max(self.average_halite_per_cell * (
+                    self.parameters['mining_threshold'] + self.parameters['mining_decay'] * board.step),
+                                      self.parameters['min_mining_halite']) and self.is_safe(ship, ship.cell):
                 return ShipType.MINING
             return ShipType.RETURNING
-        elif ship.cell.halite >= max(self.average_halite_per_cell * (
+        elif ship.cell.halite > max(self.average_halite_per_cell * (
                 self.parameters['mining_threshold'] + self.parameters['mining_decay'] * board.step),
-                                     self.parameters['min_mining_halite']):
+                                    self.parameters['min_mining_halite']):
             return ShipType.MINING
         else:
             return ShipType.EXPLORING
