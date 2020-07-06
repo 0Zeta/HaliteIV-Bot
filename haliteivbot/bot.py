@@ -10,26 +10,24 @@ logging.basicConfig(level=logging.WARNING)
 
 env = make("halite", debug=True)
 
-PARAMETERS = {
-    'spawn_till': 280,
-    'spawn_step_multiplier': 0,
-    'min_ships': 20,
-    'ship_spawn_threshold': 1.040101225356633,
-    'shipyard_conversion_threshold': 2.8,
-    'ships_shipyards_threshold': 0.4,
-    'shipyard_stop': 364,
-    'min_shipyard_distance': 10,
-    'mining_threshold': 5,
-    'mining_decay': 0,
-    'min_mining_halite': 5,
-    'return_halite': 4.5,
-    'return_halite_decay': 0.0,
-    'min_return_halite': 0.0,
-    'convert_when_attacked_threshold': 399,
-    'max_halite_attack_shipyard': 20,
-    'mining_score_alpha': 0.5,
-    'mining_score_gamma': 0.98
-}
+PARAMETERS = {'spawn_till': 381,
+              'spawn_step_multiplier': 0,
+              'min_ships': 20,
+              'ship_spawn_threshold': 1.6557983103631746,
+              'shipyard_conversion_threshold': 1.1282732387551122,
+              'ships_shipyards_threshold': 0.42938148864002,
+              'shipyard_stop': 336,
+              'min_shipyard_distance': 13,
+              'mining_threshold': 8,
+              'mining_decay': -0.001506118706562684,
+              'min_mining_halite': 5,
+              'return_halite': 3.0,
+              'return_halite_decay': 0.0,
+              'min_return_halite': 0.4760517888955383,
+              'convert_when_attacked_threshold': 322,
+              'max_halite_attack_shipyard': 104,
+              'mining_score_alpha': 0.5,
+              'mining_score_gamma': 0.9511898071037446}
 
 BOT = None
 
@@ -79,6 +77,16 @@ class HaliteBot(object):
         self.shipyard_count = len(self.me.shipyards)
 
         self.average_halite_per_cell = sum([halite for halite in board.observation['halite']]) / self.size ** 2
+
+        # Compute distances to the next shipyard:
+        self.shipyard_distances = []
+        for position in range(self.size ** 2):
+            min_distance = float('inf')
+            for shipyard in self.me.shipyards:
+                distance = get_distance(position, shipyard.position.to_index(self.size))
+                if distance < min_distance:
+                    min_distance = distance
+            self.shipyard_distances.append(min_distance)
 
         self.planned_moves.clear()
         self.planned_shipyards.clear()
@@ -137,12 +145,13 @@ class HaliteBot(object):
         for ship in self.me.ships:
             ship_type = self.get_ship_type(ship, board)
             self.ship_types[ship.id] = ship_type
-            if ship_type == ShipType.MINING:
+            if ship_type == ShipType.MINING and not self.guards_shipyard(ship):
                 self.mining_ships.append(ship)
             elif ship_type == ShipType.RETURNING:
                 self.returning_ships.append(ship)
 
-        ships = list(sorted(self.me.ships, key=lambda s: self.get_move_priority(s), reverse=True))
+        ships = list(
+            sorted(self.returning_ships + self.mining_ships, key=lambda s: self.get_move_priority(s), reverse=True))
         self.assign_ship_targets(self.mining_ships, board)
         while len(ships) > 0:
             ship = ships[0]
@@ -204,7 +213,6 @@ class HaliteBot(object):
                     target_score, target_cell = conflicting_ship_target[3][0]
                     del conflicting_ship_target[3][0]
                 ship_targets.append((conflicting_ship_target[0], target_score, target_cell, targets))
-            # TODO: improve performance; we only need to insert!
             ship_targets.sort(key=lambda mt: mt[1], reverse=True)
 
         # Convert indexed positions to points
@@ -277,9 +285,6 @@ class HaliteBot(object):
             "Returning ship " + str(ship.id) + " plans to acquire position " + str(next_pos) + " regularly.")
 
     def handle_mining_ship(self, ship: Ship, board: Board):
-        if self.guards_shipyard(ship):
-            return
-
         safe_positions, not_so_safe_positions = self.get_safe_positions(ship)
         positions_to_check = safe_positions if len(safe_positions) > 0 else not_so_safe_positions
 
@@ -302,6 +307,7 @@ class HaliteBot(object):
                 logging.debug("Mining ship " + str(ship.id) + " stays at position " + str(target) + ".")
                 return
         if len(positions_to_check) == 0:
+            # TODO: add to endangered ships?
             unsafe_positions = [cell.position for cell in get_neighbours(ship.cell) if
                                 cell.position not in self.planned_moves]
             if len(unsafe_positions) > 0:
@@ -401,7 +407,7 @@ class HaliteBot(object):
     def calculate_mining_score(self, ship_position: int, cell_position: int, halite):
         # TODO: account for enemies
         distance_from_ship = get_distance(ship_position, cell_position)
-        distance_from_shipyard = self.get_nearest_shipyard_distance(cell_position)
+        distance_from_shipyard = self.shipyard_distances[cell_position]
         if distance_from_shipyard > 20:
             # There is no shipyard.
             distance_from_shipyard = 20
@@ -420,14 +426,6 @@ class HaliteBot(object):
                 min_distance = distance
                 nearest_shipyard = shipyard
         return nearest_shipyard
-
-    def get_nearest_shipyard_distance(self, pos: int):
-        min_distance = float('inf')
-        for shipyard in self.me.shipyards:
-            distance = get_distance(pos, shipyard.position.to_index(self.size))
-            if distance < min_distance:
-                min_distance = distance
-        return min_distance
 
     def get_safe_positions(self, ship: Ship):
         return list(map(lambda cell: cell.position, self.get_safe_cells(ship)[0])), list(
