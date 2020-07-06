@@ -131,7 +131,7 @@ class HaliteBot(object):
 
         spawn_limit_reached = step > self.parameters['spawn_till']
         for shipyard in self.me.shipyards:
-            if self.halite < 2 * self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
+            if self.halite < self.config.spawn_cost:
                 return
             if shipyard.position in self.planned_moves:
                 continue
@@ -139,6 +139,8 @@ class HaliteBot(object):
                           get_neighbours(shipyard.cell))):
                 # There is an enemy ship next to the shipyard.
                 self.spawn_ship(shipyard)
+                continue
+            if self.halite < 2 * self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
                 continue
             if spawn_limit_reached:
                 continue
