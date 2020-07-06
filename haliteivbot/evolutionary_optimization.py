@@ -15,7 +15,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 4
 
-POOL_NAME = "2020-07-06 13-16"
+POOL_NAME = ""
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),
@@ -35,28 +35,34 @@ hyperparameters = {
     'convert_when_attacked_threshold': ('int', (100, 600)),
     'max_halite_attack_shipyard': ('int', (10, 250)),
     'mining_score_alpha': ('float', (0.4, 0.9)),
-    'mining_score_gamma': ('float', (0.92, 0.999))
+    'mining_score_gamma': ('float', (0.92, 0.999)),
+    'hunting_threshold': ('float', (0.5, 2)),
+    'hunting_halite_threshold': ('int', (0, 30)),
+    'hunting_score_gamma': ('float', (0.85, 0.98)),
 }
 
 first_genome = {
-    'spawn_till': 280,
+    'spawn_till': 360,
     'spawn_step_multiplier': 0,
-    'min_ships': 20,
-    'ship_spawn_threshold': 1.040101225356633,
-    'shipyard_conversion_threshold': 2.8,
-    'ships_shipyards_threshold': 0.4,
-    'shipyard_stop': 364,
-    'min_shipyard_distance': 10,
-    'mining_threshold': 10.0068566355668074,
-    'mining_decay': 0,
-    'min_mining_halite': 5,
-    'return_halite': 4.804004233593588,
+    'min_ships': 8,
+    'ship_spawn_threshold': 2.17,
+    'shipyard_conversion_threshold': 1.53,
+    'ships_shipyards_threshold': 0.33,
+    'shipyard_stop': 313,
+    'min_shipyard_distance': 11,
+    'mining_threshold': 8,
+    'mining_decay': -0.005,
+    'min_mining_halite': 6,
+    'return_halite': 3.0,
     'return_halite_decay': 0.0,
-    'min_return_halite': 0.0,
-    'convert_when_attacked_threshold': 399,
-    'max_halite_attack_shipyard': 20,
+    'min_return_halite': 0.1,
+    'convert_when_attacked_threshold': 326,
+    'max_halite_attack_shipyard': 103,
     'mining_score_alpha': 0.5,
-    'mining_score_gamma': 0.98
+    'mining_score_gamma': 0.9511898071037446,
+    'hunting_threshold': 0.9,
+    'hunting_halite_threshold': 15,
+    'hunting_score_gamma': 0.9
 }
 
 second_genome = {
@@ -77,7 +83,10 @@ second_genome = {
     'convert_when_attacked_threshold': 300,
     'max_halite_attack_shipyard': 100,
     'mining_score_alpha': 0.3,
-    'mining_score_gamma': 0.97
+    'mining_score_gamma': 0.97,
+    'hunting_threshold': 1.5,
+    'hunting_halite_threshold': 25,
+    'hunting_score_gamma': 0.95
 }
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=False)
