@@ -12,26 +12,26 @@ env = make("halite", debug=True)
 
 PARAMETERS = {
     'spawn_till': 363,
-    'spawn_step_multiplier': 1,
-    'min_ships': 15,
-    'ship_spawn_threshold': 0.9752026069644064,
+    'spawn_step_multiplier': 3,
+    'min_ships': 18,
+    'ship_spawn_threshold': 1.524241733558182,
     'shipyard_conversion_threshold': 0.5775744509236438,
-    'ships_shipyards_threshold': 0.23249553543162893,
+    'ships_shipyards_threshold': 0.18986854657096638,
     'shipyard_stop': 311,
-    'min_shipyard_distance': 8,
-    'mining_threshold': 9.62040447811011,
+    'min_shipyard_distance': 12,
+    'mining_threshold': 9.29971708529879,
     'mining_decay': -0.004987237272204551,
-    'min_mining_halite': 2,
+    'min_mining_halite': 5,
     'return_halite': 3.0,
-    'return_halite_decay': -0.0024104730010785207,
+    'return_halite_decay': 0.0,
     'min_return_halite': 0.10213392076795678,
     'convert_when_attacked_threshold': 358,
     'max_halite_attack_shipyard': 78,
-    'mining_score_alpha': 0.5197216380323135,
-    'mining_score_gamma': 0.9583474403753268,
-    'hunting_threshold': 1.1167763441733547,
-    'hunting_halite_threshold': 0,
-    'hunting_score_gamma': 0.8982191597564877,
+    'mining_score_alpha': 0.5220626884203634,
+    'mining_score_gamma': 0.9594686706210372,
+    'hunting_threshold': 1.0659089311904588,
+    'hunting_halite_threshold': 1,
+    'hunting_score_gamma': 0.9,
     'max_ship_advantage': 5
 }
 
@@ -130,9 +130,9 @@ class HaliteBot(object):
             if len(self.me.shipyards) > 0:
                 self.spawn_ship(self.me.shipyards[0])
 
-        spawn_limit_reached = step > self.parameters['spawn_till'] or self.ship_count >= max(
+        spawn_limit_reached = (step > self.parameters['spawn_till'] or self.ship_count >= max(
             [len(player.ships) for player in board.players.values() if player.id != self.player_id]) + self.parameters[
-                                  'max_ship_advantage']
+                                   'max_ship_advantage']) and self.ship_count >= self.parameters['min_ships']
         for shipyard in self.me.shipyards:
             if self.halite < self.config.spawn_cost:
                 return
@@ -143,11 +143,11 @@ class HaliteBot(object):
                 # There is an enemy ship next to the shipyard.
                 self.spawn_ship(shipyard)
                 continue
-            if self.halite < 2 * self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
+            if self.halite < self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
                 continue
             if spawn_limit_reached:
                 continue
-            if self.ship_count > self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
+            if self.ship_count >= self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
                     self.parameters['ship_spawn_threshold']:
                 continue
             if any(filter(lambda cell: cell.ship is None and cell.position not in self.planned_moves,
