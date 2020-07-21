@@ -1,6 +1,7 @@
 import scipy.optimize
 from kaggle_environments.envs.halite.halite import *
 from kaggle_environments.envs.halite.helpers import Point, Cell
+from scipy.ndimage import gaussian_filter
 
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
@@ -25,6 +26,12 @@ def create_optimal_mining_steps_matrix(alpha, gamma):
             n_opt.append(res.x)
         matrix.append(n_opt)
     return matrix
+
+
+def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
+    halite_map = np.array(halite).reshape((size, -1))
+    blurred_halite_map = gaussian_filter(halite_map, sigma, mode='wrap')
+    return multiplier * blurred_halite_map.reshape((size ** 2,))
 
 
 def create_navigation_lists(size):

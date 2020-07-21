@@ -39,13 +39,15 @@ hyperparameters = {
     'hunting_threshold': ('float', (0.5, 2)),
     'hunting_halite_threshold': ('int', (0, 30)),
     'hunting_score_gamma': ('float', (0.85, 0.98)),
-    'max_ship_advantage': ('int', (-5, 10))
+    'max_ship_advantage': ('int', (-5, 10)),
+    'map_blur_sigma': ('float', (0.15, 0.8)),
+    'map_switch_distance': ('int', (0, 8))
 }
 
 first_genome = {
     'spawn_till': 363,
-    'spawn_step_multiplier': 4,
-    'min_ships': 28,
+    'spawn_step_multiplier': 3,
+    'min_ships': 18,
     'ship_spawn_threshold': 1.524241733558182,
     'shipyard_conversion_threshold': 0.5775744509236438,
     'ships_shipyards_threshold': 0.18986854657096638,
@@ -64,7 +66,9 @@ first_genome = {
     'hunting_threshold': 1.0659089311904588,
     'hunting_halite_threshold': 1,
     'hunting_score_gamma': 0.9,
-    'max_ship_advantage': 5
+    'max_ship_advantage': 5,
+    'map_blur_sigma': 0.5,
+    'map_switch_distance': 5
 }
 
 second_genome = {
@@ -89,7 +93,9 @@ second_genome = {
     'hunting_threshold': 1.1167763441733547,
     'hunting_halite_threshold': 0,
     'hunting_score_gamma': 0.8982191597564877,
-    'max_ship_advantage': 1
+    'max_ship_advantage': 1,
+    'map_blur_sigma': 0.4,
+    'map_switch_distance': 6
 }
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=False)

@@ -32,7 +32,9 @@ PARAMETERS = {
     'hunting_threshold': 1.0659089311904588,
     'hunting_halite_threshold': 1,
     'hunting_score_gamma': 0.9,
-    'max_ship_advantage': 5
+    'max_ship_advantage': 5,
+    'map_blur_sigma': 0.5,
+    'map_switch_distance': 5,  # at which distance the blurred map should be replaced by the normal one
 }
 
 BOT = None
@@ -90,6 +92,8 @@ class HaliteBot(object):
             self.me.ships}
 
         self.average_halite_per_cell = sum([halite for halite in board.observation['halite']]) / self.size ** 2
+
+        self.blurred_halite_map = get_blurred_halite_map(board.observation['halite'], self.parameters['map_blur_sigma'])
 
         # Compute distances to the next shipyard:
         self.shipyard_distances = []
@@ -211,7 +215,8 @@ class HaliteBot(object):
         halite_map = board.observation['halite']
         for ship in self.mining_ships:
             ship_position = ship.position.to_index(self.size)
-            targets = sorted([(self.calculate_mining_score(ship_position, cell_position, halite), cell_position) for
+            targets = sorted([(self.calculate_mining_score(ship_position, cell_position, halite,
+                                                           self.blurred_halite_map[cell_position]), cell_position) for
                               cell_position, halite in enumerate(halite_map)], key=lambda t: t[0], reverse=True)
             best = targets[0]
             del targets[0]
@@ -481,7 +486,7 @@ class HaliteBot(object):
         if not solved:
             logging.warning("Collision unavoidable:", ship.position)
 
-    def calculate_mining_score(self, ship_position: int, cell_position: int, halite):
+    def calculate_mining_score(self, ship_position: int, cell_position: int, halite, blurred_halite):
         # TODO: account for enemies
         distance_from_ship = get_distance(ship_position, cell_position)
         distance_from_shipyard = self.shipyard_distances[cell_position]
@@ -490,7 +495,9 @@ class HaliteBot(object):
             distance_from_shipyard = 20
         mining_steps = self.optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1]
         return self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
-                1 - 0.75 ** mining_steps) * min(1.02 ** (distance_from_ship) * halite, 500) * 1.02 ** mining_steps / (
+                1 - 0.75 ** mining_steps) * min(1.02 ** (distance_from_ship) * (
+            halite if distance_from_ship <= self.parameters['map_switch_distance'] else blurred_halite),
+                                                500) * 1.02 ** mining_steps / (
                        distance_from_ship + mining_steps + self.parameters[
                    'mining_score_alpha'] * distance_from_shipyard)
 
