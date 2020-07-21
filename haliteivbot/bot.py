@@ -73,7 +73,7 @@ class HaliteBot(object):
 
         self.optimal_mining_steps = create_optimal_mining_steps_matrix(self.parameters['mining_score_alpha'],
                                                                        self.parameters['mining_score_gamma'])
-        create_distance_list(self.size)
+        create_navigation_lists(self.size)
 
     def step(self, board: Board):
         if self.me is None:

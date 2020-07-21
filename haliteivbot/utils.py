@@ -5,6 +5,7 @@ from kaggle_environments.envs.halite.helpers import Point, Cell
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
 DISTANCES = None
+NAVIGATION = None
 SIZE = 21
 
 
@@ -26,44 +27,70 @@ def create_optimal_mining_steps_matrix(alpha, gamma):
     return matrix
 
 
-def create_distance_list(size):
-    """taken from https://www.kaggle.com/jpmiller/fast-distance-calcs by JohnM"""
-
-    def dist_1d(a1, a2):
-        amin = np.fmin(a1, a2)
-        amax = np.fmax(a1, a2)
-        adiff = amax - amin
-        adist = np.fmin(adiff, size - adiff)
-        return adist
-
+def create_navigation_lists(size):
+    """distance list taken from https://www.kaggle.com/jpmiller/fast-distance-calcs by JohnM"""
     base = np.arange(size ** 2)
     idx1 = np.repeat(base, size ** 2)
     idx2 = np.tile(base, size ** 2)
 
-    rowdist = dist_1d(idx1 // size, idx2 // size)
-    coldist = dist_1d(idx1 % size, idx2 % size)
+    idx_to_action = {
+        0: None,
+        1: ShipAction.WEST,
+        2: ShipAction.EAST,
+        4: ShipAction.NORTH,
+        8: ShipAction.SOUTH
+    }
+
+    idx_to_action_list = dict()
+    for int_a, action_a in [(i, idx_to_action[i]) for i in range(3)]:
+        for int_b, action_b in [(j, idx_to_action[j]) for j in (0, 4, 8)]:
+            action_list = []
+            if action_a is not None:
+                action_list.append(action_a)
+            if action_b is not None:
+                action_list.append(action_b)
+            idx_to_action_list[int_a + int_b] = action_list
+
+    def calculate(a1, a2, smaller_val, greater_val):
+        amin = np.fmin(a1, a2)
+        amax = np.fmax(a1, a2)
+        adiff = amax - amin
+        adist = np.fmin(adiff, size - adiff)
+        wrap_around = np.not_equal(adiff, adist)
+        directions = np.zeros((len(a1),), dtype=np.int)
+        greater = np.greater(a2, a1)
+        smaller = np.greater(a1, a2)
+        directions[greater != wrap_around] = greater_val
+        directions[smaller != wrap_around] = smaller_val
+        return adist, directions
+
+    c1 = calculate(idx1 // size, idx2 // size, 4, 8)
+    c2 = calculate(idx1 % size, idx2 % size, 1, 2)
+    rowdist = c1[0]
+    coldist = c2[0]
     dist_matrix = (rowdist + coldist).reshape(size ** 2, -1)
+
+    direction_x = c2[1]
+    direction_y = c1[1]
+    dir_matrix = (direction_x + direction_y).reshape(size ** 2, -1)
 
     global DISTANCES
     DISTANCES = dist_matrix.tolist()
 
+    global NAVIGATION
+    NAVIGATION = [[idx_to_action_list[a] for a in b] for b in dir_matrix]
+
 
 def navigate(source: Point, target: Point, size: int):
-    possible_moves = list()
+    return NAVIGATION[source.to_index(size)][target.to_index(size)]
 
-    if source.x != target.x:
-        if abs(source.x - target.x) < (size - abs(source.x - target.x)):
-            ew = ShipAction.EAST if source.x < target.x else ShipAction.WEST
-        else:
-            ew = ShipAction.WEST if source.x < target.x else ShipAction.EAST
-        possible_moves.append(ew)
-    if source.y != target.y:
-        if abs(source.y - target.y) < (size - abs(source.y - target.y)):
-            ns = ShipAction.NORTH if source.y < target.y else ShipAction.SOUTH
-        else:
-            ns = ShipAction.SOUTH if source.y < target.y else ShipAction.NORTH
-        possible_moves.append(ns)
-    return possible_moves
+
+def nav(source: int, target: int):
+    return NAVIGATION[source][target]
+
+
+def get_direction_to_neighbour(source: int, target: int) -> ShipAction:
+    return NAVIGATION[int][int][0]
 
 
 def calculate_distance(source: Point, target: Point):
