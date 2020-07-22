@@ -15,7 +15,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 4
 
-POOL_NAME = ""
+POOL_NAME = "2020-07-22 19-39"
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),

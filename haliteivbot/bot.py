@@ -11,30 +11,30 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'spawn_till': 363,
+    'spawn_till': 352,
     'spawn_step_multiplier': 3,
-    'min_ships': 18,
-    'ship_spawn_threshold': 1.524241733558182,
-    'shipyard_conversion_threshold': 0.5775744509236438,
-    'ships_shipyards_threshold': 0.18986854657096638,
+    'min_ships': 26,
+    'ship_spawn_threshold': 0.9752026069644064,
+    'shipyard_conversion_threshold': 1.5088511875024941,
+    'ships_shipyards_threshold': 0.23249553543162893,
     'shipyard_stop': 311,
     'min_shipyard_distance': 12,
-    'mining_threshold': 9.29971708529879,
+    'mining_threshold': 9.692995170094953,
     'mining_decay': -0.004987237272204551,
-    'min_mining_halite': 5,
-    'return_halite': 3.0,
+    'min_mining_halite': 6,
+    'return_halite': 3.328457585002386,
     'return_halite_decay': 0.0,
     'min_return_halite': 0.10213392076795678,
-    'convert_when_attacked_threshold': 358,
-    'max_halite_attack_shipyard': 78,
-    'mining_score_alpha': 0.5220626884203634,
+    'convert_when_attacked_threshold': 374,
+    'max_halite_attack_shipyard': 74,
+    'mining_score_alpha': 0.5470699002326677,
     'mining_score_gamma': 0.9594686706210372,
-    'hunting_threshold': 1.0659089311904588,
-    'hunting_halite_threshold': 1,
-    'hunting_score_gamma': 0.9,
-    'max_ship_advantage': 5,
-    'map_blur_sigma': 0.5,
-    'map_blur_gamma': 0.7
+    'hunting_threshold': 1.1238909438681879,
+    'hunting_halite_threshold': 2,
+    'hunting_score_gamma': 0.8983502383490788,
+    'max_ship_advantage': 2,
+    'map_blur_sigma': 0.480629448675998,
+    'map_blur_gamma': 0.7112103289934569
 }
 
 BOT = None
@@ -44,6 +44,7 @@ class ShipType(Enum):
     MINING = 1
     RETURNING = 2
     HUNTING = 3
+    GUARDING = 4
 
 
 class HaliteBot(object):
@@ -114,6 +115,7 @@ class HaliteBot(object):
 
         if self.handle_special_steps(board):
             return  # don't execute the functions below
+        self.guard_shipyards(board)
         self.move_ships(board)
         self.spawn_ships(board)
         return self.me.next_actions
@@ -134,9 +136,6 @@ class HaliteBot(object):
             if len(self.me.shipyards) > 0:
                 self.spawn_ship(self.me.shipyards[0])
 
-        spawn_limit_reached = (step > self.parameters['spawn_till'] or self.ship_count >= max(
-            [len(player.ships) for player in board.players.values() if player.id != self.player_id]) + self.parameters[
-                                   'max_ship_advantage']) and self.ship_count >= self.parameters['min_ships']
         for shipyard in self.me.shipyards:
             if self.halite < self.config.spawn_cost:
                 return
@@ -149,7 +148,7 @@ class HaliteBot(object):
                 continue
             if self.halite < self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
                 continue
-            if spawn_limit_reached:
+            if self.reached_spawn_limit(board):
                 continue
             if self.ship_count >= self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
                     self.parameters['ship_spawn_threshold']:
@@ -158,6 +157,11 @@ class HaliteBot(object):
                           get_neighbours(shipyard.cell))):
                 # Only spawn a ship if there are not too many own ships around the shipyard
                 self.spawn_ship(shipyard)
+
+    def reached_spawn_limit(self, board: Board):
+        return (board.step > self.parameters['spawn_till'] or self.ship_count >= max(
+            [len(player.ships) for player in board.players.values() if player.id != self.player_id]) + self.parameters[
+                    'max_ship_advantage']) and self.ship_count >= self.parameters['min_ships']
 
     def move_ships(self, board: Board):
         # TODO: remove these lists
@@ -169,7 +173,7 @@ class HaliteBot(object):
         for ship in self.me.ships:
             ship_type = self.get_ship_type(ship, board)
             self.ship_types[ship.id] = ship_type
-            if ship_type == ShipType.MINING and not self.guards_shipyard(ship):
+            if ship_type == ShipType.MINING:
                 self.mining_ships.append(ship)
             elif ship_type == ShipType.RETURNING:
                 self.returning_ships.append(ship)
@@ -261,6 +265,8 @@ class HaliteBot(object):
             self.mining_targets[ship_id] = Point.from_index(target_pos, self.size)
 
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
+        if ship.id in self.ship_types.keys():
+            return self.ship_types[ship.id]
         if ship.halite > self.average_halite_per_cell * (
                 max(self.parameters['return_halite'] + self.parameters['return_halite_decay'] * board.step,
                     self.parameters['min_return_halite'])):
@@ -410,6 +416,34 @@ class HaliteBot(object):
             ship.next_action = navigate(ship.position, next_pos, self.size)[0]
         logging.debug(
             "Hunting ship " + str(ship.id) + " has no target and acquires position " + str(next_pos) + ".")
+
+    def guard_shipyards(self, board: Board):
+        for shipyard in self.me.shipyards:
+            if shipyard.position in self.planned_moves:
+                continue
+            enemies = set(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
+                                 get_neighbours(shipyard.cell)))
+            if len(enemies) > 0:
+                if shipyard.cell.ship is not None:
+                    self.ship_types[shipyard.cell.ship.id] = ShipType.GUARDING
+                    # TODO: maybe attack the enemy ship
+                    self.planned_moves.append(shipyard.position)
+                    logging.debug("Exploring ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
+                        shipyard.position) + " to guard a shipyard.")
+                else:
+                    potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
+                                        neighbour.ship is not None and neighbour.ship.id == self.player_id]
+                    if len(potential_guards) > 0 and self.reached_spawn_limit(board):
+                        guard = sorted(potential_guards, key=lambda ship: ship.halite, reverse=True)[0]
+                        guard.next_action = get_direction_to_neighbour(guard.position, shipyard.position)
+                        self.ship_types[guard.id] = ShipType.GUARDING
+                        self.planned_moves.append(shipyard.position)
+                        logging.debug("Ship " + str(guard.id) + " moves to position " + str(
+                            shipyard.position) + " to protect a shipyard.")
+                    elif self.halite > self.config.convert_cost:
+                        self.spawn_ship(shipyard)
+                    else:
+                        logging.debug("Shipyard " + str(shipyard.id) + " cannot be protected.")
 
     def guards_shipyard(self, ship: Ship) -> bool:
         if ship.cell.shipyard is not None and ship.position not in self.planned_moves:
