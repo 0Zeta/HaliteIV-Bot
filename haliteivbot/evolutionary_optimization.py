@@ -41,7 +41,7 @@ hyperparameters = {
     'hunting_score_gamma': ('float', (0.85, 0.98)),
     'max_ship_advantage': ('int', (-5, 10)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
-    'map_switch_distance': ('int', (0, 8))
+    'map_blur_gamma': ('float', (0.4, 0.95))
 }
 
 first_genome = {
@@ -68,34 +68,34 @@ first_genome = {
     'hunting_score_gamma': 0.9,
     'max_ship_advantage': 5,
     'map_blur_sigma': 0.5,
-    'map_switch_distance': 5
+    'map_blur_gamma': 0.8
 }
 
 second_genome = {
-    'spawn_till': 280,
-    'spawn_step_multiplier': 1,
-    'min_ships': 15,
+    'spawn_till': 268,
+    'spawn_step_multiplier': 0,
+    'min_ships': 24,
     'ship_spawn_threshold': 0.9752026069644064,
-    'shipyard_conversion_threshold': 0.5775744509236438,
+    'shipyard_conversion_threshold': 0.7136858753511214,
     'ships_shipyards_threshold': 0.23249553543162893,
     'shipyard_stop': 311,
     'min_shipyard_distance': 8,
-    'mining_threshold': 9.62040447811011,
-    'mining_decay': -0.004987237272204551,
-    'min_mining_halite': 2,
+    'mining_threshold': 9.29971708529879,
+    'mining_decay': -0.00870990963023088,
+    'min_mining_halite': 3,
     'return_halite': 3.0,
-    'return_halite_decay': -0.0024104730010785207,
-    'min_return_halite': 0.10213392076795678,
-    'convert_when_attacked_threshold': 358,
-    'max_halite_attack_shipyard': 78,
+    'return_halite_decay': 0.0,
+    'min_return_halite': 0.0,
+    'convert_when_attacked_threshold': 356,
+    'max_halite_attack_shipyard': 128,
     'mining_score_alpha': 0.5197216380323135,
-    'mining_score_gamma': 0.9583474403753268,
-    'hunting_threshold': 1.1167763441733547,
-    'hunting_halite_threshold': 0,
-    'hunting_score_gamma': 0.8982191597564877,
-    'max_ship_advantage': 1,
-    'map_blur_sigma': 0.4,
-    'map_switch_distance': 6
+    'mining_score_gamma': 0.9587194951926657,
+    'hunting_threshold': 0.8191067358256463,
+    'hunting_halite_threshold': 1,
+    'hunting_score_gamma': 0.8983502383490788,
+    'max_ship_advantage': 0,
+    'map_blur_sigma': 0.48208920287156,
+    'map_blur_gamma': 0.7
 }
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=False)

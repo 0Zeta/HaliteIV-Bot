@@ -34,7 +34,7 @@ PARAMETERS = {
     'hunting_score_gamma': 0.9,
     'max_ship_advantage': 5,
     'map_blur_sigma': 0.5,
-    'map_switch_distance': 5,  # at which distance the blurred map should be replaced by the normal one
+    'map_blur_gamma': 0.7
 }
 
 BOT = None
@@ -494,9 +494,10 @@ class HaliteBot(object):
             # There is no shipyard.
             distance_from_shipyard = 20
         mining_steps = self.optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1]
+        halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
+            'map_blur_gamma'] ** distance_from_ship * halite
         return self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
-                1 - 0.75 ** mining_steps) * min(1.02 ** (distance_from_ship) * (
-            halite if distance_from_ship <= self.parameters['map_switch_distance'] else blurred_halite),
+                1 - 0.75 ** mining_steps) * min(1.02 ** (distance_from_ship) * halite_val,
                                                 500) * 1.02 ** mining_steps / (
                        distance_from_ship + mining_steps + self.parameters[
                    'mining_score_alpha'] * distance_from_shipyard)
