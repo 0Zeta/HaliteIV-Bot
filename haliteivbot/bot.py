@@ -433,7 +433,8 @@ class HaliteBot(object):
                 else:
                     potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
                                         neighbour.ship is not None and neighbour.ship.id == self.player_id]
-                    if len(potential_guards) > 0 and self.reached_spawn_limit(board):
+                    if len(potential_guards) > 0 and (
+                            self.reached_spawn_limit(board) or self.halite < self.config.convert_cost):
                         guard = sorted(potential_guards, key=lambda ship: ship.halite, reverse=True)[0]
                         guard.next_action = get_direction_to_neighbour(guard.position, shipyard.position)
                         self.ship_types[guard.id] = ShipType.GUARDING
