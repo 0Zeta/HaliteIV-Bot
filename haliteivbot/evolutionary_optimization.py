@@ -10,12 +10,12 @@ from kaggle_environments import make
 from haliteivbot.bot import HaliteBot, Board
 
 MUTATION_PROBABILITY = 0.15
-POOL_SIZE = 15
+POOL_SIZE = 12
 SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
-NB_PARENTS = 4
+NB_PARENTS = 3
 
-POOL_NAME = "2020-07-22 19-39"
+POOL_NAME = ""
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),
@@ -26,76 +26,70 @@ hyperparameters = {
     'ships_shipyards_threshold': ('float', (0.05, 1.2)),
     'shipyard_stop': ('int', (200, 390)),
     'min_shipyard_distance': ('int', (0, 35)),
-    'mining_threshold': ('float', (0.4, 15.0)),
-    'mining_decay': ('float', (-0.05, 0)),
     'min_mining_halite': ('int', (1, 30)),
-    'return_halite': ('float', (3.0, 30.0)),
-    'return_halite_decay': ('float', (-0.08, 0)),
-    'min_return_halite': ('float', (0, 3.0)),
     'convert_when_attacked_threshold': ('int', (100, 600)),
     'max_halite_attack_shipyard': ('int', (10, 250)),
     'mining_score_alpha': ('float', (0.4, 0.9)),
+    'mining_score_beta': ('float', (0.5, 0.99)),
     'mining_score_gamma': ('float', (0.92, 0.999)),
-    'hunting_threshold': ('float', (0.5, 2)),
+    'hunting_threshold': ('float', (0.3, 2)),
     'hunting_halite_threshold': ('int', (0, 30)),
+    'disable_hunting_till': ('int', (7, 25)),
     'hunting_score_gamma': ('float', (0.85, 0.98)),
+    'return_halite': ('int', (250, 3000)),
     'max_ship_advantage': ('int', (-5, 10)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
     'map_blur_gamma': ('float', (0.4, 0.95))
 }
 
 first_genome = {
-    'spawn_till': 363,
+    'spawn_till': 352,
     'spawn_step_multiplier': 3,
-    'min_ships': 18,
-    'ship_spawn_threshold': 1.524241733558182,
-    'shipyard_conversion_threshold': 0.5775744509236438,
-    'ships_shipyards_threshold': 0.18986854657096638,
+    'min_ships': 26,
+    'ship_spawn_threshold': 0.9752026069644064,
+    'shipyard_conversion_threshold': 1.5088511875024941,
+    'ships_shipyards_threshold': 0.23249553543162893,
     'shipyard_stop': 311,
     'min_shipyard_distance': 12,
-    'mining_threshold': 9.29971708529879,
-    'mining_decay': -0.004987237272204551,
-    'min_mining_halite': 5,
-    'return_halite': 3.0,
-    'return_halite_decay': 0.0,
-    'min_return_halite': 0.10213392076795678,
-    'convert_when_attacked_threshold': 358,
-    'max_halite_attack_shipyard': 78,
-    'mining_score_alpha': 0.5220626884203634,
-    'mining_score_gamma': 0.9594686706210372,
-    'hunting_threshold': 1.0659089311904588,
-    'hunting_halite_threshold': 1,
-    'hunting_score_gamma': 0.9,
-    'max_ship_advantage': 5,
-    'map_blur_sigma': 0.5,
-    'map_blur_gamma': 0.8
+    'min_mining_halite': 6,
+    'convert_when_attacked_threshold': 374,
+    'max_halite_attack_shipyard': 74,
+    'mining_score_alpha': 0.9,
+    'mining_score_beta': 0.85,
+    'mining_score_gamma': 0.95,
+    'hunting_threshold': 1.1238909438681879,
+    'hunting_halite_threshold': 2,
+    'hunting_score_gamma': 0.8983502383490788,
+    'return_halite': 1000,
+    'disable_hunting_till': 10,
+    'max_ship_advantage': 2,
+    'map_blur_sigma': 0.480629448675998,
+    'map_blur_gamma': 0.7112103289934569
 }
 
 second_genome = {
-    'spawn_till': 268,
-    'spawn_step_multiplier': 0,
-    'min_ships': 24,
-    'ship_spawn_threshold': 0.9752026069644064,
-    'shipyard_conversion_threshold': 0.7136858753511214,
-    'ships_shipyards_threshold': 0.23249553543162893,
-    'shipyard_stop': 311,
-    'min_shipyard_distance': 8,
-    'mining_threshold': 9.29971708529879,
-    'mining_decay': -0.00870990963023088,
-    'min_mining_halite': 3,
-    'return_halite': 3.0,
-    'return_halite_decay': 0.0,
-    'min_return_halite': 0.0,
-    'convert_when_attacked_threshold': 356,
-    'max_halite_attack_shipyard': 128,
-    'mining_score_alpha': 0.5197216380323135,
-    'mining_score_gamma': 0.9587194951926657,
-    'hunting_threshold': 0.8191067358256463,
-    'hunting_halite_threshold': 1,
-    'hunting_score_gamma': 0.8983502383490788,
-    'max_ship_advantage': 0,
-    'map_blur_sigma': 0.48208920287156,
-    'map_blur_gamma': 0.7
+    'spawn_till': 320,
+    'spawn_step_multiplier': 4,
+    'min_ships': 15,
+    'ship_spawn_threshold': 0.93,
+    'shipyard_conversion_threshold': 1.4,
+    'ships_shipyards_threshold': 0.3,
+    'shipyard_stop': 300,
+    'min_shipyard_distance': 10,
+    'min_mining_halite': 8,
+    'convert_when_attacked_threshold': 350,
+    'max_halite_attack_shipyard': 54,
+    'mining_score_alpha': 0.65,
+    'mining_score_beta': 0.95,
+    'mining_score_gamma': 0.94,
+    'hunting_threshold': 1.5,
+    'hunting_halite_threshold': 5,
+    'hunting_score_gamma': 0.85,
+    'return_halite': 500,
+    'disable_hunting_till': 25,
+    'max_ship_advantage': 3,
+    'map_blur_sigma': 0.55,
+    'map_blur_gamma': 0.75
 }
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=False)

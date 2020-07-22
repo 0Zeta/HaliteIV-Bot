@@ -10,22 +10,33 @@ NAVIGATION = None
 SIZE = 21
 
 
-def create_optimal_mining_steps_matrix(alpha, gamma):
-    # The optimal amount of turns spent mining on a cell based on it's distance and the distance to the nearest friendly shipyard
-    def score(n1, n2, m, H):
-        return gamma ** (n1 + m) * (1 - .75 ** m) * 1.02 ** (n1 + m) * H / (n1 + alpha * n2 + m)
+def create_optimal_mining_steps_tensor(alpha, beta, gamma):
+    # The optimal amount of turns spent mining on a cell based on it's distancel, the CHratio and the distance to the nearest friendly shipyard
+    # Adapted from https://www.kaggle.com/solverworld/optimal-mining-with-carried-halite
+    chrange = 11
 
-    matrix = []
+    def score(n1, n2, m, H, C):
+        return gamma ** (n1 + m) * (beta * C + (1 - .75 ** m) * 1.02 ** (n1 + m) * H) / (n1 + alpha * n2 + m)
+
+    tensor = []
     for n1 in range(20):
         n_opt = []
         for n2 in range(20):
-            def h(mine):
-                return -score(n1, n2, mine, 500)
+            ch_opt = []
+            for ch in range(chrange):
+                if ch == 0:
+                    CHratio = 0
+                else:
+                    CHratio = math.exp((ch - 5) / 2.5)
 
-            res = scipy.optimize.minimize_scalar(h, bounds=(1, 15), method='Bounded')
-            n_opt.append(res.x)
-        matrix.append(n_opt)
-    return matrix
+                def h(mine):
+                    return -score(n1, n2, mine, 500, CHratio * 500)
+
+                res = scipy.optimize.minimize_scalar(h, bounds=(1, 15), method='Bounded')
+                ch_opt.append(round(res.x))
+            n_opt.append(ch_opt)
+        tensor.append(n_opt)
+    return tensor
 
 
 def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):

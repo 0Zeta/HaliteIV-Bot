@@ -19,19 +19,17 @@ PARAMETERS = {
     'ships_shipyards_threshold': 0.23249553543162893,
     'shipyard_stop': 311,
     'min_shipyard_distance': 12,
-    'mining_threshold': 9.692995170094953,
-    'mining_decay': -0.004987237272204551,
     'min_mining_halite': 6,
-    'return_halite': 3.328457585002386,
-    'return_halite_decay': 0.0,
-    'min_return_halite': 0.10213392076795678,
     'convert_when_attacked_threshold': 374,
     'max_halite_attack_shipyard': 74,
-    'mining_score_alpha': 0.5470699002326677,
-    'mining_score_gamma': 0.9594686706210372,
+    'mining_score_alpha': 1,
+    'mining_score_beta': 1,
+    'mining_score_gamma': 0.95,
     'hunting_threshold': 1.1238909438681879,
     'hunting_halite_threshold': 2,
     'hunting_score_gamma': 0.8983502383490788,
+    'return_halite': 1000,
+    'disable_hunting_till': 10,
     'max_ship_advantage': 2,
     'map_blur_sigma': 0.480629448675998,
     'map_blur_gamma': 0.7112103289934569
@@ -74,7 +72,8 @@ class HaliteBot(object):
         self.hunting_ships = list()
         self.endangered_ships = list()
 
-        self.optimal_mining_steps = create_optimal_mining_steps_matrix(self.parameters['mining_score_alpha'],
+        self.optimal_mining_steps = create_optimal_mining_steps_tensor(self.parameters['mining_score_alpha'],
+                                                                       self.parameters['mining_score_beta'],
                                                                        self.parameters['mining_score_gamma'])
         create_navigation_lists(self.size)
 
@@ -220,7 +219,8 @@ class HaliteBot(object):
         for ship in self.mining_ships:
             ship_position = ship.position.to_index(self.size)
             targets = sorted([(self.calculate_mining_score(ship_position, cell_position, halite,
-                                                           self.blurred_halite_map[cell_position]), cell_position) for
+                                                           self.blurred_halite_map[cell_position], ship.halite),
+                               cell_position) for
                               cell_position, halite in enumerate(halite_map)], key=lambda t: t[0], reverse=True)
             best = targets[0]
             del targets[0]
@@ -230,7 +230,8 @@ class HaliteBot(object):
         mine = True
         while len(ship_targets) > 0:
             ship, best_score, best_target, _ = ship_targets[0]
-            if not mine and best_score >= self.parameters['hunting_threshold']:
+            if (not mine and best_score >= self.parameters['hunting_threshold']) or board.step <= self.parameters[
+                'disable_hunting_till']:
                 logging.debug(
                     "Assigning target " + str(Point.from_index(best_target, self.size)) + " with score " + str(
                         best_score) + " to ship " + str(ship.id))
@@ -267,13 +268,7 @@ class HaliteBot(object):
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
             return self.ship_types[ship.id]
-        if ship.halite > self.average_halite_per_cell * (
-                max(self.parameters['return_halite'] + self.parameters['return_halite_decay'] * board.step,
-                    self.parameters['min_return_halite'])):
-            if ship.cell.halite > max(self.average_halite_per_cell * (
-                    self.parameters['mining_threshold'] + self.parameters['mining_decay'] * board.step),
-                                      self.parameters['min_mining_halite']) and self.is_safe(ship, ship.cell):
-                return ShipType.MINING
+        elif ship.halite >= self.parameters['return_halite']:
             return ShipType.RETURNING
         else:
             return ShipType.MINING
@@ -521,16 +516,23 @@ class HaliteBot(object):
         if not solved:
             logging.warning("Collision unavoidable:", ship.position)
 
-    def calculate_mining_score(self, ship_position: int, cell_position: int, halite, blurred_halite):
+    def calculate_mining_score(self, ship_position: int, cell_position: int, halite, blurred_halite, ship_halite):
         # TODO: account for enemies
         distance_from_ship = get_distance(ship_position, cell_position)
         distance_from_shipyard = self.shipyard_distances[cell_position]
+        halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
+            'map_blur_gamma'] ** distance_from_ship * halite
         if distance_from_shipyard > 20:
             # There is no shipyard.
             distance_from_shipyard = 20
-        mining_steps = self.optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1]
-        halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
-            'map_blur_gamma'] ** distance_from_ship * halite
+        if ship_halite == 0:
+            ch = 0
+        elif halite_val == 0:
+            ch = 10
+        else:
+            ch = int(math.log(ship_halite / halite_val) * 2.5 + 5.5)
+            ch = np.clip(ch, 0, 10)
+        mining_steps = self.optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1][ch]
         return self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
                 1 - 0.75 ** mining_steps) * min(1.02 ** (distance_from_ship) * halite_val,
                                                 500) * 1.02 ** mining_steps / (
