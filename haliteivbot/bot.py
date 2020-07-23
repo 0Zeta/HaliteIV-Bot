@@ -11,28 +11,29 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'spawn_till': 320,
+    'spawn_till': 275,
     'spawn_step_multiplier': 3,
-    'min_ships': 26,
-    'ship_spawn_threshold': 0.8217683297033734,
-    'shipyard_conversion_threshold': 1.5088511875024941,
-    'ships_shipyards_threshold': 0.29630983846455494,
-    'shipyard_stop': 311,
-    'min_shipyard_distance': 12,
-    'min_mining_halite': 5,
-    'convert_when_attacked_threshold': 339,
-    'max_halite_attack_shipyard': 53,
-    'mining_score_alpha': 0.8254618018190447,
-    'mining_score_beta': 0.9537571813385401,
-    'mining_score_gamma': 0.99,
-    'hunting_threshold': 1.1238909438681879,
-    'hunting_halite_threshold': 2,
+    'min_ships': 20,
+    'ship_spawn_threshold': 0.7056203930791999,
+    'shipyard_conversion_threshold': 0.5,
+    'ships_shipyards_threshold': 0.3,
+    'shipyard_stop': 303,
+    'min_shipyard_distance': 8,
+    'min_mining_halite': 10,
+    'convert_when_attacked_threshold': 304,
+    'max_halite_attack_shipyard': 56,
+    'mining_score_alpha': 0.99,
+    'mining_score_beta': 0.99,
+    'mining_score_gamma': 1,
+    'hunting_threshold': 0.79,
+    'hunting_halite_threshold': 1,
     'disable_hunting_till': 7,
     'hunting_score_gamma': 0.85,
-    'return_halite': 1000,
-    'max_ship_advantage': 3,
-    'map_blur_sigma': 0.5021699276124709,
-    'map_blur_gamma': 0.75
+    'return_halite': 1104,
+    'max_ship_advantage': 1,
+    'map_blur_sigma': 0.4,
+    'map_blur_gamma': 0.5,
+    'max_deposits_per_shipyard': 4
 }
 
 BOT = None
@@ -43,6 +44,7 @@ class ShipType(Enum):
     RETURNING = 2
     HUNTING = 3
     GUARDING = 4
+    CONVERTING = 5
 
 
 class HaliteBot(object):
@@ -173,11 +175,19 @@ class HaliteBot(object):
                     'max_ship_advantage']) and self.ship_count >= self.parameters['min_ships']
 
     def move_ships(self, board: Board):
+        if self.ship_count == 0:
+            return
         # TODO: remove these lists
         self.returning_ships.clear()
         self.mining_ships.clear()
         self.hunting_ships.clear()
         self.endangered_ships.clear()
+
+        if self.shipyard_count == 0:
+            ship = max(self.me.ships, key=lambda ship: ship.halite)
+            if ship.halite + self.halite >= self.config.convert_cost:
+                self.convert_to_shipyard(ship)
+                self.ship_types[ship.id] = ShipType.CONVERTING
 
         for ship in self.me.ships:
             ship_type = self.get_ship_type(ship, board)
@@ -189,7 +199,7 @@ class HaliteBot(object):
 
         ships = list(
             sorted(self.returning_ships + self.mining_ships, key=lambda s: self.get_move_priority(s), reverse=True))
-        self.assign_ship_targets(self.mining_ships, board)  # also converts some ships tp hunting/returning ships
+        self.assign_ship_targets(board)  # also converts some ships tp hunting/returning ships
         while len(ships) > 0:
             ship = ships[0]
             ship_type = self.ship_types[ship.id]
@@ -223,63 +233,60 @@ class HaliteBot(object):
 
         return score
 
-    def assign_ship_targets(self, ships, board: Board):
-        ship_targets = []
-        halite_map = board.observation['halite']
-        for ship in self.mining_ships:
-            ship_position = ship.position.to_index(self.size)
-            targets = sorted([(self.calculate_mining_score(ship_position, cell_position, halite,
-                                                           self.blurred_halite_map[cell_position], ship.halite),
-                               cell_position) for
-                              cell_position, halite in enumerate(halite_map)], key=lambda t: t[0], reverse=True)
-            best = targets[0]
-            del targets[0]
-            ship_targets.append((ship, best[0], best[1], targets))
+    def assign_ship_targets(self, board: Board):
+        # Adapted from https://www.kaggle.com/manavtrivedi/optimus-mine-agent
+        if self.ship_count == 0:
+            return
 
-        ship_targets.sort(key=lambda mt: mt[1], reverse=True)
-        mine = True
-        while len(ship_targets) > 0:
-            ship, best_score, best_target, _ = ship_targets[0]
-            if (not mine and best_score >= self.parameters['hunting_threshold']) or board.step <= self.parameters[
+        ship_targets = {}
+        mining_positions = []
+        dropoff_positions = []
+
+        id_to_ship = {ship.id: ship for ship in self.mining_ships}
+
+        halite_map = board.observation['halite']
+        for position, halite in enumerate(halite_map):
+            if halite >= self.parameters['min_mining_halite']:
+                mining_positions.append(position)
+
+        for shipyard in self.me.shipyards:
+            for _ in range(self.parameters['max_deposits_per_shipyard']):
+                dropoff_positions.append(shipyard.position.to_index(self.size))
+
+        mining_scores = np.zeros((len(self.mining_ships), len(mining_positions) + len(dropoff_positions)))
+        for ship_index, ship in enumerate(self.mining_ships):
+            for position_index, position in enumerate(mining_positions + dropoff_positions):
+                mining_scores[ship_index, position_index] = self.calculate_mining_score(
+                    ship.position.to_index(self.size), position, halite_map[position],
+                    self.blurred_halite_map[position], ship.halite)
+
+        row, col = scipy.optimize.linear_sum_assignment(mining_scores, maximize=True)
+        target_positions = mining_positions + dropoff_positions
+
+        for r, c in zip(row, col):
+            if mining_scores[r][c] < self.parameters['hunting_threshold'] and board.step > self.parameters[
                 'disable_hunting_till']:
-                if best_target in self.shipyard_positions:
-                    self.returning_ships.append(ship)
-                    self.ship_types[ship.id] = ShipType.RETURNING
-                    logging.debug("Ship " + str(ship.id) + " returns.")
-                    del ship_targets[0]
-                    continue
-                logging.debug(
-                    "Assigning target " + str(Point.from_index(best_target, self.size)) + " with score " + str(
-                        best_score) + " to ship " + str(ship.id))
-                self.mining_targets[ship.id] = best_target
-                del ship_targets[0]
-                conflicting_ship_targets = [ship_target for ship_target in ship_targets if
-                                            ship_target[2] == best_target]
-                ship_targets = [ship_target for ship_target in ship_targets if
-                                ship_target not in conflicting_ship_targets]
-                assigned_targets = self.mining_targets.values()
-                for conflicting_ship_target in conflicting_ship_targets:
-                    targets = conflicting_ship_target[3]
-                    target_score, target_cell = targets[0]
-                    del targets[0]
-                    while target_cell in assigned_targets:
-                        target_score, target_cell = conflicting_ship_target[3][0]
-                        del conflicting_ship_target[3][0]
-                    ship_targets.append((conflicting_ship_target[0], target_score, target_cell, targets))
-                ship_targets.sort(key=lambda mt: mt[1], reverse=True)
-            else:
-                mine = False
-                del ship_targets[0]
+                ship = self.mining_ships[r]
                 if ship.halite < self.parameters['hunting_halite_threshold']:
                     self.hunting_ships.append(ship)
                     self.ship_types[ship.id] = ShipType.HUNTING
                 else:
                     self.returning_ships.append(ship)
                     self.ship_types[ship.id] = ShipType.RETURNING
+                continue
+            ship_targets[self.mining_ships[r].id] = target_positions[c]
 
         # Convert indexed positions to points
-        for ship_id, target_pos in self.mining_targets.items():
+        for ship_id, target_pos in ship_targets.items():
+            ship = id_to_ship[ship_id]
+            if target_pos in self.shipyard_positions:
+                self.returning_ships.append(ship)
+                self.ship_types[ship_id] = ShipType.RETURNING
+                logging.debug("Ship " + str(ship.id) + " returns.")
+                continue
             self.mining_targets[ship_id] = Point.from_index(target_pos, self.size)
+            logging.debug(
+                "Assigning target " + str(Point.from_index(target_pos, self.size)) + " to ship " + str(ship.id))
 
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
@@ -301,7 +308,7 @@ class HaliteBot(object):
                 else:
                     destination = board.cells[self.planned_shipyards[0]]
             else:
-                self.planned_moves.append(ship.position)  # TODO: check cell safety
+                self.planned_moves.append(ship.position)  # TODO: mine
                 logging.debug(
                     "Returning ship " + str(ship.id) + " has no shipyard to go to and stays at position " + str(
                         ship.position) + ".")
@@ -309,7 +316,7 @@ class HaliteBot(object):
         destination = destination.position
         if board.step <= self.parameters['shipyard_stop'] and calculate_distance(ship.position, destination) >= \
                 self.parameters[
-                    'min_shipyard_distance'] and self.halite + ship.halite >= self.config.convert_cost + self.config.spawn_cost:
+                    'min_shipyard_distance'] and self.halite + ship.halite >= self.config.convert_cost:
             if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
                 'shipyard_conversion_threshold'] \
                     and self.shipyard_count / self.ship_count < self.parameters['ships_shipyards_threshold']:
@@ -615,7 +622,7 @@ class HaliteBot(object):
                    filter(lambda n: n.ship is not None and n.ship.player_id == self.player_id, get_neighbours(cell)))
 
     def convert_to_shipyard(self, ship: Ship):
-        assert self.halite >= self.config.convert_cost
+        assert self.halite + ship.halite >= self.config.convert_cost
         ship.next_action = ShipAction.CONVERT
         self.halite += ship.halite
         self.halite -= self.config.convert_cost

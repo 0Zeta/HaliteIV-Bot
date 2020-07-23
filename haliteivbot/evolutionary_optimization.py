@@ -1,5 +1,6 @@
 import os
 import pickle
+import traceback
 from datetime import datetime
 from random import random, choice
 
@@ -15,7 +16,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-07-23 16-27"
+POOL_NAME = ""
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),
@@ -26,12 +27,12 @@ hyperparameters = {
     'ships_shipyards_threshold': ('float', (0.05, 1.2)),
     'shipyard_stop': ('int', (200, 390)),
     'min_shipyard_distance': ('int', (0, 35)),
-    'min_mining_halite': ('int', (1, 30)),
+    'min_mining_halite': ('int', (1, 60)),
     'convert_when_attacked_threshold': ('int', (100, 600)),
     'max_halite_attack_shipyard': ('int', (10, 250)),
-    'mining_score_alpha': ('float', (0.4, 0.9)),
-    'mining_score_beta': ('float', (0.5, 0.99)),
-    'mining_score_gamma': ('float', (0.92, 0.999)),
+    'mining_score_alpha': ('float', (0.8, 0.99)),
+    'mining_score_beta': ('float', (0.8, 0.99)),
+    'mining_score_gamma': ('float', (0.97, 0.9999)),
     'hunting_threshold': ('float', (0.3, 2)),
     'hunting_halite_threshold': ('int', (0, 30)),
     'disable_hunting_till': ('int', (7, 25)),
@@ -39,57 +40,60 @@ hyperparameters = {
     'return_halite': ('int', (250, 3000)),
     'max_ship_advantage': ('int', (-5, 10)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
-    'map_blur_gamma': ('float', (0.4, 0.95))
+    'map_blur_gamma': ('float', (0.4, 0.95)),
+    'max_deposits_per_shipyard': ('int', (2, 8))
 }
 
 first_genome = {
-    'spawn_till': 352,
+    'spawn_till': 275,
     'spawn_step_multiplier': 3,
-    'min_ships': 26,
-    'ship_spawn_threshold': 0.9752026069644064,
-    'shipyard_conversion_threshold': 1.5088511875024941,
-    'ships_shipyards_threshold': 0.23249553543162893,
-    'shipyard_stop': 311,
-    'min_shipyard_distance': 12,
-    'min_mining_halite': 6,
-    'convert_when_attacked_threshold': 374,
-    'max_halite_attack_shipyard': 74,
-    'mining_score_alpha': 0.9,
-    'mining_score_beta': 0.85,
-    'mining_score_gamma': 0.95,
-    'hunting_threshold': 1.1238909438681879,
-    'hunting_halite_threshold': 2,
-    'hunting_score_gamma': 0.8983502383490788,
-    'return_halite': 1000,
-    'disable_hunting_till': 10,
-    'max_ship_advantage': 2,
-    'map_blur_sigma': 0.480629448675998,
-    'map_blur_gamma': 0.7112103289934569
+    'min_ships': 20,
+    'ship_spawn_threshold': 0.7056203930791999,
+    'shipyard_conversion_threshold': 0.5,
+    'ships_shipyards_threshold': 0.3,
+    'shipyard_stop': 303,
+    'min_shipyard_distance': 8,
+    'min_mining_halite': 10,
+    'convert_when_attacked_threshold': 304,
+    'max_halite_attack_shipyard': 56,
+    'mining_score_alpha': 0.95,
+    'mining_score_beta': 0.95,
+    'mining_score_gamma': 0.99,
+    'hunting_threshold': 0.79,
+    'hunting_halite_threshold': 1,
+    'disable_hunting_till': 7,
+    'hunting_score_gamma': 0.85,
+    'return_halite': 1104,
+    'max_ship_advantage': 1,
+    'map_blur_sigma': 0.4,
+    'map_blur_gamma': 0.5,
+    'max_deposits_per_shipyard': 4
 }
 
 second_genome = {
-    'spawn_till': 320,
-    'spawn_step_multiplier': 4,
-    'min_ships': 15,
-    'ship_spawn_threshold': 0.93,
-    'shipyard_conversion_threshold': 1.4,
-    'ships_shipyards_threshold': 0.3,
-    'shipyard_stop': 300,
-    'min_shipyard_distance': 10,
-    'min_mining_halite': 8,
-    'convert_when_attacked_threshold': 350,
-    'max_halite_attack_shipyard': 54,
-    'mining_score_alpha': 0.65,
-    'mining_score_beta': 0.95,
-    'mining_score_gamma': 0.94,
-    'hunting_threshold': 1.5,
-    'hunting_halite_threshold': 5,
-    'hunting_score_gamma': 0.85,
-    'return_halite': 500,
-    'disable_hunting_till': 25,
+    'spawn_till': 300,
+    'spawn_step_multiplier': 3,
+    'min_ships': 22,
+    'ship_spawn_threshold': 0.6,
+    'shipyard_conversion_threshold': 1,
+    'ships_shipyards_threshold': 0.5,
+    'shipyard_stop': 303,
+    'min_shipyard_distance': 6,
+    'min_mining_halite': 30,
+    'convert_when_attacked_threshold': 304,
+    'max_halite_attack_shipyard': 56,
+    'mining_score_alpha': 0.93,
+    'mining_score_beta': 0.92,
+    'mining_score_gamma': 0.98,
+    'hunting_threshold': 0.7,
+    'hunting_halite_threshold': 0,
+    'disable_hunting_till': 10,
+    'hunting_score_gamma': 0.8,
+    'return_halite': 1500,
     'max_ship_advantage': 3,
-    'map_blur_sigma': 0.55,
-    'map_blur_gamma': 0.75
+    'map_blur_sigma': 0.5,
+    'map_blur_gamma': 0.6,
+    'max_deposits_per_shipyard': 3
 }
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=False)
@@ -202,8 +206,10 @@ def determine_fitness(genome, best_genome=first_genome):
         try:
             result = play_game_against_bot(genome, "optimusmine")  # TODO: add support for multiple genomes to be tested
             score += result[0] - result[1] - result[2] + result[3]
-        except:
+        except Exception as e:
             print("An error has occurred.")
+            print(e)
+            traceback.print_exc()
     print("Final score: %i" % score)
     return score
 
