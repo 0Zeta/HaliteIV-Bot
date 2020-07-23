@@ -102,14 +102,18 @@ class HaliteBot(object):
             self.shipyard_positions.append(shipyard.position.to_index(self.size))
 
         # Compute distances to the next shipyard:
-        self.shipyard_distances = []
-        for position in range(self.size ** 2):
-            min_distance = float('inf')
-            for shipyard in self.me.shipyards:
-                distance = get_distance(position, shipyard.position.to_index(self.size))
-                if distance < min_distance:
-                    min_distance = distance
-            self.shipyard_distances.append(min_distance)
+        if self.shipyard_count == 0:
+            # There is no shipyard, but we still need to mine.
+            self.shipyard_distances = [3] * self.size ** 2
+        else:
+            self.shipyard_distances = []
+            for position in range(self.size ** 2):
+                min_distance = float('inf')
+                for shipyard in self.me.shipyards:  # TODO: consider planned shipyards
+                    distance = get_distance(position, shipyard.position.to_index(self.size))
+                    if distance < min_distance:
+                        min_distance = distance
+                self.shipyard_distances.append(min_distance)
 
         self.planned_moves.clear()
         self.planned_shipyards.clear()
@@ -288,10 +292,9 @@ class HaliteBot(object):
     def handle_returning_ship(self, ship: Ship, board: Board):
         destination = self.get_nearest_shipyard(ship.position)
         if destination is None:
-            if self.halite >= self.config.convert_cost:
+            if self.halite + ship.halite >= self.config.convert_cost:
                 if self.shipyard_count == 0:
-                    ship.next_action = ShipAction.CONVERT
-                    self.halite -= self.config.convert_cost
+                    self.convert_to_shipyard(ship)
                     logging.debug("Returning ship " + str(
                         ship.id) + " has no shipyard and converts to one at position " + str(ship.position) + ".")
                     return
@@ -306,7 +309,7 @@ class HaliteBot(object):
         destination = destination.position
         if board.step <= self.parameters['shipyard_stop'] and calculate_distance(ship.position, destination) >= \
                 self.parameters[
-                    'min_shipyard_distance'] and self.halite >= self.config.convert_cost + self.config.spawn_cost:
+                    'min_shipyard_distance'] and self.halite + ship.halite >= self.config.convert_cost + self.config.spawn_cost:
             if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
                 'shipyard_conversion_threshold'] \
                     and self.shipyard_count / self.ship_count < self.parameters['ships_shipyards_threshold']:
@@ -441,14 +444,14 @@ class HaliteBot(object):
                     potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
                                         neighbour.ship is not None and neighbour.ship.id == self.player_id]
                     if len(potential_guards) > 0 and (
-                            self.reached_spawn_limit(board) or self.halite < self.config.convert_cost):
+                            self.reached_spawn_limit(board) or self.halite < self.config.spawn_cost):
                         guard = sorted(potential_guards, key=lambda ship: ship.halite, reverse=True)[0]
                         guard.next_action = get_direction_to_neighbour(guard.position, shipyard.position)
                         self.ship_types[guard.id] = ShipType.GUARDING
                         self.planned_moves.append(shipyard.position)
                         logging.debug("Ship " + str(guard.id) + " moves to position " + str(
                             shipyard.position) + " to protect a shipyard.")
-                    elif self.halite > self.config.convert_cost:
+                    elif self.halite > self.config.spawn_cost:
                         self.spawn_ship(shipyard)
                     else:
                         logging.debug("Shipyard " + str(shipyard.id) + " cannot be protected.")
@@ -479,7 +482,7 @@ class HaliteBot(object):
     def handle_endangered_ship(self, ship: Ship, board: Board):
         # Convert endangered ships to shipyards
         if ship.halite >= self.parameters[
-            'convert_when_attacked_threshold'] and self.halite >= self.config.convert_cost:
+            'convert_when_attacked_threshold'] and self.halite + ship.halite >= self.config.convert_cost:
             self.convert_to_shipyard(ship)
             logging.debug(
                 "Returning ship " + str(ship.id) + " can't escape and converts to a shipyard at position " + str(
@@ -614,6 +617,7 @@ class HaliteBot(object):
     def convert_to_shipyard(self, ship: Ship):
         assert self.halite >= self.config.convert_cost
         ship.next_action = ShipAction.CONVERT
+        self.halite += ship.halite
         self.halite -= self.config.convert_cost
         self.ship_count -= 1
         self.shipyard_count += 1
