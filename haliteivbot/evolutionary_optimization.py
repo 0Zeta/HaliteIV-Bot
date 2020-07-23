@@ -15,7 +15,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = ""
+POOL_NAME = "2020-07-23 10-17"
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),
@@ -176,6 +176,16 @@ def play_game(genome1, genome2, genome3, genome4):
     return results
 
 
+def play_game_against_bot(genome1, bot):
+    env.reset(4)
+
+    results = \
+        evaluate("halite", [get_bot(genome1), "evolutionary/bots/" + bot + ".py", get_bot(genome1),
+                            "evolutionary/bots/" + bot + ".py"], env.configuration)[
+            0]
+    return results
+
+
 def get_bot(genome):
     bot = HaliteBot(genome)
     return lambda obs, config: bot.step(Board(obs, config))
@@ -189,9 +199,11 @@ def determine_fitness(genome, best_genome=first_genome):
         if i > 0:
             print("Current score: %i" % score)
         # not optimal
-        result = play_game(genome, best_genome, best_genome,
-                           genome)  # TODO: add support for multiple genomes to be tested
-        score += result[0] - result[1] - result[2] + result[3]
+        try:
+            result = play_game_against_bot(genome, "optimusmine")  # TODO: add support for multiple genomes to be tested
+            score += result[0] - result[1] - result[2] + result[3]
+        except:
+            print("An error has occurred.")
     print("Final score: %i" % score)
     return score
 
