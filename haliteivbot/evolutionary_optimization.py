@@ -49,53 +49,57 @@ hyperparameters = {
 first_genome = {
     'spawn_till': 275,
     'spawn_step_multiplier': 3,
-    'min_ships': 20,
+    'min_ships': 22,
     'ship_spawn_threshold': 0.7056203930791999,
-    'shipyard_conversion_threshold': 0.5,
-    'ships_shipyards_threshold': 0.3,
-    'shipyard_stop': 303,
-    'min_shipyard_distance': 8,
+    'shipyard_conversion_threshold': 1,
+    'ships_shipyards_threshold': 0.3074067755476633,
+    'shipyard_stop': 318,
+    'min_shipyard_distance': 6,
     'min_mining_halite': 10,
     'convert_when_attacked_threshold': 304,
     'max_halite_attack_shipyard': 56,
     'mining_score_alpha': 0.95,
     'mining_score_beta': 0.95,
-    'mining_score_gamma': 0.99,
+    'mining_score_gamma': 0.9894561554371855,
     'hunting_threshold': 0.79,
+    'hunting_halite_threshold': 1,
+    'disable_hunting_till': 7,
+    'hunting_score_gamma': 0.8,
+    'return_halite': 825,
+    'max_ship_advantage': 3,
+    'map_blur_sigma': 0.5779976863701278,
+    'map_blur_gamma': 0.41473115809497146,
+    'max_deposits_per_shipyard': 3,
+    'end_return_extra_moves': 8,
+    'ending_halite_threshold': 10
+}
+
+second_genome = {
+    'spawn_till': 275,
+    'spawn_step_multiplier': 4,
+    'min_ships': 21,
+    'ship_spawn_threshold': 0.9559523518305272,
+    'shipyard_conversion_threshold': 0.41458074905188674,
+    'ships_shipyards_threshold': 0.5714092172875009,
+    'shipyard_stop': 284,
+    'min_shipyard_distance': 6,
+    'min_mining_halite': 11,
+    'convert_when_attacked_threshold': 304,
+    'max_halite_attack_shipyard': 44,
+    'mining_score_alpha': 0.95,
+    'mining_score_beta': 0.95,
+    'mining_score_gamma': 0.9889479155261934,
+    'hunting_threshold': 0.7746050069786156,
     'hunting_halite_threshold': 1,
     'disable_hunting_till': 7,
     'hunting_score_gamma': 0.85,
     'return_halite': 1104,
-    'max_ship_advantage': 1,
+    'max_ship_advantage': 3,
     'map_blur_sigma': 0.4,
     'map_blur_gamma': 0.5,
-    'max_deposits_per_shipyard': 4
-}
-
-second_genome = {
-    'spawn_till': 300,
-    'spawn_step_multiplier': 3,
-    'min_ships': 22,
-    'ship_spawn_threshold': 0.6,
-    'shipyard_conversion_threshold': 1,
-    'ships_shipyards_threshold': 0.5,
-    'shipyard_stop': 303,
-    'min_shipyard_distance': 6,
-    'min_mining_halite': 30,
-    'convert_when_attacked_threshold': 304,
-    'max_halite_attack_shipyard': 56,
-    'mining_score_alpha': 0.93,
-    'mining_score_beta': 0.92,
-    'mining_score_gamma': 0.98,
-    'hunting_threshold': 0.7,
-    'hunting_halite_threshold': 0,
-    'disable_hunting_till': 10,
-    'hunting_score_gamma': 0.8,
-    'return_halite': 1500,
-    'max_ship_advantage': 3,
-    'map_blur_sigma': 0.5,
-    'map_blur_gamma': 0.6,
-    'max_deposits_per_shipyard': 3
+    'max_deposits_per_shipyard': 3,
+    'end_return_extra_moves': 10,
+    'ending_halite_threshold': 15
 }
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=False)
@@ -207,7 +211,14 @@ def determine_fitness(genome, best_genome=first_genome):
         # not optimal
         try:
             result = play_game_against_bot(genome, "optimusmine")  # TODO: add support for multiple genomes to be tested
-            score += result[0] - result[1] - result[2] + result[3]
+            standings = np.argsort(result)
+            for place, agent in enumerate(standings):
+                if agent % 2 == 0:
+                    score += place * 5000
+                else:
+                    score -= place * 5000
+            score += result[0] - result[1] + result[2] - result[3]
+
         except Exception as e:
             print("An error has occurred.")
             print(e)
