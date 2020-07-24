@@ -432,7 +432,7 @@ class HaliteBot(object):
                                         neighbour.ship is not None and neighbour.ship.id == self.player_id]
                     if len(potential_guards) > 0 and (
                             self.reached_spawn_limit(board) or self.halite < self.config.spawn_cost):
-                        guard = sorted(potential_guards, key=lambda ship: ship.halite, reverse=True)[0]
+                        guard = sorted(potential_guards, key=lambda ship: ship.halite)[0]
                         self.change_position_score(guard, shipyard.position, 8000)
                         self.ship_types[guard.id] = ShipType.GUARDING
                         logging.debug("Ship " + str(guard.id) + " moves to position " + str(

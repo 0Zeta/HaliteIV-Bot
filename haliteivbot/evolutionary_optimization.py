@@ -238,9 +238,9 @@ def determine_fitness(genome, best_genome=first_genome):
             standings = np.argsort(result)
             for place, agent in enumerate(standings):
                 if agent % 2 == 0:
-                    score += place * 5000
+                    score += place * 10000
                 else:
-                    score -= place * 5000
+                    score -= place * 10000
             score += result[0] - result[1] + result[2] - result[3]
 
         except Exception as e:
