@@ -30,8 +30,8 @@ hyperparameters = {
     'min_mining_halite': ('int', (1, 60)),
     'convert_when_attacked_threshold': ('int', (100, 600)),
     'max_halite_attack_shipyard': ('int', (10, 250)),
-    'mining_score_alpha': ('float', (0.8, 0.99)),
-    'mining_score_beta': ('float', (0.8, 0.99)),
+    'mining_score_alpha': ('float', (0.65, 0.99)),
+    'mining_score_beta': ('float', (0.65, 0.99)),
     'mining_score_gamma': ('float', (0.97, 0.9999)),
     'hunting_threshold': ('float', (0.3, 2)),
     'hunting_halite_threshold': ('int', (0, 30)),
@@ -41,7 +41,9 @@ hyperparameters = {
     'max_ship_advantage': ('int', (-5, 10)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
     'map_blur_gamma': ('float', (0.4, 0.95)),
-    'max_deposits_per_shipyard': ('int', (2, 8))
+    'max_deposits_per_shipyard': ('int', (2, 8)),
+    'end_return_extra_moves': ('int', (6, 15)),
+    'ending_halite_threshold': ('int', (5, 30))
 }
 
 first_genome = {

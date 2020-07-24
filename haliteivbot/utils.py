@@ -108,7 +108,7 @@ def nav(source: int, target: int):
 
 
 def get_direction_to_neighbour(source: int, target: int) -> ShipAction:
-    return NAVIGATION[int][int][0]
+    return NAVIGATION[source][target][0]
 
 
 def calculate_distance(source: Point, target: Point):

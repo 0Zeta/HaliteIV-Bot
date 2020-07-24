@@ -13,27 +13,29 @@ env = make("halite", debug=True)
 PARAMETERS = {
     'spawn_till': 275,
     'spawn_step_multiplier': 3,
-    'min_ships': 20,
+    'min_ships': 22,
     'ship_spawn_threshold': 0.7056203930791999,
-    'shipyard_conversion_threshold': 0.5,
-    'ships_shipyards_threshold': 0.3,
-    'shipyard_stop': 303,
-    'min_shipyard_distance': 8,
+    'shipyard_conversion_threshold': 1,
+    'ships_shipyards_threshold': 0.3074067755476633,
+    'shipyard_stop': 318,
+    'min_shipyard_distance': 6,
     'min_mining_halite': 10,
     'convert_when_attacked_threshold': 304,
     'max_halite_attack_shipyard': 56,
-    'mining_score_alpha': 0.99,
-    'mining_score_beta': 0.99,
-    'mining_score_gamma': 1,
+    'mining_score_alpha': 0.95,
+    'mining_score_beta': 0.95,
+    'mining_score_gamma': 0.9894561554371855,
     'hunting_threshold': 0.79,
     'hunting_halite_threshold': 1,
     'disable_hunting_till': 7,
-    'hunting_score_gamma': 0.85,
-    'return_halite': 1104,
-    'max_ship_advantage': 1,
-    'map_blur_sigma': 0.4,
-    'map_blur_gamma': 0.5,
-    'max_deposits_per_shipyard': 4
+    'hunting_score_gamma': 0.8,
+    'return_halite': 825,
+    'max_ship_advantage': 3,
+    'map_blur_sigma': 0.5779976863701278,
+    'map_blur_gamma': 0.41473115809497146,
+    'max_deposits_per_shipyard': 3,
+    'end_return_extra_moves': 8,
+    'ending_halite_threshold': 10
 }
 
 BOT = None
@@ -45,6 +47,7 @@ class ShipType(Enum):
     HUNTING = 3
     GUARDING = 4
     CONVERTING = 5
+    ENDING = 6
 
 
 class HaliteBot(object):
@@ -67,6 +70,7 @@ class HaliteBot(object):
         self.planned_shipyards = list()
         self.ship_types = dict()
         self.mining_targets = dict()
+        self.deposit_targets = dict()
         self.friendly_neighbour_count = dict()
 
         self.enemies = list()
@@ -121,6 +125,7 @@ class HaliteBot(object):
         self.planned_shipyards.clear()
         self.ship_types.clear()
         self.mining_targets.clear()
+        self.deposit_targets.clear()
         self.enemies = [ship for player in board.players.values() for ship in player.ships if
                         player.id != self.player_id]
 
@@ -141,7 +146,6 @@ class HaliteBot(object):
         return False
 
     def spawn_ships(self, board: Board):
-        step = board.step
         # Spawn a ship if there are none left
         if len(self.me.ships) == 0:
             if len(self.me.shipyards) > 0:
@@ -170,9 +174,10 @@ class HaliteBot(object):
                 self.spawn_ship(shipyard)
 
     def reached_spawn_limit(self, board: Board):
-        return (board.step > self.parameters['spawn_till'] or self.ship_count >= max(
+        return board.step > self.parameters['spawn_till'] or ((self.ship_count >= max(
             [len(player.ships) for player in board.players.values() if player.id != self.player_id]) + self.parameters[
-                    'max_ship_advantage']) and self.ship_count >= self.parameters['min_ships']
+                                                                   'max_ship_advantage']) and self.ship_count >=
+                                                              self.parameters['min_ships'])
 
     def move_ships(self, board: Board):
         if self.ship_count == 0:
@@ -194,7 +199,7 @@ class HaliteBot(object):
             self.ship_types[ship.id] = ship_type
             if ship_type == ShipType.MINING:
                 self.mining_ships.append(ship)
-            elif ship_type == ShipType.RETURNING:
+            elif ship_type == ShipType.RETURNING or ship_type == ShipType.ENDING:
                 self.returning_ships.append(ship)
 
         ships = list(
@@ -205,7 +210,7 @@ class HaliteBot(object):
             ship_type = self.ship_types[ship.id]
             if ship_type == ShipType.MINING:
                 self.handle_mining_ship(ship, board)
-            elif ship_type == ShipType.RETURNING:
+            elif ship_type == ShipType.RETURNING or ship_type == ShipType.ENDING:
                 self.handle_returning_ship(ship, board)
             elif ship_type == ShipType.HUNTING:
                 self.handle_hunting_ship(ship, board)
@@ -282,6 +287,7 @@ class HaliteBot(object):
             if target_pos in self.shipyard_positions:
                 self.returning_ships.append(ship)
                 self.ship_types[ship_id] = ShipType.RETURNING
+                self.deposit_targets[ship_id] = Point.from_index(target_pos, self.size)
                 logging.debug("Ship " + str(ship.id) + " returns.")
                 continue
             self.mining_targets[ship_id] = Point.from_index(target_pos, self.size)
@@ -291,13 +297,27 @@ class HaliteBot(object):
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
             return self.ship_types[ship.id]
-        elif ship.halite >= self.parameters['return_halite']:
+        if board.step >= 380:
+            if self.shipyard_distances[ship.position.to_index(self.size)] + board.step + self.parameters[
+                'end_return_extra_moves'] >= 400 and ship.halite >= self.parameters['ending_halite_threshold']:
+                return ShipType.ENDING
+        if ship.halite >= self.parameters['return_halite']:
             return ShipType.RETURNING
         else:
             return ShipType.MINING
 
     def handle_returning_ship(self, ship: Ship, board: Board):
-        destination = self.get_nearest_shipyard(ship.position)
+        if self.ship_types[ship.id] == ShipType.ENDING:
+            destination = self.get_nearest_shipyard(ship.position)
+            if destination is not None:
+                destination = destination.position
+        else:
+            if ship.id in self.deposit_targets.keys():
+                destination = self.deposit_targets[ship.id]
+            else:
+                destination = self.get_nearest_shipyard(ship.position)
+                if destination is not None:
+                    destination = destination.position
         if destination is None:
             if self.halite + ship.halite >= self.config.convert_cost:
                 if self.shipyard_count == 0:
@@ -306,14 +326,13 @@ class HaliteBot(object):
                         ship.id) + " has no shipyard and converts to one at position " + str(ship.position) + ".")
                     return
                 else:
-                    destination = board.cells[self.planned_shipyards[0]]
+                    destination = board.cells[self.planned_shipyards[0]].position
             else:
                 self.planned_moves.append(ship.position)  # TODO: mine
                 logging.debug(
                     "Returning ship " + str(ship.id) + " has no shipyard to go to and stays at position " + str(
                         ship.position) + ".")
                 return
-        destination = destination.position
         if board.step <= self.parameters['shipyard_stop'] and calculate_distance(ship.position, destination) >= \
                 self.parameters[
                     'min_shipyard_distance'] and self.halite + ship.halite >= self.config.convert_cost:
@@ -324,6 +343,16 @@ class HaliteBot(object):
                 logging.debug("Returning ship " + str(ship.id) + " converts to a shipyard at position " + str(
                     ship.position) + ".")
                 return
+
+        if self.ship_types[ship.id] == ShipType.ENDING:
+            ship_pos = ship.position.to_index(self.size)
+            destination_pos = destination.to_index(self.size)
+            if get_distance(ship_pos, destination_pos) == 1:
+                ship.next_action = get_direction_to_neighbour(ship_pos, destination_pos)
+                self.planned_moves.append(destination)
+                logging.debug("Ending ship " + str(ship.id) + " returns to a shipyard at position " + str(destination))
+                return
+
         action = None
         next_pos = None
         safe_cells, alternative_cells = self.get_safe_cells(ship)
