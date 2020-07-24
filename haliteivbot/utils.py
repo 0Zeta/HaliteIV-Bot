@@ -7,6 +7,7 @@ DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WE
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
 DISTANCES = None
 NAVIGATION = None
+POSITIONS_IN_REACH = None
 SIZE = 21
 
 
@@ -37,6 +38,22 @@ def create_optimal_mining_steps_tensor(alpha, beta, gamma):
             n_opt.append(ch_opt)
         tensor.append(n_opt)
     return tensor
+
+
+def compute_positions_in_reach():
+    def get_in_reach(position: int):
+        point = Point.from_index(position, SIZE)
+        return (
+            point,
+            (point + NEIGHBOURS[0]) % SIZE,
+            (point + NEIGHBOURS[1]) % SIZE,
+            (point + NEIGHBOURS[2]) % SIZE,
+            (point + NEIGHBOURS[3]) % SIZE
+        )
+
+    global POSITIONS_IN_REACH
+    POSITIONS_IN_REACH = {Point.from_index(pos, SIZE): get_in_reach(pos) for pos in range(SIZE ** 2)}
+    return POSITIONS_IN_REACH
 
 
 def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
