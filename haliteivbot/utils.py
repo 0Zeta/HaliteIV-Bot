@@ -63,17 +63,22 @@ def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
     return multiplier * blurred_halite_map.reshape((size ** 2,))
 
 
-def get_blurred_fight_map(me, enemies, sigma, zeta, size=21):
+def get_blurred_fight_map(me, enemies, alpha, sigma, zeta, size=21):
     fight_map = np.full((size, size), fill_value=1, dtype=np.float)
-    max_halite = max([max(ship.halite for ship in player.ships) for player in enemies + [me]])
+    max_halite = [max(ship.halite for ship in player.ships) if len(player.ships) > 0 else 0 for player in
+                  (enemies + [me])]
+    if len(max_halite) == 0:
+        return
+    max_halite = max(max_halite)
     if max_halite <= 0:
         return fight_map.reshape((size ** 2,))
     player_maps = [gaussian_filter(_get_player_map(player, max_halite, size), sigma, mode='wrap') for player in
                    [me] + enemies]
     max_value = max([np.max(player_map) for player_map in player_maps])
     for player_index, player_map in enumerate(player_maps):
-        # TODO: if player_index == 0 => handle own map
         player_map = (player_map / max_value) * zeta + 1
+        if player_index == 0:
+            player_map *= alpha
         fight_map = np.multiply(fight_map, player_map)
     return fight_map.reshape((size ** 2,))
 

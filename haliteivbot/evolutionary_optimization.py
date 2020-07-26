@@ -27,7 +27,7 @@ hyperparameters = {
     'ships_shipyards_threshold': ('float', (0.05, 1.2)),
     'shipyard_stop': ('int', (200, 390)),
     'min_shipyard_distance': ('int', (0, 35)),
-    'min_mining_halite': ('int', (1, 60)),
+    'min_mining_halite': ('int', (1, 50)),
     'convert_when_attacked_threshold': ('int', (100, 600)),
     'max_halite_attack_shipyard': ('int', (10, 250)),
     'mining_score_alpha': ('float', (0.65, 0.99)),
@@ -35,9 +35,9 @@ hyperparameters = {
     'mining_score_gamma': ('float', (0.97, 0.9999)),
     'hunting_threshold': ('float', (0.3, 8)),
     'hunting_halite_threshold': ('int', (0, 30)),
-    'disable_hunting_till': ('int', (7, 30)),
+    'disable_hunting_till': ('int', (7, 100)),
     'hunting_score_alpha': ('float', (0.5, 1.2)),
-    'hunting_score_gamma': ('float', (0.85, 0.98)),
+    'hunting_score_gamma': ('float', (0.75, 0.99)),
     'return_halite': ('int', (250, 3000)),
     'max_ship_advantage': ('int', (-5, 10)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
@@ -52,19 +52,22 @@ hyperparameters = {
     'move_preference_return': ('int', (190, 230)),
     'move_preference_mining': ('int', (225, 275)),
     'move_preference_hunting': ('int', (160, 200)),
-    'cell_score_ship_halite': ('float', (0.0005, 0.001))
+    'cell_score_ship_halite': ('float', (0.0005, 0.001)),
+    'fight_map_alpha': ('float', (1.1, 2.5)),
+    'fight_map_sigma': ('float', (0.2, 0.8)),
+    'fight_map_zeta': ('float', (0.2, 0.9))
 }
 
 first_genome = {
     'spawn_till': 310,
-    'spawn_step_multiplier': 2,
-    'min_ships': 23,
+    'spawn_step_multiplier': 0,
+    'min_ships': 25,
     'ship_spawn_threshold': 0.6514033017687603,
     'shipyard_conversion_threshold': 1.9207293700980244,
     'ships_shipyards_threshold': 0.3572482485104553,
     'shipyard_stop': 294,
-    'min_shipyard_distance': 9,
-    'min_mining_halite': 33,
+    'min_shipyard_distance': 7,
+    'min_mining_halite': 20,
     'convert_when_attacked_threshold': 387,
     'max_halite_attack_shipyard': 93,
     'mining_score_alpha': 0.9689375743168729,
@@ -72,9 +75,9 @@ first_genome = {
     'mining_score_gamma': 0.9860073895543661,
     'hunting_threshold': 2.5,
     'hunting_halite_threshold': 0,
-    'disable_hunting_till': 7,
-    'hunting_score_alpha': 0.8,
-    'hunting_score_gamma': 0.8662616356575497,
+    'disable_hunting_till': 80,
+    'hunting_score_alpha': 0.5,
+    'hunting_score_gamma': 0.98,
     'return_halite': 771,
     'max_ship_advantage': 5,
     'map_blur_sigma': 0.4767363109968698,
@@ -89,7 +92,10 @@ first_genome = {
     'move_preference_return': 206,
     'move_preference_mining': 250,
     'move_preference_hunting': 161,
-    'cell_score_ship_halite': 0.0005462803359757412
+    'cell_score_ship_halite': 0.0005462803359757412,
+    'fight_map_alpha': 1.5,
+    'fight_map_sigma': 0.5,
+    'fight_map_zeta': 0.4
 }
 
 second_genome = {
@@ -109,7 +115,7 @@ second_genome = {
     'mining_score_gamma': 0.9860073895543661,
     'hunting_threshold': 2.5,
     'hunting_halite_threshold': 0,
-    'disable_hunting_till': 7,
+    'disable_hunting_till': 50,
     'hunting_score_alpha': 0.7,
     'hunting_score_gamma': 0.8662616356575497,
     'return_halite': 771,
@@ -126,7 +132,10 @@ second_genome = {
     'move_preference_return': 206,
     'move_preference_mining': 250,
     'move_preference_hunting': 161,
-    'cell_score_ship_halite': 0.0005462803359757412
+    'cell_score_ship_halite': 0.0005462803359757412,
+    'fight_map_alpha': 1.4,
+    'fight_map_sigma': 0.45,
+    'fight_map_zeta': 0.5
 }
 
 env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=True)
