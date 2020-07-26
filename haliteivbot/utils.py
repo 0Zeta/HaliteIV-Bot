@@ -3,6 +3,7 @@ from kaggle_environments.envs.halite.halite import *
 from kaggle_environments.envs.halite.helpers import Point, Cell
 from scipy.ndimage import gaussian_filter
 
+
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
 DISTANCES = None
@@ -60,6 +61,30 @@ def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
     halite_map = np.array(halite).reshape((size, -1))
     blurred_halite_map = gaussian_filter(halite_map, sigma, mode='wrap')
     return multiplier * blurred_halite_map.reshape((size ** 2,))
+
+
+def get_blurred_fight_map(me, enemies, sigma, zeta, size=21):
+    fight_map = np.full((size, size), fill_value=1, dtype=np.float)
+    max_halite = max([max(ship.halite for ship in player.ships) for player in enemies + [me]])
+    if max_halite <= 0:
+        return fight_map.reshape((size ** 2,))
+    player_maps = [gaussian_filter(_get_player_map(player, max_halite, size), sigma, mode='wrap') for player in
+                   [me] + enemies]
+    max_value = max([np.max(player_map) for player_map in player_maps])
+    for player_index, player_map in enumerate(player_maps):
+        # TODO: if player_index == 0 => handle own map
+        player_map = (player_map / max_value) * zeta + 1
+        fight_map = np.multiply(fight_map, player_map)
+    return fight_map.reshape((size ** 2,))
+
+
+def _get_player_map(player, max_halite, size=21):
+    player_map = np.ndarray((size ** 2,), dtype=np.float)
+    for ship in player.ships:
+        player_map[ship.position.to_index(size)] = ship.halite / max_halite
+    for shipyard in player.shipyards:
+        player_map[shipyard.position.to_index(size)] = max_halite / 2
+    return player_map.reshape((size, size))
 
 
 def create_navigation_lists(size):

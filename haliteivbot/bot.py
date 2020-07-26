@@ -25,9 +25,10 @@ PARAMETERS = {
     'mining_score_alpha': 0.95,
     'mining_score_beta': 0.95,
     'mining_score_gamma': 0.9894561554371855,
-    'hunting_threshold': 0.79,
+    'hunting_threshold': 3,
     'hunting_halite_threshold': 1,
-    'disable_hunting_till': 7,
+    'disable_hunting_till': 50,
+    'hunting_score_alpha': 0.8,
     'hunting_score_gamma': 0.8,
     'return_halite': 825,
     'max_ship_advantage': 3,
@@ -43,7 +44,9 @@ PARAMETERS = {
     'move_preference_return': 210,
     'move_preference_mining': 250,
     'move_preference_hunting': 150,
-    'cell_score_ship_halite': 0.0006
+    'cell_score_ship_halite': 0.0006,
+    'fight_map_zeta': 0.7,
+    'fight_map_sigma': 0.5
 }
 
 BOT = None
@@ -166,6 +169,10 @@ class HaliteBot(object):
                 self.ship_position_preferences[
                     ship_index, self.position_to_index[position]] = self.calculate_cell_score(ship,
                                                                                               board.cells[position])
+
+        if len(self.me.ships) > 0:
+            self.blurred_fight_map = get_blurred_fight_map(self.me, board.opponents, self.parameters['fight_map_zeta'],
+                                                           self.parameters['fight_map_sigma'])
 
         self.planned_shipyards.clear()
         self.ship_types.clear()
@@ -308,11 +315,17 @@ class HaliteBot(object):
         row, col = scipy.optimize.linear_sum_assignment(mining_scores, maximize=True)
         target_positions = mining_positions + dropoff_positions
 
+        assigned_scores = [mining_scores[r][c] for r, c in zip(row, col)]
+        hunting_threshold = np.mean(assigned_scores) - np.std(assigned_scores) * self.parameters[
+            'hunting_score_alpha'] if len(assigned_scores) > 0 else -1
+
         for r, c in zip(row, col):
-            if mining_scores[r][c] < self.parameters['hunting_threshold'] and board.step > self.parameters[
+            if (mining_scores[r][c] < self.parameters['hunting_threshold'] or (
+                    mining_scores[r][c] < hunting_threshold) and ship.halite <= self.parameters[
+                    'hunting_halite_threshold']) and board.step > self.parameters[
                 'disable_hunting_till']:
                 ship = self.mining_ships[r]
-                if ship.halite < self.parameters['hunting_halite_threshold']:
+                if ship.halite <= self.parameters['hunting_halite_threshold']:
                     self.hunting_ships.append(ship)
                     self.ship_types[ship.id] = ShipType.HUNTING
                 else:
@@ -428,6 +441,7 @@ class HaliteBot(object):
                     logging.debug("Exploring ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
                         shipyard.position) + " to guard a shipyard.")
                 else:
+                    # TODO: add max halite the guarding ship can have
                     potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
                                         neighbour.ship is not None and neighbour.ship.id == self.player_id]
                     if len(potential_guards) > 0 and (
