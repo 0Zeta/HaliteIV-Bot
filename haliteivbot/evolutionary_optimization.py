@@ -16,7 +16,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = ""
+POOL_NAME = "2020-07-27 13-31"
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),
@@ -39,7 +39,7 @@ hyperparameters = {
     'hunting_score_alpha': ('float', (0.5, 1.2)),
     'hunting_score_gamma': ('float', (0.75, 0.99)),
     'return_halite': ('int', (250, 3000)),
-    'max_ship_advantage': ('int', (-5, 10)),
+    'max_ship_advantage': ('int', (-5, 15)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
     'map_blur_gamma': ('float', (0.4, 0.95)),
     'max_deposits_per_shipyard': ('int', (2, 8)),
@@ -232,6 +232,18 @@ def play_game_against_bot(genome1, bot):
     return results
 
 
+def play_game_against_bots(genome1, bot1, bot2, bot3):
+    env.reset(4)
+    shuffled_indices = np.random.permutation(4)
+    bots = [get_bot(genome1), "evolutionary/bots/" + bot1 + ".py", "evolutionary/bots/" + bot2 + ".py",
+            "evolutionary/bots/" + bot3 + ".py"]
+    bots[:] = [bots[i] for i in shuffled_indices]
+
+    results = evaluate("halite", bots, env.configuration)[0]
+    results[:] = [results[i] for i in shuffled_indices]
+    return results
+
+
 def get_bot(genome):
     bot = HaliteBot(genome)
     return lambda obs, config: bot.step(Board(obs, config))
@@ -246,15 +258,12 @@ def determine_fitness(genome, best_genome=first_genome):
             print("Current score: %i" % score)
         # not optimal
         try:
-            result = play_game_against_bot(genome,
-                                           "uninstalllol1")  # TODO: add support for multiple genomes to be tested
+            result = play_game_against_bots(genome, "uninstalllol1", "uninstalllol2", "optimusmine")
             standings = np.argsort(result)
             for place, agent in enumerate(standings):
-                if agent % 2 == 0:
-                    score += place * 10000
-                else:
-                    score -= place * 10000
-            score += result[0] - result[1] + result[2] - result[3]
+                if agent == 0:
+                    score += (place - 1.5) * 100000
+            score += 2 * result[0] - result[1] - result[2] - result[3]
 
         except Exception as e:
             print("An error has occurred.")
