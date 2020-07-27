@@ -154,6 +154,10 @@ def nav(source: int, target: int):
     return NAVIGATION[source][target]
 
 
+def get_inefficient_directions(directions):
+    return [dir for dir in DIRECTIONS if dir not in directions]
+
+
 def get_direction_to_neighbour(source: int, target: int) -> ShipAction:
     return NAVIGATION[source][target][0]
 

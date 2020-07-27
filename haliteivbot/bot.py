@@ -40,10 +40,10 @@ PARAMETERS = {
     'end_start': 380,
     'cell_score_enemy_halite': 0.3891021527805018,
     'cell_score_neighbour_discount': 0.637723836164392,
-    'move_preference_base': 193,
-    'move_preference_return': 206,
-    'move_preference_mining': 250,
-    'move_preference_hunting': 161,
+    'move_preference_base': 80,
+    'move_preference_return': 90,
+    'move_preference_mining': 100,
+    'move_preference_hunting': 85,
     'cell_score_ship_halite': 0.0005462803359757412,
     'fight_map_alpha': 1.5,
     'fight_map_sigma': 0.5,
@@ -419,6 +419,9 @@ class HaliteBot(object):
         for move in preferred_moves:
             position = (ship.position + move.to_point()) % self.size
             self.change_position_score(ship, position, self.parameters['move_preference_return'])
+        for move in get_inefficient_directions(preferred_moves):
+            position = (ship.position + move.to_point()) % self.size
+            self.change_position_score(ship, position, -self.parameters['move_preference_return'])
 
     def handle_mining_ship(self, ship: Ship, board: Board):
         if ship.id not in self.mining_targets.keys():
@@ -431,8 +434,14 @@ class HaliteBot(object):
             for move in preferred_moves:
                 position = (ship.position + move.to_point()) % self.size
                 self.change_position_score(ship, position, self.parameters['move_preference_base'])
+            for move in get_inefficient_directions(preferred_moves):
+                position = (ship.position + move.to_point()) % self.size
+                self.change_position_score(ship, position, -self.parameters['move_preference_base'])
         else:
             self.change_position_score(ship, target, self.parameters['move_preference_mining'])
+            for move in DIRECTIONS:
+                position = (ship.position + move.to_point()) % self.size
+                self.change_position_score(ship, position, -self.parameters['move_preference_mining'])
 
     def handle_hunting_ship(self, ship: Ship, board: Board):
         if len(self.enemies) > 0:
@@ -442,6 +451,9 @@ class HaliteBot(object):
                 for move in preferred_moves:
                     position = (ship.position + move.to_point()) % self.size
                     self.change_position_score(ship, position, self.parameters['move_preference_hunting'])
+                for move in get_inefficient_directions(preferred_moves):
+                    position = (ship.position + move.to_point()) % self.size
+                    self.change_position_score(ship, position, -self.parameters['move_preference_hunting'])
 
     def guard_shipyards(self, board: Board):
         for shipyard in self.me.shipyards:
