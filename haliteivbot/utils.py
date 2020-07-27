@@ -3,12 +3,13 @@ from kaggle_environments.envs.halite.halite import *
 from kaggle_environments.envs.halite.helpers import Point, Cell
 from scipy.ndimage import gaussian_filter
 
-
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
 DISTANCES = None
 NAVIGATION = None
 POSITIONS_IN_REACH = None
+POSITIONS_IN_SMALL_RADIUS = None
+POSITIONS_IN_MEDIUM_RADIUS = None
 SIZE = 21
 
 
@@ -63,7 +64,7 @@ def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
     return multiplier * blurred_halite_map.reshape((size ** 2,))
 
 
-def get_blurred_fight_map(me, enemies, alpha, sigma, zeta, size=21):
+def get_blurred_conflict_map(me, enemies, alpha, sigma, zeta, size=21):
     fight_map = np.full((size, size), fill_value=1, dtype=np.float)
     max_halite = [max(ship.halite for ship in player.ships) if len(player.ships) > 0 else 0 for player in
                   (enemies + [me])]
@@ -90,6 +91,29 @@ def _get_player_map(player, max_halite, size=21):
     for shipyard in player.shipyards:
         player_map[shipyard.position.to_index(size)] = max_halite / 2
     return player_map.reshape((size, size))
+
+
+def get_dominance_map(me, opponents, sigma, radius, size=21):
+    dominance_map = np.zeros((size ** 2,), dtype=np.float)
+    if radius == 'small':
+        radius_map = POSITIONS_IN_SMALL_RADIUS
+    elif radius == 'medium':
+        radius_map = POSITIONS_IN_MEDIUM_RADIUS
+    else:
+        raise Exception('Invalid radius type: ', radius)
+
+    for ship in me.ships:
+        dominance_map[radius_map[ship.position.to_index(size)]] += 1
+    for shipyard in me.shipyards:
+        dominance_map[radius_map[shipyard.position.to_index(size)]] += 2
+    for player in opponents:
+        for ship in player.ships:
+            dominance_map[radius_map[ship.position.to_index(size)]] -= 1
+        for shipyard in player.shipyards:
+            dominance_map[radius_map[shipyard.position.to_index(size)]] -= 2
+
+    blurred_dominance_map = gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma, mode='wrap')
+    return blurred_dominance_map.reshape((-1,))
 
 
 def create_navigation_lists(size):
@@ -140,10 +164,25 @@ def create_navigation_lists(size):
     dir_matrix = (direction_x + direction_y).reshape(size ** 2, -1)
 
     global DISTANCES
-    DISTANCES = dist_matrix.tolist()
+    DISTANCES = dist_matrix  # TODO: does this work? .tolist()
 
     global NAVIGATION
     NAVIGATION = [[idx_to_action_list[a] for a in b] for b in dir_matrix]
+
+
+def create_radius_lists(small_radius, medium_radius):
+    global POSITIONS_IN_SMALL_RADIUS
+    global POSITIONS_IN_MEDIUM_RADIUS
+    POSITIONS_IN_SMALL_RADIUS = _create_radius_list(small_radius)
+    POSITIONS_IN_MEDIUM_RADIUS = _create_radius_list(medium_radius)
+    return POSITIONS_IN_SMALL_RADIUS, POSITIONS_IN_MEDIUM_RADIUS
+
+
+def _create_radius_list(radius):
+    radius_list = []
+    for i in range(SIZE ** 2):
+        radius_list.append(np.argwhere(DISTANCES[i] <= radius).reshape((-1,)).tolist())
+    return radius_list
 
 
 def navigate(source: Point, target: Point, size: int):
