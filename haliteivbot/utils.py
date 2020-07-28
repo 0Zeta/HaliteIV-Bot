@@ -1,6 +1,7 @@
 import scipy.optimize
 from kaggle_environments.envs.halite.halite import *
 from kaggle_environments.envs.halite.helpers import Point, Cell
+from numba import njit
 from scipy.ndimage import gaussian_filter
 
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
@@ -11,6 +12,7 @@ POSITIONS_IN_REACH = None
 POSITIONS_IN_SMALL_RADIUS = None
 POSITIONS_IN_MEDIUM_RADIUS = None
 SIZE = 21
+TO_INDEX = {Point.from_index(index, SIZE): index for index in range(SIZE ** 2)}
 
 
 def create_optimal_mining_steps_tensor(alpha, beta, gamma):
@@ -87,9 +89,9 @@ def get_blurred_conflict_map(me, enemies, alpha, sigma, zeta, size=21):
 def _get_player_map(player, max_halite, size=21):
     player_map = np.ndarray((size ** 2,), dtype=np.float)
     for ship in player.ships:
-        player_map[ship.position.to_index(size)] = ship.halite / max_halite
+        player_map[TO_INDEX[ship.position]] = ship.halite / max_halite
     for shipyard in player.shipyards:
-        player_map[shipyard.position.to_index(size)] = max_halite / 2
+        player_map[TO_INDEX[shipyard.position]] = max_halite / 2
     return player_map.reshape((size, size))
 
 
@@ -103,14 +105,14 @@ def get_dominance_map(me, opponents, sigma, radius, size=21):
         raise Exception('Invalid radius type: ', radius)
 
     for ship in me.ships:
-        dominance_map[radius_map[ship.position.to_index(size)]] += 1
+        dominance_map[radius_map[TO_INDEX[ship.position]]] += 1
     for shipyard in me.shipyards:
-        dominance_map[radius_map[shipyard.position.to_index(size)]] += 2
+        dominance_map[radius_map[TO_INDEX[shipyard.position]]] += 2
     for player in opponents:
         for ship in player.ships:
-            dominance_map[radius_map[ship.position.to_index(size)]] -= 1
+            dominance_map[radius_map[TO_INDEX[ship.position]]] -= 1
         for shipyard in player.shipyards:
-            dominance_map[radius_map[shipyard.position.to_index(size)]] -= 2
+            dominance_map[radius_map[TO_INDEX[shipyard.position]]] -= 2
 
     blurred_dominance_map = gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma, mode='wrap')
     return blurred_dominance_map.reshape((-1,))
@@ -186,7 +188,7 @@ def _create_radius_list(radius):
 
 
 def navigate(source: Point, target: Point, size: int):
-    return NAVIGATION[source.to_index(size)][target.to_index(size)]
+    return NAVIGATION[TO_INDEX[source]][TO_INDEX[target]]
 
 
 def nav(source: int, target: int):
@@ -208,7 +210,7 @@ def calculate_distance(source: Point, target: Point):
     :param target: The target to where calculate
     :return: The distance between the two positions
     """
-    return DISTANCES[source.to_index(SIZE)][target.to_index(SIZE)]
+    return DISTANCES[TO_INDEX[source]][TO_INDEX[target]]
 
 
 def get_distance(source: int, target: int):
@@ -217,3 +219,12 @@ def get_distance(source: int, target: int):
 
 def get_neighbours(cell: Cell):
     return [cell.neighbor(point) for point in NEIGHBOURS]
+
+
+@njit
+def clip(a, minimum, maximum):
+    if a <= minimum:
+        return minimum
+    if a >= maximum:
+        return maximum
+    return a
