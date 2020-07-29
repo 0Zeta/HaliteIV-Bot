@@ -208,8 +208,7 @@ class HaliteBot(object):
         self.enemies = [ship for player in board.players.values() for ship in player.ships if
                         player.id != self.player_id]
 
-        if self.handle_special_steps(board):
-            return self.me.next_actions  # don't execute the functions below
+        self.handle_special_steps(board)
         self.guard_shipyards(board)
         self.move_ships(board)
         self.spawn_ships(board)
@@ -221,8 +220,6 @@ class HaliteBot(object):
             # Immediately spawn a shipyard
             self.convert_to_shipyard(self.me.ships[0])
             logging.debug("Ship " + str(self.me.ships[0].id) + " converts to a shipyard at the start of the game.")
-            return True
-        return False
 
     def spawn_ships(self, board: Board):
         # Spawn a ship if there are none left
@@ -263,7 +260,7 @@ class HaliteBot(object):
                                                               self.parameters['min_ships'])
 
     def move_ships(self, board: Board):
-        if self.ship_count == 0:
+        if len(self.me.ships) == 0:
             return
         # TODO: remove these lists
         self.returning_ships.clear()
@@ -599,6 +596,7 @@ class HaliteBot(object):
     def convert_to_shipyard(self, ship: Ship):
         assert self.halite + ship.halite >= self.config.convert_cost
         # ship.next_action = ShipAction.CONVERT
+        self.ship_types[ship.id] = ShipType.CONVERTING
         self.ship_position_preferences[self.ship_to_index[ship],
         len(self.position_to_index):self.available_shipyard_conversions] = 9999999
         self.halite += ship.halite
