@@ -123,9 +123,9 @@ class HaliteBot(object):
         self.halite = self.me.halite
         self.ship_count = len(self.me.ships)
         self.shipyard_count = len(self.me.shipyards)
-        self.friendly_neighbour_count = {
-            TO_INDEX[ship.cell.position]: self.get_friendly_neighbour_count(ship.cell) for ship in
-            self.me.ships}
+        # self.friendly_neighbour_count = {
+        #    TO_INDEX[ship.cell.position]: self.get_friendly_neighbour_count(ship.cell) for ship in
+        #    self.me.ships}
 
         self.average_halite_per_cell = sum([halite for halite in self.observation['halite']]) / self.size ** 2
 
@@ -282,7 +282,7 @@ class HaliteBot(object):
                 self.returning_ships.append(ship)
 
         ships = self.me.ships.copy()
-        self.assign_ship_targets(board)  # also converts some ships tp hunting/returning ships
+        self.assign_ship_targets(board)  # also converts some ships to hunting/returning ships
         while len(ships) > 0:
             ship = ships[0]
             ship_type = self.ship_types[ship.id]
@@ -352,13 +352,6 @@ class HaliteBot(object):
                     mining_scores[r][c] < hunting_threshold and self.mining_ships[r].halite <= self.parameters[
                 'hunting_halite_threshold']) and self.map_presence_rank <= 1) and board.step > self.parameters[
                 'disable_hunting_till']:
-                ship = self.mining_ships[r]
-                if ship.halite <= self.parameters['hunting_halite_threshold']:
-                    self.hunting_ships.append(ship)
-                    self.ship_types[ship.id] = ShipType.HUNTING
-                else:
-                    self.returning_ships.append(ship)
-                    self.ship_types[ship.id] = ShipType.RETURNING
                 continue
             ship_targets[self.mining_ships[r].id] = target_positions[c]
 
@@ -367,6 +360,7 @@ class HaliteBot(object):
             ship = id_to_ship[ship_id]
             if target_pos in self.shipyard_positions:
                 self.returning_ships.append(ship)
+                self.mining_ships.remove(ship)
                 self.ship_types[ship_id] = ShipType.RETURNING
                 self.deposit_targets[ship_id] = Point.from_index(target_pos, self.size)
                 logging.debug("Ship " + str(ship.id) + " returns.")
@@ -374,6 +368,15 @@ class HaliteBot(object):
             self.mining_targets[ship_id] = Point.from_index(target_pos, self.size)
             logging.debug(
                 "Assigning target " + str(Point.from_index(target_pos, self.size)) + " to ship " + str(ship.id))
+
+        for ship in self.mining_ships:
+            if ship.id not in self.mining_targets.keys():
+                if ship.halite <= self.parameters['hunting_halite_threshold']:
+                    self.hunting_ships.append(ship)
+                    self.ship_types[ship.id] = ShipType.HUNTING
+                else:
+                    self.returning_ships.append(ship)
+                    self.ship_types[ship.id] = ShipType.RETURNING
 
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
@@ -442,7 +445,6 @@ class HaliteBot(object):
 
     def handle_mining_ship(self, ship: Ship, board: Board):
         if ship.id not in self.mining_targets.keys():
-            # TODO: fix this bug
             logging.critical("Mining ship " + str(ship.id) + " has no valid mining target.")
             return
         target = self.mining_targets[ship.id]
@@ -480,7 +482,7 @@ class HaliteBot(object):
                     self.ship_types[shipyard.cell.ship.id] = ShipType.GUARDING
                     # TODO: maybe attack the enemy ship
                     self.change_position_score(shipyard.cell.ship, shipyard.cell.position, 10000)
-                    logging.debug("Exploring ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
+                    logging.debug("Ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
                         shipyard.position) + " to guard a shipyard.")
                 else:
                     # TODO: add max halite the guarding ship can have
@@ -614,10 +616,10 @@ class HaliteBot(object):
         logging.debug("Spawning ship on position " + str(shipyard.position) + " (shipyard " + str(shipyard.id) + ")")
 
 
-def agent(obs, configuration):
+def agent(obs, config):
     global BOT
     if BOT is None:
         BOT = HaliteBot(PARAMETERS)
-    board = Board(obs, configuration)
+    board = Board(obs, config)
     logging.debug("Begin step " + str(board.step))
     return BOT.step(board, obs)
