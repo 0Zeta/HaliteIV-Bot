@@ -217,6 +217,10 @@ def get_distance(source: int, target: int):
     return DISTANCES[source][target]
 
 
+def get_distance_matrix():
+    return DISTANCES
+
+
 def get_neighbours(cell: Cell):
     return [cell.neighbor(point) for point in NEIGHBOURS]
 
@@ -228,3 +232,47 @@ def clip(a, minimum, maximum):
     if a >= maximum:
         return maximum
     return a
+
+
+# @njit(float32[:, :](int32[:], int32[:, :], int32[:, :], int32[:, :], int32[:], float32[:], int32[:, :, :], float32, float32, float32, float32))
+def calculate_mining_scores(positions, ships, shipyard_distances, distances, halite_map, blurred_halite_map,
+                            optimal_mining_steps, alpha, beta, gamma, blur_gamma):
+    mining_scores = np.ndarray((len(ships), len(positions)), dtype=np.float)
+    ship_indices = np.arange(len(ships))
+    position_indices = np.arange(len(positions))
+    distances_from_ships = distances[ships[:, 0], positions]
+    distances_from_shipyards = shipyard_distances[positions]
+    halite_vals = (1 - np.power(blur_gamma, distances_from_ships)) * blurred_halite_map[positions] + np.power(
+        blur_gamma, distances_from_ships) * halite_map[positions]
+    distances_from_shipyards[distances_from_shipyards > 20] = 20
+    ch = np.ones((len(ships), len(positions)))
+    ch[ships[:, 1] == 0, :] = 0
+    ch[:, halite_vals == 0] = 10
+    ch[ch == 1] = np.clip(np.floor(np.log(ships[:, 1] / halite_vals) * 2.5 + 5.5), 0, 10)
+    mining_steps = optimal_mining_steps[distances_from_ships - 1][]
+    return mining_scores
+
+
+# @njit(float32(int32, int32, float32[:], int32[:, :], int32[:, :], float32[:], int32, int32[:, :, :], float32, float32, float32, float32))
+def calculate_mining_score(ship_position: int, cell_position: int, halite_map, distances, shipyard_distances,
+                           blurred_halite_map, ship_halite, optimal_mining_steps, alpha, beta, gamma,
+                           blur_gamma) -> float:
+    distance_from_ship = distances[ship_position][cell_position]
+    distance_from_shipyard = shipyard_distances[cell_position]
+    halite_val = (1 - blur_gamma ** distance_from_ship) * blurred_halite_map[
+        cell_position] + blur_gamma ** distance_from_ship * halite_map[cell_position]
+    if distance_from_shipyard > 20:
+        # There is no shipyard.
+        distance_from_shipyard = 20
+    if ship_halite == 0:
+        ch = 0
+    elif halite_val == 0:
+        ch = 10
+    else:
+        ch = int(math.log(ship_halite / halite_val) * 2.5 + 5.5)
+        ch = clip(ch, 0, 10)
+    mining_steps = optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1][ch]
+    return gamma ** (distance_from_ship + mining_steps) * (
+            beta * ship_halite + (1 - 0.75 ** mining_steps) * min(
+        1.02 ** (distance_from_ship) * halite_val, 500) * 1.02 ** mining_steps) / (
+                   distance_from_ship + mining_steps + alpha * distance_from_shipyard)
