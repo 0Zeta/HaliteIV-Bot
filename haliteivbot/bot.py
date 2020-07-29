@@ -209,7 +209,7 @@ class HaliteBot(object):
                         player.id != self.player_id]
 
         if self.handle_special_steps(board):
-            return  # don't execute the functions below
+            return self.me.next_actions  # don't execute the functions below
         self.guard_shipyards(board)
         self.move_ships(board)
         self.spawn_ships(board)

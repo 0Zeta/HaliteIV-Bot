@@ -217,6 +217,10 @@ def get_distance(source: int, target: int):
     return DISTANCES[source][target]
 
 
+def get_distance_matrix():
+    return DISTANCES
+
+
 def get_neighbours(cell: Cell):
     return [cell.neighbor(point) for point in NEIGHBOURS]
 

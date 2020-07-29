@@ -2,7 +2,7 @@ import os
 import pickle
 import traceback
 from datetime import datetime
-from random import random, choice
+from random import random, randrange, choice
 
 import numpy as np
 from kaggle_environments import evaluate
@@ -199,18 +199,22 @@ def final_optimization():
 
 def play_game(genome1, genome2, genome3, genome4):
     env.reset(4)
-
+    bot1 = HaliteBot(genome1)
+    bot2 = HaliteBot(genome2)
+    bot3 = HaliteBot(genome3)
+    bot4 = HaliteBot(genome4)
     results = \
-        evaluate("halite", [get_bot(genome1), get_bot(genome2), get_bot(genome3), get_bot(genome4)], env.configuration)[
+        evaluate("halite", [wrap_bot(bot1), wrap_bot(bot2), wrap_bot(bot3), wrap_bot(bot4)], env.configuration)[
             0]
     return results
 
 
 def play_game_against_bot(genome1, bot):
     env.reset(4)
-
+    bot1 = HaliteBot(genome1)
+    bot2 = HaliteBot(genome1)
     results = \
-        evaluate("halite", [get_bot(genome1), "evolutionary/bots/" + bot + ".py", get_bot(genome1),
+        evaluate("halite", [wrap_bot(bot1), "evolutionary/bots/" + bot + ".py", wrap_bot(bot2),
                             "evolutionary/bots/" + bot + ".py"], env.configuration)[
             0]
     return results
@@ -218,8 +222,9 @@ def play_game_against_bot(genome1, bot):
 
 def play_game_against_bots(genome1, bot1, bot2, bot3):
     env.reset(4)
+    bot = HaliteBot(genome1)
     shuffled_indices = np.random.permutation(4)
-    bots = [get_bot(genome1), "evolutionary/bots/" + bot1 + ".py", "evolutionary/bots/" + bot2 + ".py",
+    bots = [wrap_bot(bot), "evolutionary/bots/" + bot1 + ".py", "evolutionary/bots/" + bot2 + ".py",
             "evolutionary/bots/" + bot3 + ".py"]
     bots[:] = [bots[i] for i in shuffled_indices]
 
@@ -228,9 +233,8 @@ def play_game_against_bots(genome1, bot1, bot2, bot3):
     return results
 
 
-def get_bot(genome):
-    bot = HaliteBot(genome)
-    return lambda obs, config: bot.step(Board(obs, config))
+def wrap_bot(bot):
+    return lambda obs, config: bot.step(Board(obs, config), obs)
 
 
 def determine_fitness(genome, best_genome=first_genome):
@@ -238,16 +242,20 @@ def determine_fitness(genome, best_genome=first_genome):
     print(genome)
     score = 0
     for i in range(4):
+        env.configuration['randomSeed'] = randrange((1 << 32) - 1)
         if i > 0:
             print("Current score: %i" % score)
         # not optimal
         try:
-            result = play_game_against_bots(genome, "uninstalllol1", "uninstalllol2", "optimusmine")
+            result = play_game_against_bot(genome, "uninstalllol3")
+            print(result)
             standings = np.argsort(result)
             for place, agent in enumerate(standings):
-                if agent == 0:
-                    score += (place - 1.5) * 100000
-            score += 2 * result[0] - result[1] - result[2] - result[3]
+                if agent % 2 == 0:
+                    score += place * 100000
+                else:
+                    score -= place * 100000
+            score += result[0] - result[1] + result[2] - result[3]
 
         except Exception as e:
             print("An error has occurred.")
@@ -265,4 +273,5 @@ def load_pool(name):
     return pickle.load(open('evolutionary/genomes/' + name, 'rb'))
 
 
-optimize()
+if __name__ == '__main__':
+    optimize()
