@@ -16,7 +16,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-07-29 23-20"
+POOL_NAME = "2020-07-30 15-01"
 
 hyperparameters = {
     'spawn_till': ('int', (200, 390)),
@@ -65,7 +65,9 @@ hyperparameters = {
     'dominance_map_small_sigma': ('float', (0.1, 0.8)),
     'dominance_map_medium_sigma': ('float', (0.2, 0.9)),
     'dominance_map_small_radius': ('int', (3, 4)),
-    'dominance_map_medium_radius': ('int', (5, 6))
+    'dominance_map_medium_radius': ('int', (5, 6)),
+    'shipyard_guarding_attack_probability': ('float', (0.1, 1)),
+    'shipyard_abandon_dominance': ('float', (-7, 0))
 }
 
 first_genome = {'spawn_till': 287, 'spawn_step_multiplier': 0, 'min_ships': 29,

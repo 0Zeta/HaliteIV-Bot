@@ -1,5 +1,6 @@
 import logging
 from enum import Enum
+from random import random
 
 from kaggle_environments import make
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship
@@ -11,53 +12,55 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'cell_score_enemy_halite': 0.35063481489408443,
-    'cell_score_neighbour_discount': 0.5884688910982244,
+    'cell_score_enemy_halite': 0.39330696233048124,
+    'cell_score_neighbour_discount': 0.7041223180439514,
     'cell_score_ship_halite': 0.0005,
-    'conflict_map_alpha': 1.5679996502526856,
-    'conflict_map_sigma': 0.7522651298172364,
-    'conflict_map_zeta': 0.7542051442915627,
-    'convert_when_attacked_threshold': 304,
-    'disable_hunting_till': 83,
+    'conflict_map_alpha': 1.8,
+    'conflict_map_sigma': 0.7023804839341244,
+    'conflict_map_zeta': 0.834025988173528,
+    'convert_when_attacked_threshold': 309,
+    'disable_hunting_till': 89,
     'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 0.41567319281444853,
+    'dominance_map_medium_sigma': 0.2024065620465002,
     'dominance_map_small_radius': 3,
-    'dominance_map_small_sigma': 0.16697623378393822,
-    'end_return_extra_moves': 7,
+    'dominance_map_small_sigma': 0.11450683183979835,
+    'end_return_extra_moves': 8,
     'end_start': 380,
-    'ending_halite_threshold': 17,
-    'hunting_halite_threshold': 2,
-    'hunting_score_alpha': 0.7748086187292644,
-    'hunting_score_beta': 2.6375171424007227,
-    'hunting_score_delta': 0.8604248471255606,
-    'hunting_score_gamma': 0.8785218214543145,
-    'hunting_threshold': 2.694982160409251,
-    'map_blur_gamma': 0.4,
-    'map_blur_sigma': 0.43709504234499663,
-    'max_deposits_per_shipyard': 2,
-    'max_halite_attack_shipyard': 83,
-    'max_ship_advantage': 8,
+    'ending_halite_threshold': 23,
+    'hunting_halite_threshold': 3,
+    'hunting_score_alpha': 0.7826592451483466,
+    'hunting_score_beta': 2.516498214879097,
+    'hunting_score_delta': 0.8616587667982931,
+    'hunting_score_gamma': 0.9278759881495462,
+    'hunting_threshold': 3.298297463816602,
+    'map_blur_gamma': 0.5231760829513671,
+    'map_blur_sigma': 0.5849146910861537,
+    'max_deposits_per_shipyard': 3,
+    'max_halite_attack_shipyard': 71,
+    'max_ship_advantage': 4,
     'max_shipyard_distance': 11,
-    'min_mining_halite': 38,
-    'min_ships': 29,
-    'min_shipyard_distance': 0,
-    'mining_score_alpha': 0.970426309367264,
-    'mining_score_beta': 0.8947538239676384,
-    'mining_score_gamma': 0.9855172248244773,
-    'move_preference_base': 107,
-    'move_preference_hunting': 110,
-    'move_preference_mining': 131,
-    'move_preference_return': 116,
-    'return_halite': 464,
-    'ship_spawn_threshold': 1.3403290844728477,
-    'ships_shipyards_threshold': 0.4962206074630996,
-    'shipyard_conversion_threshold': 1.1805116725126426,
-    'shipyard_guarding_min_dominance': 3.976501897934859,
-    'shipyard_min_dominance': 5.3120293563992265,
-    'shipyard_stop': 278,
-    'spawn_min_dominance': 3.5410149974032716,
-    'spawn_step_multiplier': 0,
-    'spawn_till': 271
+    'min_mining_halite': 50,
+    'min_ships': 20,
+    'min_shipyard_distance': 2,
+    'mining_score_alpha': 0.9605653191081336,
+    'mining_score_beta': 0.9263567999512893,
+    'mining_score_gamma': 0.9816820598537683,
+    'move_preference_base': 109,
+    'move_preference_hunting': 109,
+    'move_preference_mining': 129,
+    'move_preference_return': 118,
+    'return_halite': 782,
+    'ship_spawn_threshold': 2.2302036265028176,
+    'ships_shipyards_threshold': 0.6344446668571576,
+    'shipyard_conversion_threshold': 1.897782298822837,
+    'shipyard_guarding_min_dominance': 4.269949526616712,
+    'shipyard_guarding_attack_probability': 0.5,
+    'shipyard_min_dominance': 5.902370354332303,
+    'shipyard_stop': 258,
+    'spawn_min_dominance': 4.949055398942274,
+    'spawn_step_multiplier': 8,
+    'spawn_till': 258,
+    'shipyard_abandon_dominance': -3
 }
 
 BOT = None
@@ -120,8 +123,9 @@ class HaliteBot(object):
         self.observation = obs
         self.me = board.current_player
         self.opponents = board.opponents
+        self.ships = self.me.ships
         self.halite = self.me.halite
-        self.ship_count = len(self.me.ships)
+        self.ship_count = len(self.ships)
         self.shipyard_count = len(self.me.shipyards)
         # self.friendly_neighbour_count = {
         #    TO_INDEX[ship.cell.position]: self.get_friendly_neighbour_count(ship.cell) for ship in
@@ -480,10 +484,20 @@ class HaliteBot(object):
                 # TODO: maybe don't move on the shipyard if the dominance score is too low
                 if shipyard.cell.ship is not None:
                     self.ship_types[shipyard.cell.ship.id] = ShipType.GUARDING
-                    # TODO: maybe attack the enemy ship
-                    self.change_position_score(shipyard.cell.ship, shipyard.cell.position, 10000)
-                    logging.debug("Ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
-                        shipyard.position) + " to guard a shipyard.")
+                    if self.halite < self.config.spawn_cost or dominance < self.parameters[
+                        'shipyard_guarding_min_dominance'] or random() > self.parameters[
+                        'shipyard_guarding_attack_probability']:  # TODO: mabe add step check
+                        if dominance > self.parameters['shipyard_abandon_dominance']:
+                            self.change_position_score(shipyard.cell.ship, shipyard.cell.position, 10000)
+                            logging.debug("Ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
+                                shipyard.position) + " to guard a shipyard.")
+                    else:
+                        self.spawn_ship(shipyard)
+                        for enemy in enemies:
+                            self.change_position_score(shipyard.cell.ship, enemy.position,
+                                                       500)  # equalize to crash into the ship even if that means we also lose our ship
+                            self.attack_position(
+                                enemy.position)  # Maybe also do this if we don't spawn a ship, but can move one to the shipyard
                 else:
                     # TODO: add max halite the guarding ship can have
                     potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
@@ -614,6 +628,10 @@ class HaliteBot(object):
         self.halite -= self.config.spawn_cost
         self.ship_count += 1
         logging.debug("Spawning ship on position " + str(shipyard.position) + " (shipyard " + str(shipyard.id) + ")")
+
+    def attack_position(self, position: Point):
+        self.ship_position_preferences[:, self.position_to_index[position]][
+            self.ship_position_preferences[:, self.position_to_index[position]] > -50] += 900
 
 
 def agent(obs, config):

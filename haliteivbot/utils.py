@@ -1,7 +1,6 @@
 import scipy.optimize
 from kaggle_environments.envs.halite.halite import *
 from kaggle_environments.envs.halite.helpers import Point, Cell
-from numba import njit
 from scipy.ndimage import gaussian_filter
 
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
@@ -225,7 +224,6 @@ def get_neighbours(cell: Cell):
     return [cell.neighbor(point) for point in NEIGHBOURS]
 
 
-@njit
 def clip(a, minimum, maximum):
     if a <= minimum:
         return minimum
