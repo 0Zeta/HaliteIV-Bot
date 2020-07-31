@@ -218,7 +218,7 @@ def optimize():
         pool.append("evolutionary/bots/optimusmine.py")
         print("Testing new genomes")
         tournament = Tournament(pool)
-        results = tournament.play_tournament(games=int(len(pool) * 5 / 4 + 2))
+        results = tournament.play_tournament(games=int(len(pool) * 6 / 4 + 2))
         pool = [genome for genome in results if isinstance(genome, dict)]
         best_genome = pool[0]
         print("Best genome so far: " + str(best_genome))
@@ -229,7 +229,8 @@ def optimize():
 
 
 def save_current_pool(pool):
-    pickle.dump(pool, open('evolutionary/genomes/' + str(datetime.now().strftime("%Y-%m-%d %H-%M")), 'wb'))
+    pickle.dump([dict(genome) for genome in pool],
+                open('evolutionary/genomes/' + str(datetime.now().strftime("%Y-%m-%d %H-%M")), 'wb'))
 
 
 def load_pool(name):
