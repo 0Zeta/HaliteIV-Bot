@@ -54,7 +54,8 @@ class Tournament(object):
             new_ratings = rate([[self.ratings[self.bot_to_idx[bot]]] for bot in bots], ranks=standings)
             for i, bot in enumerate(bots):
                 self.ratings[self.bot_to_idx[bot]] = new_ratings[i][0]
-            print([(idx, rating) if not isinstance(self.bots[idx], str) else (self.bots[idx], rating) for idx, rating in
+            print([(idx, rating) if not isinstance(self.bots[idx], str) else (
+            self.bots[idx].replace('evolutionary/bots/', '').replace('.py', ''), rating) for idx, rating in
                    sorted(self.ratings.items(), key=lambda item: item[1].mu - 3 * item[1].sigma, reverse=True)])
         print([(self.bots[idx], rating) for idx, rating in self.ratings.items()])
         return [self.bots[bot_index] for bot_index, _ in

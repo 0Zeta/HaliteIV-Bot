@@ -15,7 +15,7 @@ PARAMETERS = {
     'cell_score_enemy_halite': 0.38882978161536386,
     'cell_score_neighbour_discount': 0.8,
     'cell_score_ship_halite': 0.0005041825920263034,
-    'conflict_map_alpha': 1.585771704130516,
+    'conflict_map_alpha': 1.5192402893617194,
     'conflict_map_sigma': 0.6964517992829237,
     'conflict_map_zeta': 0.8556352652199242,
     'convert_when_attacked_threshold': 485,
@@ -32,9 +32,9 @@ PARAMETERS = {
     'hunting_score_beta': 2.5042978649807166,
     'hunting_score_delta': 0.7818083842215127,
     'hunting_score_gamma': 0.99,
-    'hunting_threshold': 4.135644099911878,
+    'hunting_threshold': 5.979393516542297,
     'map_blur_gamma': 0.5818595067359313,
-    'map_blur_sigma': 0.4797894217287737,
+    'map_blur_sigma': 0.6857444172446201,
     'max_deposits_per_shipyard': 2,
     'max_halite_attack_shipyard': 100,
     'max_ship_advantage': 6,
@@ -43,11 +43,11 @@ PARAMETERS = {
     'min_ships': 21,
     'min_shipyard_distance': 3,
     'mining_score_alpha': 0.99,
-    'mining_score_beta': 0.9537942931739294,
+    'mining_score_beta': 0.9414912351188228,
     'mining_score_delta': 4.668370782920545,
     'mining_score_gamma': 0.9894455380469283,
     'move_preference_base': 107,
-    'move_preference_hunting': 115,
+    'move_preference_hunting': 112,
     'move_preference_mining': 128,
     'move_preference_return': 113,
     'return_halite': 1253,
@@ -59,9 +59,9 @@ PARAMETERS = {
     'shipyard_guarding_min_dominance': 5.195672478107886,
     'shipyard_min_dominance': 5.162767109803333,
     'shipyard_stop': 219,
-    'spawn_min_dominance': 4.614802926818795,
+    'spawn_min_dominance': 3.718983961810462,
     'spawn_step_multiplier': 7,
-    'spawn_till': 290
+    'spawn_till': 286
 }
 
 BOT = None
@@ -547,7 +547,7 @@ class HaliteBot(object):
         distance = calculate_distance(ship.position, enemy.position)
         return self.parameters['hunting_score_gamma'] ** distance * d_halite * (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
-            self.medium_dominance_map[TO_INDEX[enemy.position]] + 30, 0, 60) / 100)
+            self.small_dominance_map[TO_INDEX[enemy.position]] + 20, 0, 40) / 40)
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         score = 0
