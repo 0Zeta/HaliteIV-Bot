@@ -44,7 +44,7 @@ class Tournament(object):
             mean_sigma = np.mean([rating.sigma for rating in self.ratings.values()])
             print("Playing game " + str(game + 1) + " of " + str(games))
             candidates = [self.bots[bot_index] for bot_index, rating in self.ratings.items() if
-                          rating.sigma >= 0.75 * mean_sigma]
+                          rating.sigma >= 0.75 * mean_sigma]  # Include the standard deviation
             if len(candidates) >= 4:
                 bots = sample(candidates, 4)
             else:

@@ -12,56 +12,56 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'cell_score_enemy_halite': 0.39330696233048124,
-    'cell_score_neighbour_discount': 0.7041223180439514,
-    'cell_score_ship_halite': 0.0005,
-    'conflict_map_alpha': 1.8,
+    'cell_score_enemy_halite': 0.3915741984929651,
+    'cell_score_neighbour_discount': 0.8,
+    'cell_score_ship_halite': 0.0005117508352559971,
+    'conflict_map_alpha': 1.5192402893617194,
     'conflict_map_sigma': 0.7023804839341244,
-    'conflict_map_zeta': 0.834025988173528,
-    'convert_when_attacked_threshold': 309,
-    'disable_hunting_till': 89,
+    'conflict_map_zeta': 0.636033191215515,
+    'convert_when_attacked_threshold': 409,
+    'disable_hunting_till': 73,
     'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 0.2024065620465002,
+    'dominance_map_medium_sigma': 0.2,
     'dominance_map_small_radius': 3,
-    'dominance_map_small_sigma': 0.11450683183979835,
+    'dominance_map_small_sigma': 0.1,
     'end_return_extra_moves': 8,
     'end_start': 380,
     'ending_halite_threshold': 23,
     'hunting_halite_threshold': 3,
-    'hunting_score_alpha': 0.7826592451483466,
+    'hunting_score_alpha': 0.6897972302209147,
     'hunting_score_beta': 2.516498214879097,
-    'hunting_score_delta': 0.8616587667982931,
-    'hunting_score_gamma': 0.9278759881495462,
-    'hunting_threshold': 3.298297463816602,
-    'map_blur_gamma': 0.5231760829513671,
-    'map_blur_sigma': 0.5849146910861537,
+    'hunting_score_delta': 0.7162938253572207,
+    'hunting_score_gamma': 0.955627363778086,
+    'hunting_threshold': 4.384557940630159,
+    'map_blur_gamma': 0.4195565696338693,
+    'map_blur_sigma': 0.6756871680821066,
     'max_deposits_per_shipyard': 3,
-    'max_halite_attack_shipyard': 71,
+    'max_halite_attack_shipyard': 59,
     'max_ship_advantage': 4,
     'max_shipyard_distance': 11,
     'min_mining_halite': 50,
-    'min_ships': 20,
+    'min_ships': 22,
     'min_shipyard_distance': 2,
-    'mining_score_alpha': 0.9605653191081336,
-    'mining_score_beta': 0.9263567999512893,
-    'mining_score_gamma': 0.9816820598537683,
-    'mining_score_delta': 5,
+    'mining_score_alpha': 0.99,
+    'mining_score_beta': 0.8674046948703458,
+    'mining_score_delta': 6.885868187374592,
+    'mining_score_gamma': 0.9792019218514038,
     'move_preference_base': 109,
     'move_preference_hunting': 109,
-    'move_preference_mining': 129,
-    'move_preference_return': 118,
+    'move_preference_mining': 127,
+    'move_preference_return': 112,
     'return_halite': 782,
-    'ship_spawn_threshold': 2.2302036265028176,
-    'ships_shipyards_threshold': 0.6344446668571576,
-    'shipyard_conversion_threshold': 1.897782298822837,
-    'shipyard_guarding_min_dominance': 4.269949526616712,
+    'ship_spawn_threshold': 1.911811316060733,
+    'ships_shipyards_threshold': 0.7788330213031569,
+    'shipyard_abandon_dominance': -1.6137708626174205,
+    'shipyard_conversion_threshold': 2.2235431966241994,
     'shipyard_guarding_attack_probability': 0.5,
-    'shipyard_min_dominance': 5.902370354332303,
+    'shipyard_guarding_min_dominance': 3.6560520578805775,
+    'shipyard_min_dominance': 6.574787153982971,
     'shipyard_stop': 258,
-    'spawn_min_dominance': 4.949055398942274,
-    'spawn_step_multiplier': 8,
-    'spawn_till': 258,
-    'shipyard_abandon_dominance': -3
+    'spawn_min_dominance': 5.202120911053149,
+    'spawn_step_multiplier': 9,
+    'spawn_till': 286
 }
 
 BOT = None
@@ -537,8 +537,7 @@ class HaliteBot(object):
         mining_steps = self.optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1][ch]
         return self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
                 self.parameters['mining_score_beta'] * ship_halite + (1 - 0.75 ** mining_steps) * min(
-            1.02 ** (distance_from_ship) * halite_val, 500) * 1.02 ** mining_steps + self.parameters[
-                    'mining_score_delta'] * self.small_dominance_map[cell_position]) / (
+            1.02 ** (distance_from_ship) * halite_val, 500) * 1.02 ** mining_steps) / (
                        distance_from_ship + mining_steps + self.parameters[
                    'mining_score_alpha'] * distance_from_shipyard)
 
@@ -577,6 +576,7 @@ class HaliteBot(object):
                     neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
                                        self.parameters['cell_score_neighbour_discount']
         score += neighbour_value
+        score += self.small_dominance_map[TO_INDEX[cell.position]]
         # TODO: consider cell halite?
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 

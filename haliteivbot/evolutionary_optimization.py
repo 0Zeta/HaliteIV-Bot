@@ -25,9 +25,9 @@ hyperparameters = {
     'convert_when_attacked_threshold': ('int', (100, 600)),
     'disable_hunting_till': ('int', (7, 100)),
     'dominance_map_medium_radius': ('int', (5, 6)),
-    'dominance_map_medium_sigma': ('float', (0.2, 0.9)),
+    'dominance_map_medium_sigma': ('float', (0.01, 0.9)),
     'dominance_map_small_radius': ('int', (3, 4)),
-    'dominance_map_small_sigma': ('float', (0.1, 0.8)),
+    'dominance_map_small_sigma': ('float', (0.01, 0.8)),
     'end_return_extra_moves': ('int', (6, 15)),
     'end_start': ('int', (380, 390)),
     'ending_halite_threshold': ('int', (5, 30)),
@@ -218,7 +218,8 @@ def optimize():
         pool.append("evolutionary/bots/optimusmine.py")
         print("Testing new genomes")
         tournament = Tournament(pool)
-        results = tournament.play_tournament(games=int(len(pool) * 6 / 4 + 2))
+        results = tournament.play_tournament(
+            games=int(len(pool) * 6 / 4 + 2))  # TODO: reduce the number of games played per generation
         pool = [genome for genome in results if isinstance(genome, dict)]
         best_genome = pool[0]
         print("Best genome so far: " + str(best_genome))
