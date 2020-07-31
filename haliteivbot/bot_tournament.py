@@ -35,9 +35,9 @@ class Tournament(object):
     def play_tournament(self, games):
         for game in range(games):
             mean_sigma = np.mean([rating.sigma for rating in self.ratings.values()])
-            print("Playing game", (game + 1))
+            print("Playing game " + str(game + 1) + " of " + str(games))
             candidates = [self.bots[bot_index] for bot_index, rating in self.ratings.items() if
-                          rating.sigma <= 1.3 * mean_sigma]
+                          rating.sigma >= 0.7 * mean_sigma]
             if len(candidates) >= 4:
                 bots = sample(candidates, 4)
             else:
