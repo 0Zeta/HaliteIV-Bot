@@ -1,14 +1,11 @@
-import os
 import pickle
-import traceback
 from datetime import datetime
-from random import random, randrange, choice
+from random import random, choice
 
 import numpy as np
-from kaggle_environments import evaluate
 from kaggle_environments import make
 
-from haliteivbot.bot import HaliteBot, Board
+from haliteivbot.utils import imdict
 
 MUTATION_PROBABILITY = 0.15
 POOL_SIZE = 12
@@ -16,7 +13,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-07-30 15-01"
+POOL_NAME = ""
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),
@@ -71,61 +68,116 @@ hyperparameters = {
     'spawn_till': ('int', (200, 390))
 }
 
-first_genome = {'spawn_till': 287, 'spawn_step_multiplier': 0, 'min_ships': 29,
-                'ship_spawn_threshold': 0.6514033017687603, 'shipyard_conversion_threshold': 0.3,
-                'ships_shipyards_threshold': 0.38453266848611917, 'shipyard_stop': 281, 'min_shipyard_distance': 4,
-                'min_mining_halite': 37, 'convert_when_attacked_threshold': 309, 'max_halite_attack_shipyard': 90,
-                'mining_score_alpha': 0.9271257605704805, 'mining_score_beta': 0.8680308293965289,
-                'mining_score_gamma': 0.9852345353878476, 'hunting_threshold': 2.340539636989916,
-                'hunting_halite_threshold': 2, 'disable_hunting_till': 50, 'hunting_score_alpha': 0.7129313058301051,
-                'hunting_score_gamma': 0.8730637123696053, 'return_halite': 422, 'max_ship_advantage': 8,
-                'map_blur_sigma': 0.5040818209754316, 'map_blur_gamma': 0.45651384176160353,
-                'max_deposits_per_shipyard': 3, 'end_return_extra_moves': 6, 'ending_halite_threshold': 17,
-                'end_start': 380, 'cell_score_enemy_halite': 0.35063481489408443,
-                'cell_score_neighbour_discount': 0.616051369788526, 'move_preference_base': 110,
-                'move_preference_return': 120, 'move_preference_mining': 131, 'move_preference_hunting': 106,
-                'cell_score_ship_halite': 0.0006394592279623872, 'conflict_map_alpha': 1.550464810350371,
-                'conflict_map_sigma': 0.4754435936208387, 'conflict_map_zeta': 0.628238061509821,
-                'dominance_map_small_sigma': 0.3,
-                'dominance_map_medium_sigma': 0.4,
-                'dominance_map_small_radius': 3,
-                'dominance_map_medium_radius': 5,
-                'max_shipyard_distance': 10,
-                'shipyard_min_dominance': 5,
-                'shipyard_guarding_min_dominance': 4.5,
-                'spawn_min_dominance': 4.5,
-                'hunting_score_beta': 2.5,
-                'hunting_score_delta': 0.8
-                }
+first_genome = {
+    'cell_score_enemy_halite': 0.39330696233048124,
+    'cell_score_neighbour_discount': 0.7041223180439514,
+    'cell_score_ship_halite': 0.0005,
+    'conflict_map_alpha': 1.8,
+    'conflict_map_sigma': 0.7023804839341244,
+    'conflict_map_zeta': 0.834025988173528,
+    'convert_when_attacked_threshold': 309,
+    'disable_hunting_till': 89,
+    'dominance_map_medium_radius': 5,
+    'dominance_map_medium_sigma': 0.2024065620465002,
+    'dominance_map_small_radius': 3,
+    'dominance_map_small_sigma': 0.11450683183979835,
+    'end_return_extra_moves': 8,
+    'end_start': 380,
+    'ending_halite_threshold': 23,
+    'hunting_halite_threshold': 3,
+    'hunting_score_alpha': 0.7826592451483466,
+    'hunting_score_beta': 2.516498214879097,
+    'hunting_score_delta': 0.8616587667982931,
+    'hunting_score_gamma': 0.9278759881495462,
+    'hunting_threshold': 3.298297463816602,
+    'map_blur_gamma': 0.5231760829513671,
+    'map_blur_sigma': 0.5849146910861537,
+    'max_deposits_per_shipyard': 3,
+    'max_halite_attack_shipyard': 71,
+    'max_ship_advantage': 4,
+    'max_shipyard_distance': 11,
+    'min_mining_halite': 50,
+    'min_ships': 20,
+    'min_shipyard_distance': 2,
+    'mining_score_alpha': 0.9605653191081336,
+    'mining_score_beta': 0.9263567999512893,
+    'mining_score_gamma': 0.9816820598537683,
+    'mining_score_delta': 5,
+    'move_preference_base': 109,
+    'move_preference_hunting': 109,
+    'move_preference_mining': 129,
+    'move_preference_return': 118,
+    'return_halite': 782,
+    'ship_spawn_threshold': 2.2302036265028176,
+    'ships_shipyards_threshold': 0.6344446668571576,
+    'shipyard_conversion_threshold': 1.897782298822837,
+    'shipyard_guarding_min_dominance': 4.269949526616712,
+    'shipyard_guarding_attack_probability': 0.5,
+    'shipyard_min_dominance': 5.902370354332303,
+    'shipyard_stop': 258,
+    'spawn_min_dominance': 4.949055398942274,
+    'spawn_step_multiplier': 8,
+    'spawn_till': 258,
+    'shipyard_abandon_dominance': -3
+}
 
-second_genome = {'spawn_till': 309, 'spawn_step_multiplier': 0, 'min_ships': 29, 'ship_spawn_threshold': 0.1,
-                 'shipyard_conversion_threshold': 1.9207293700980244, 'ships_shipyards_threshold': 0.34972049028642327,
-                 'shipyard_stop': 281, 'min_shipyard_distance': 9, 'min_mining_halite': 20,
-                 'convert_when_attacked_threshold': 307, 'max_halite_attack_shipyard': 93,
-                 'mining_score_alpha': 0.9688444416956035, 'mining_score_beta': 0.8567920727563001,
-                 'mining_score_gamma': 0.9867576882916219, 'hunting_threshold': 1.4591207568215503,
-                 'hunting_halite_threshold': 0, 'disable_hunting_till': 50, 'hunting_score_alpha': 0.9085023751884967,
-                 'hunting_score_gamma': 0.8730637123696053, 'return_halite': 422, 'max_ship_advantage': 7,
-                 'map_blur_sigma': 0.5024307902655017, 'map_blur_gamma': 0.4643344385358665,
-                 'max_deposits_per_shipyard': 2, 'end_return_extra_moves': 9, 'ending_halite_threshold': 15,
-                 'end_start': 380, 'cell_score_enemy_halite': 0.35063481489408443,
-                 'cell_score_neighbour_discount': 0.6421279345969618, 'move_preference_base': 112,
-                 'move_preference_return': 119, 'move_preference_mining': 135, 'move_preference_hunting': 106,
-                 'cell_score_ship_halite': 0.0006380361487177068, 'conflict_map_alpha': 1.4474479033694228,
-                 'conflict_map_sigma': 0.45, 'conflict_map_zeta': 0.4,
-                 'dominance_map_small_sigma': 0.2,
-                 'dominance_map_medium_sigma': 0.3,
-                 'dominance_map_small_radius': 3,
-                 'dominance_map_medium_radius': 5,
-                 'max_shipyard_distance': 9,
-                 'shipyard_min_dominance': 4,
-                 'shipyard_guarding_min_dominance': 5.5,
-                 'spawn_min_dominance': 5,
-                 'hunting_score_beta': 2.7,
-                 'hunting_score_delta': 0.5
-                 }
+second_genome = {
+    'cell_score_enemy_halite': 0.39596872452014853,
+    'cell_score_neighbour_discount': 0.8,
+    'cell_score_ship_halite': 0.000538604773950009,
+    'conflict_map_alpha': 1.63893767221509,
+    'conflict_map_sigma': 0.7279859793894261,
+    'conflict_map_zeta': 0.834025988173528,
+    'convert_when_attacked_threshold': 384,
+    'disable_hunting_till': 85,
+    'dominance_map_medium_radius': 5,
+    'dominance_map_medium_sigma': 0.3577964335027798,
+    'dominance_map_small_radius': 3,
+    'dominance_map_small_sigma': 0.17561175012921554,
+    'end_return_extra_moves': 9,
+    'end_start': 380,
+    'ending_halite_threshold': 23,
+    'hunting_halite_threshold': 0,
+    'hunting_score_alpha': 0.7467288152303709,
+    'hunting_score_beta': 2.1981782077557686,
+    'hunting_score_delta': 0.7702657707618337,
+    'hunting_score_gamma': 0.8927649798379433,
+    'hunting_threshold': 3.1024310355516356,
+    'map_blur_gamma': 0.4773755216689396,
+    'map_blur_sigma': 0.5196314170328221,
+    'max_deposits_per_shipyard': 3,
+    'max_halite_attack_shipyard': 83,
+    'max_ship_advantage': 3,
+    'max_shipyard_distance': 11,
+    'min_mining_halite': 50,
+    'min_ships': 19,
+    'min_shipyard_distance': 2,
+    'mining_score_alpha': 0.9463703062657575,
+    'mining_score_beta': 0.9263567999512893,
+    'mining_score_gamma': 0.9816820598537683,
+    'mining_score_delta': 4,
+    'move_preference_base': 110,
+    'move_preference_hunting': 109,
+    'move_preference_mining': 129,
+    'move_preference_return': 115,
+    'return_halite': 782,
+    'ship_spawn_threshold': 2.2302036265028176,
+    'ships_shipyards_threshold': 0.6344446668571576,
+    'shipyard_conversion_threshold': 1.4670769137016086,
+    'shipyard_guarding_min_dominance': 5.21544416167314,
+    'shipyard_min_dominance': 5.519871676136477,
+    'shipyard_stop': 217,
+    'spawn_min_dominance': 5.159993027190642,
+    'spawn_step_multiplier': 9,
+    'spawn_till': 249,
+    'shipyard_abandon_dominance': -2.5,
+    'shipyard_guarding_attack_probability': 0.8
+}
 
-env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=True)
+if __name__ == "__main__":
+    from haliteivbot.bot_tournament import Tournament
+
+    env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=True)
 
 
 def create_new_genome(parents):
@@ -151,7 +203,6 @@ def optimize():
         pool = load_pool(POOL_NAME)
     else:
         pool = [first_genome, second_genome]
-    best_genome = pool[0]
     for epoch in range(100000):
         print("Creating generation %i" % epoch)
         new_pool = pool[:SELECTION_CAP] if len(pool) >= SELECTION_CAP else pool
@@ -163,109 +214,18 @@ def optimize():
         print("Filling pool with current size of %i" % len(pool))
         for i in range(POOL_SIZE - len(new_pool)):
             pool.append(create_new_genome([choice(new_pool) for n in range(NB_PARENTS)]))
+        pool = [imdict(genome) for genome in pool]
+        pool.append("evolutionary/bots/optimusmine.py")
         print("Testing new genomes")
-        pool.sort(key=lambda genome: determine_fitness(genome, best_genome), reverse=True)
+        tournament = Tournament(pool)
+        results = tournament.play_tournament(games=int(len(pool) * 5 / 4 + 2))
+        pool = [genome for genome in results if isinstance(genome, dict)]
         best_genome = pool[0]
+        print("Best genome so far: " + str(best_genome))
         print("Saving new genomes")
         save_current_pool(pool)
         print("Best genome so far:")
         print(str(pool[0]))
-
-
-def final_optimization():
-    pool = []
-    for saved_pool in os.listdir('evolutionary/finalpool/'):
-        s_pool = pickle.load(open('evolutionary/finalpool/' + saved_pool, 'rb'))
-        pool.append(s_pool[0])
-    best_genome = pool[-1]
-    POOL_SIZE = 25
-    SELECTION_CAP = 10
-    for epoch in range(100000):
-        print("Creating generation %i" % epoch)
-        print("Testing new genomes")
-        pool.sort(key=lambda genome: determine_fitness(genome, best_genome), reverse=True)
-        best_genome = pool[0]
-        print("Saving new genomes")
-        save_current_pool(pool)
-        print("Best genome so far:")
-        print(str(pool[0]))
-        new_pool = pool[:SELECTION_CAP] if len(pool) >= SELECTION_CAP else pool
-        old_pool = pool[SELECTION_CAP:] if len(pool) > SELECTION_CAP else []
-        for genome in old_pool:
-            if random() <= IGNORE_SELECTION_PROBABILITY:
-                new_pool.append(genome)
-        pool = new_pool.copy()
-        print("Filling pool with current size of %i" % len(pool))
-        for i in range(POOL_SIZE - len(new_pool)):
-            pool.append(create_new_genome([choice(new_pool) for n in range(NB_PARENTS)]))
-
-
-def play_game(genome1, genome2, genome3, genome4):
-    env.reset(4)
-    bot1 = HaliteBot(genome1)
-    bot2 = HaliteBot(genome2)
-    bot3 = HaliteBot(genome3)
-    bot4 = HaliteBot(genome4)
-    results = \
-        evaluate("halite", [wrap_bot(bot1), wrap_bot(bot2), wrap_bot(bot3), wrap_bot(bot4)], env.configuration)[
-            0]
-    return results
-
-
-def play_game_against_bot(genome1, bot):
-    env.reset(4)
-    bot1 = HaliteBot(genome1)
-    bot2 = HaliteBot(genome1)
-    results = \
-        evaluate("halite", [wrap_bot(bot1), "evolutionary/bots/" + bot + ".py", wrap_bot(bot2),
-                            "evolutionary/bots/" + bot + ".py"], env.configuration)[
-            0]
-    return results
-
-
-def play_game_against_bots(genome1, bot1, bot2, bot3):
-    env.reset(4)
-    bot = HaliteBot(genome1)
-    shuffled_indices = np.random.permutation(4)
-    bots = [wrap_bot(bot), "evolutionary/bots/" + bot1 + ".py", "evolutionary/bots/" + bot2 + ".py",
-            "evolutionary/bots/" + bot3 + ".py"]
-    bots[:] = [bots[i] for i in shuffled_indices]
-
-    results = evaluate("halite", bots, env.configuration)[0]
-    results[:] = [results[i] for i in shuffled_indices]
-    return results
-
-
-def wrap_bot(bot):
-    return lambda obs, config: bot.step(Board(obs, config), obs)
-
-
-def determine_fitness(genome, best_genome=first_genome):
-    print("Determining fitness for a genome")
-    print(genome)
-    score = 0
-    for i in range(4):
-        env.configuration['randomSeed'] = randrange((1 << 32) - 1)
-        if i > 0:
-            print("Current score: %i" % score)
-        # not optimal
-        try:
-            result = play_game_against_bot(genome, "uninstalllol3")
-            print(result)
-            standings = np.argsort(result)
-            for place, agent in enumerate(standings):
-                if agent % 2 == 0:
-                    score += place * 100000
-                else:
-                    score -= place * 100000
-            score += result[0] - result[1] + result[2] - result[3]
-
-        except Exception as e:
-            print("An error has occurred.")
-            print(e)
-            traceback.print_exc()
-    print("Final score: %i" % score)
-    return score
 
 
 def save_current_pool(pool):
