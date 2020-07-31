@@ -12,56 +12,56 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'cell_score_enemy_halite': 0.3915741984929651,
+    'cell_score_enemy_halite': 0.38882978161536386,
     'cell_score_neighbour_discount': 0.8,
-    'cell_score_ship_halite': 0.0005117508352559971,
-    'conflict_map_alpha': 1.5192402893617194,
-    'conflict_map_sigma': 0.7023804839341244,
-    'conflict_map_zeta': 0.636033191215515,
-    'convert_when_attacked_threshold': 409,
-    'disable_hunting_till': 73,
+    'cell_score_ship_halite': 0.0005041825920263034,
+    'conflict_map_alpha': 1.585771704130516,
+    'conflict_map_sigma': 0.6964517992829237,
+    'conflict_map_zeta': 0.8556352652199242,
+    'convert_when_attacked_threshold': 485,
+    'disable_hunting_till': 74,
     'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 0.2,
+    'dominance_map_medium_sigma': 0.25994474480653895,
     'dominance_map_small_radius': 3,
-    'dominance_map_small_sigma': 0.1,
-    'end_return_extra_moves': 8,
+    'dominance_map_small_sigma': 0.24675468773482548,
+    'end_return_extra_moves': 9,
     'end_start': 380,
-    'ending_halite_threshold': 23,
-    'hunting_halite_threshold': 3,
-    'hunting_score_alpha': 0.6897972302209147,
-    'hunting_score_beta': 2.516498214879097,
-    'hunting_score_delta': 0.7162938253572207,
-    'hunting_score_gamma': 0.955627363778086,
-    'hunting_threshold': 4.384557940630159,
-    'map_blur_gamma': 0.4195565696338693,
-    'map_blur_sigma': 0.6756871680821066,
-    'max_deposits_per_shipyard': 3,
-    'max_halite_attack_shipyard': 59,
-    'max_ship_advantage': 4,
+    'ending_halite_threshold': 27,
+    'hunting_halite_threshold': 0,
+    'hunting_score_alpha': 0.7740086585972584,
+    'hunting_score_beta': 2.5042978649807166,
+    'hunting_score_delta': 0.7818083842215127,
+    'hunting_score_gamma': 0.99,
+    'hunting_threshold': 4.135644099911878,
+    'map_blur_gamma': 0.5818595067359313,
+    'map_blur_sigma': 0.4797894217287737,
+    'max_deposits_per_shipyard': 2,
+    'max_halite_attack_shipyard': 100,
+    'max_ship_advantage': 6,
     'max_shipyard_distance': 11,
-    'min_mining_halite': 50,
-    'min_ships': 22,
-    'min_shipyard_distance': 2,
+    'min_mining_halite': 40,
+    'min_ships': 21,
+    'min_shipyard_distance': 3,
     'mining_score_alpha': 0.99,
-    'mining_score_beta': 0.8674046948703458,
-    'mining_score_delta': 6.885868187374592,
-    'mining_score_gamma': 0.9792019218514038,
-    'move_preference_base': 109,
-    'move_preference_hunting': 109,
-    'move_preference_mining': 127,
-    'move_preference_return': 112,
-    'return_halite': 782,
-    'ship_spawn_threshold': 1.911811316060733,
-    'ships_shipyards_threshold': 0.7788330213031569,
-    'shipyard_abandon_dominance': -1.6137708626174205,
-    'shipyard_conversion_threshold': 2.2235431966241994,
-    'shipyard_guarding_attack_probability': 0.5,
-    'shipyard_guarding_min_dominance': 3.6560520578805775,
-    'shipyard_min_dominance': 6.574787153982971,
-    'shipyard_stop': 258,
-    'spawn_min_dominance': 5.202120911053149,
-    'spawn_step_multiplier': 9,
-    'spawn_till': 286
+    'mining_score_beta': 0.9537942931739294,
+    'mining_score_delta': 4.668370782920545,
+    'mining_score_gamma': 0.9894455380469283,
+    'move_preference_base': 107,
+    'move_preference_hunting': 115,
+    'move_preference_mining': 128,
+    'move_preference_return': 113,
+    'return_halite': 1253,
+    'ship_spawn_threshold': 0.7160568137539798,
+    'ships_shipyards_threshold': 0.6679291143867181,
+    'shipyard_abandon_dominance': -1.009346741753333,
+    'shipyard_conversion_threshold': 6.386501964820588,
+    'shipyard_guarding_attack_probability': 0.5537952131000942,
+    'shipyard_guarding_min_dominance': 5.195672478107886,
+    'shipyard_min_dominance': 5.162767109803333,
+    'shipyard_stop': 219,
+    'spawn_min_dominance': 4.614802926818795,
+    'spawn_step_multiplier': 7,
+    'spawn_till': 290
 }
 
 BOT = None
@@ -162,6 +162,15 @@ class HaliteBot(object):
                         min_distance = distance
                 self.shipyard_distances.append(min_distance)
 
+        if len(self.me.ships) > 0:
+            # self.blurred_conflict_map = get_blurred_conflict_map(self.me, self.opponents, self.parameters['conflict_map_alpha'], self.parameters['conflict_map_zeta'], self.parameters['conflict_map_sigma'])
+            self.small_dominance_map = get_dominance_map(self.me, self.opponents,
+                                                         self.parameters['dominance_map_small_sigma'], 'small')
+            self.medium_dominance_map = get_dominance_map(self.me, self.opponents,
+                                                          self.parameters['dominance_map_medium_sigma'], 'medium')
+            # if board.step % 25 == 0:
+            #     display_matrix(self.medium_dominance_map.reshape((self.size, self.size)))
+
         self.planned_moves.clear()
         self.positions_in_reach = []
         for ship in self.me.ships:
@@ -197,15 +206,6 @@ class HaliteBot(object):
                 self.ship_position_preferences[
                     ship_index, self.position_to_index[position]] = self.calculate_cell_score(ship,
                                                                                               board.cells[position])
-
-        if len(self.me.ships) > 0:
-            # self.blurred_conflict_map = get_blurred_conflict_map(self.me, self.opponents, self.parameters['conflict_map_alpha'], self.parameters['conflict_map_zeta'], self.parameters['conflict_map_sigma'])
-            self.small_dominance_map = get_dominance_map(self.me, self.opponents,
-                                                         self.parameters['dominance_map_small_sigma'], 'small')
-            self.medium_dominance_map = get_dominance_map(self.me, self.opponents,
-                                                          self.parameters['dominance_map_medium_sigma'], 'medium')
-            # if board.step % 25 == 0:
-            #     display_matrix(self.medium_dominance_map.reshape((self.size, self.size)))
 
         self.planned_shipyards.clear()
         self.ship_types.clear()
@@ -336,6 +336,7 @@ class HaliteBot(object):
                 mining_positions.append(position)
 
         for shipyard in self.me.shipyards:
+            # Maybe only return to safe shiypards
             for _ in range(self.parameters['max_deposits_per_shipyard']):
                 dropoff_positions.append(TO_INDEX[shipyard.position])
 
