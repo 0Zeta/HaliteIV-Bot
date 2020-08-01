@@ -13,7 +13,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-07-31 23-30"
+POOL_NAME = "2020-08-01 23-30"
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),
@@ -218,10 +218,13 @@ def optimize():
         pool = [imdict(genome) for genome in pool]
         pool.append("evolutionary/bots/optimusmine.py")
         pool.append("evolutionary/bots/uninstalllol4.py")
+        pool.append("evolutionary/bots/threesigma.py")
+        pool.append("evolutionary/bots/piratehaven.py")
+        # pool.append("evolutionary/bots/pytorchstarter.py")
         print("Testing new genomes")
         tournament = Tournament(pool)
         results = tournament.play_tournament(
-            games=int(len(pool) * 6 / 4 + 2))  # TODO: reduce the number of games played per generation
+            games=int(len(pool) * 6 / 4 + 1))  # TODO: reduce the number of games played per generation
         pool = [genome for genome in results if isinstance(genome, dict)]
         best_genome = pool[0]
         print("Best genome so far: " + str(best_genome))

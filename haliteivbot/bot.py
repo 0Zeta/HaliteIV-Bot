@@ -24,30 +24,30 @@ PARAMETERS = {
     'dominance_map_medium_sigma': 0.25994474480653895,
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 0.24675468773482548,
-    'end_return_extra_moves': 9,
+    'end_return_extra_moves': 8,
     'end_start': 380,
-    'ending_halite_threshold': 27,
+    'ending_halite_threshold': 22,
     'hunting_halite_threshold': 0,
     'hunting_score_alpha': 0.7740086585972584,
-    'hunting_score_beta': 2.5042978649807166,
+    'hunting_score_beta': 2.6116640683181114,
     'hunting_score_delta': 0.7818083842215127,
     'hunting_score_gamma': 0.99,
-    'hunting_threshold': 5.979393516542297,
+    'hunting_threshold': 4.135644099911878,
     'map_blur_gamma': 0.5818595067359313,
     'map_blur_sigma': 0.6857444172446201,
     'max_deposits_per_shipyard': 2,
     'max_halite_attack_shipyard': 100,
     'max_ship_advantage': 6,
     'max_shipyard_distance': 11,
-    'min_mining_halite': 40,
+    'min_mining_halite': 38,
     'min_ships': 21,
     'min_shipyard_distance': 3,
-    'mining_score_alpha': 0.99,
-    'mining_score_beta': 0.9414912351188228,
+    'mining_score_alpha': 0.9589844497492351,
+    'mining_score_beta': 0.9537942931739294,
     'mining_score_delta': 4.668370782920545,
     'mining_score_gamma': 0.9894455380469283,
     'move_preference_base': 107,
-    'move_preference_hunting': 112,
+    'move_preference_hunting': 115,
     'move_preference_mining': 128,
     'move_preference_return': 113,
     'return_halite': 1253,
@@ -55,13 +55,13 @@ PARAMETERS = {
     'ships_shipyards_threshold': 0.6679291143867181,
     'shipyard_abandon_dominance': -1.009346741753333,
     'shipyard_conversion_threshold': 6.386501964820588,
-    'shipyard_guarding_attack_probability': 0.5537952131000942,
+    'shipyard_guarding_attack_probability': 0.5,
     'shipyard_guarding_min_dominance': 5.195672478107886,
     'shipyard_min_dominance': 5.162767109803333,
     'shipyard_stop': 219,
-    'spawn_min_dominance': 3.718983961810462,
+    'spawn_min_dominance': 4.614802926818795,
     'spawn_step_multiplier': 7,
-    'spawn_till': 286
+    'spawn_till': 290
 }
 
 BOT = None
@@ -547,7 +547,7 @@ class HaliteBot(object):
         distance = calculate_distance(ship.position, enemy.position)
         return self.parameters['hunting_score_gamma'] ** distance * d_halite * (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
-            self.small_dominance_map[TO_INDEX[enemy.position]] + 20, 0, 40) / 40)
+            self.medium_dominance_map[TO_INDEX[enemy.position]] + 30, 0, 60) / 60)
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         score = 0
