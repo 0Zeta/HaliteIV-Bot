@@ -35,7 +35,6 @@ PARAMETERS = {
     'hunting_threshold': 4.135644099911878,
     'map_blur_gamma': 0.5818595067359313,
     'map_blur_sigma': 0.6857444172446201,
-    'max_deposits_per_shipyard': 2,
     'max_halite_attack_shipyard': 100,
     'max_ship_advantage': 6,
     'max_shipyard_distance': 11,
@@ -326,7 +325,7 @@ class HaliteBot(object):
 
         ship_targets = {}
         mining_positions = []
-        dropoff_positions = []
+        dropoff_positions = set()
 
         id_to_ship = {ship.id: ship for ship in self.mining_ships}
 
@@ -336,15 +335,26 @@ class HaliteBot(object):
                 mining_positions.append(position)
 
         for shipyard in self.me.shipyards:
+            shipyard_pos = TO_INDEX[shipyard.position]
             # Maybe only return to safe shiypards
-            for _ in range(self.parameters['max_deposits_per_shipyard']):
-                dropoff_positions.append(TO_INDEX[shipyard.position])
+            # Add each shipyard once for each distance to a ship
+            for ship in self.mining_ships:
+                dropoff_positions.add(shipyard_pos + get_distance(TO_INDEX[ship.position], shipyard_pos) * 1000)
+        dropoff_positions = list(dropoff_positions)
 
         mining_scores = np.zeros((len(self.mining_ships), len(mining_positions) + len(dropoff_positions)))
         for ship_index, ship in enumerate(self.mining_ships):
+            ship_pos = TO_INDEX[ship.position]
             for position_index, position in enumerate(mining_positions + dropoff_positions):
+                if position >= 1000:
+                    distance_to_shipyard = position // 1000
+                    position = position % 1000
+                    if distance_to_shipyard != get_distance(ship_pos, position):
+                        mining_scores[ship_index, position_index] = -999999
+                        continue
+
                 mining_scores[ship_index, position_index] = self.calculate_mining_score(
-                    TO_INDEX[ship.position], position, halite_map[position],
+                    ship_pos, position, halite_map[position],
                     self.blurred_halite_map[position], ship.halite)
 
         row, col = scipy.optimize.linear_sum_assignment(mining_scores, maximize=True)
@@ -360,7 +370,10 @@ class HaliteBot(object):
                 'hunting_halite_threshold']) and self.map_presence_rank <= 1) and board.step > self.parameters[
                 'disable_hunting_till']:
                 continue
-            ship_targets[self.mining_ships[r].id] = target_positions[c]
+            if target_positions[c] >= 1000:
+                ship_targets[self.mining_ships[r].id] = target_positions[c] % 1000
+            else:
+                ship_targets[self.mining_ships[r].id] = target_positions[c]
 
         # Convert indexed positions to points
         for ship_id, target_pos in ship_targets.items():
