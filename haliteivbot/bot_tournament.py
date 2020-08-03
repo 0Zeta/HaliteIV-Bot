@@ -38,27 +38,22 @@ class Tournament(object):
             return [0, 0, 0, 0]
         return standings
 
-    def play_tournament(self, games):
-        for game in range(games):
-            # TODO: make every player play nearly the same number of games
-            # maybe play until the best genome doesn't change anymore
-            # randomly divide the bots into groups of four and let each of them play a game
-            mean_sigma = np.mean([rating.sigma for rating in self.ratings.values()])
-            print("Playing game " + str(game + 1) + " of " + str(games))
-            candidates = [self.bots[bot_index] for bot_index, rating in self.ratings.items() if
-                          rating.sigma >= 0.75 * mean_sigma]  # Include the standard deviation
-            if len(candidates) >= 4:
-                bots = sample(candidates, 4)
-            else:
-                bots = candidates + sample([bot for bot in self.bots if bot not in candidates], 4 - len(candidates))
-            standings = self.play_game(bots)
-            new_ratings = rate([[self.ratings[self.bot_to_idx[bot]]] for bot in bots], ranks=standings)
-            for i, bot in enumerate(bots):
-                self.ratings[self.bot_to_idx[bot]] = new_ratings[i][0]
-            print([(idx, rating) if not isinstance(self.bots[idx], str) else (
-            self.bots[idx].replace('evolutionary/bots/', '').replace('.py', ''), rating) for idx, rating in
-                   sorted(self.ratings.items(), key=lambda item: item[1].mu - 3 * item[1].sigma, reverse=True)])
+    def play_tournament(self, rounds):
+        for round in range(rounds):
+            round_bots = sample(self.bots, k=len(self.bots))
+            games_per_round = len(self.bots) // 4
+            for game in range(games_per_round):
+                print("Playing game {}/{} of round {}/{}".format(game + 1, games_per_round, round + 1, rounds))
+                bots = round_bots[game * 4:(game + 1) * 4]
+                standings = self.play_game(bots)
+                new_ratings = rate([[self.ratings[self.bot_to_idx[bot]]] for bot in bots], ranks=standings)
+                for i, bot in enumerate(bots):
+                    self.ratings[self.bot_to_idx[bot]] = new_ratings[i][0]
+                print([(idx, rating) if not isinstance(self.bots[idx], str) else (
+                    self.bots[idx].replace('evolutionary/bots/', '').replace('.py', ''), rating) for idx, rating in
+                       sorted(self.ratings.items(), key=lambda item: item[1].mu - 0.5 * item[1].sigma, reverse=True)])
+
         print([(self.bots[idx], rating) for idx, rating in self.ratings.items()])
         return [self.bots[bot_index] for bot_index, _ in
-                sorted(self.ratings.items(), key=lambda item: item[1].mu - 1.5 * item[1].sigma,
+                sorted(self.ratings.items(), key=lambda item: item[1].mu - 0.5 * item[1].sigma,
                        reverse=True)]  # only subtract 1.5 * sigma as long as the number of games each bot plays varies greatly
