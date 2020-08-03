@@ -45,7 +45,7 @@ hyperparameters = {
     'max_shipyard_distance': ('int', (11, 20)),
     'min_mining_halite': ('int', (1, 50)),
     'min_ships': ('int', (8, 40)),
-    'min_shipyard_distance': ('int', (0, 10)),
+    'min_shipyard_distance': ('int', (1, 10)),
     'mining_score_alpha': ('float', (0.65, 0.99)),
     'mining_score_beta': ('float', (0.65, 0.99)),
     'mining_score_gamma': ('float', (0.97, 0.9999)),
@@ -62,10 +62,10 @@ hyperparameters = {
     'shipyard_guarding_attack_probability': ('float', (0.1, 1)),
     'shipyard_guarding_min_dominance': ('float', (2, 7)),
     'shipyard_min_dominance': ('float', (4, 7)),
-    'shipyard_stop': ('int', (200, 390)),
+    'shipyard_stop': ('int', (200, 350)),
     'spawn_min_dominance': ('float', (3.5, 8)),
     'spawn_step_multiplier': ('int', (0, 30)),
-    'spawn_till': ('int', (200, 390))
+    'spawn_till': ('int', (200, 350))
 }
 
 first_genome = {

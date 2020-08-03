@@ -462,7 +462,7 @@ class HaliteBot(object):
         if board.step <= self.parameters['shipyard_stop'] and self.parameters[
             'min_shipyard_distance'] <= distance_to_nearest_shipyard <= \
                 self.parameters[
-                    'max_shipyard_distance'] and self.halite >= self.config.convert_cost:  # TODO: consider ship cargo
+                    'max_shipyard_distance'] and self.halite + ship.halite >= self.config.convert_cost:
             if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
                 'shipyard_conversion_threshold'] \
                     and self.shipyard_count / self.ship_count < self.parameters['ships_shipyards_threshold'] \
@@ -511,6 +511,7 @@ class HaliteBot(object):
                 target = max(self.enemies, key=lambda enemy: self.calculate_hunting_score(ship, enemy))
             if target.halite > ship.halite:
                 self.prefer_moves(ship, navigate(ship.position, target.position, self.size),
+                                  # TODO: Should we choose the direction with the longest distance?
                                   self.parameters['move_preference_hunting'])
 
     def guard_shipyards(self, board: Board):
@@ -655,7 +656,7 @@ class HaliteBot(object):
         # ship.next_action = ShipAction.CONVERT
         self.ship_types[ship.id] = ShipType.CONVERTING
         self.ship_position_preferences[self.ship_to_index[ship],
-        len(self.position_to_index):self.available_shipyard_conversions] = 9999999
+        len(self.position_to_index):len(self.position_to_index) + self.available_shipyard_conversions] = 9999999
         self.halite += ship.halite
         self.halite -= self.config.convert_cost
         self.ship_count -= 1

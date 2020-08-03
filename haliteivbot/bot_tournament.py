@@ -42,6 +42,7 @@ class Tournament(object):
         for game in range(games):
             # TODO: make every player play nearly the same number of games
             # maybe play until the best genome doesn't change anymore
+            # randomly divide the bots into groups of four and let each of them play a game
             mean_sigma = np.mean([rating.sigma for rating in self.ratings.values()])
             print("Playing game " + str(game + 1) + " of " + str(games))
             candidates = [self.bots[bot_index] for bot_index, rating in self.ratings.items() if
