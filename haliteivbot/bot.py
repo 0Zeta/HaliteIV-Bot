@@ -12,55 +12,56 @@ logging.basicConfig(level=logging.WARNING)
 env = make("halite", debug=True)
 
 PARAMETERS = {
-    'cell_score_enemy_halite': 0.38882978161536386,
-    'cell_score_neighbour_discount': 0.8,
-    'cell_score_ship_halite': 0.0005041825920263034,
-    'conflict_map_alpha': 1.5192402893617194,
-    'conflict_map_sigma': 0.6964517992829237,
-    'conflict_map_zeta': 0.8556352652199242,
-    'convert_when_attacked_threshold': 485,
-    'disable_hunting_till': 74,
+    'cell_score_enemy_halite': 0.4613959378409517,
+    'cell_score_neighbour_discount': 0.6113947160691992,
+    'cell_score_ship_halite': 0.0005851883655675024,
+    'conflict_map_alpha': 1.6917672920044187,
+    'conflict_map_sigma': 0.7273409399199504,
+    'conflict_map_zeta': 0.8229121771183198,
+    'convert_when_attacked_threshold': 457,
+    'disable_hunting_till': 57,
     'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 0.25994474480653895,
+    'dominance_map_medium_sigma': 0.286263775244114,
     'dominance_map_small_radius': 3,
-    'dominance_map_small_sigma': 0.24675468773482548,
-    'end_return_extra_moves': 8,
-    'end_start': 380,
-    'ending_halite_threshold': 22,
-    'hunting_halite_threshold': 0,
-    'hunting_score_alpha': 0.7740086585972584,
-    'hunting_score_beta': 2.6116640683181114,
-    'hunting_score_delta': 0.7818083842215127,
-    'hunting_score_gamma': 0.99,
-    'hunting_threshold': 4.135644099911878,
-    'map_blur_gamma': 0.5818595067359313,
-    'map_blur_sigma': 0.6857444172446201,
-    'max_halite_attack_shipyard': 100,
-    'max_ship_advantage': 6,
+    'dominance_map_small_sigma': 0.16162648714299707,
+    'end_return_extra_moves': 6,
+    'end_start': 381,
+    'ending_halite_threshold': 26,
+    'hunting_halite_threshold': 1,
+    'hunting_score_alpha': 0.8358236303543974,
+    'hunting_score_beta': 2.3428123008540775,
+    'hunting_score_delta': 0.6769838756696485,
+    'hunting_score_gamma': 0.8940225811830314,
+    'hunting_threshold': 3.3593034816163847,
+    'map_blur_gamma': 0.536029448522942,
+    'map_blur_sigma': 0.6046014225393499,
+    'max_halite_attack_shipyard': 181,
+    'max_hunting_ships_per_direction': 2,
+    'max_ship_advantage': 8,
     'max_shipyard_distance': 11,
-    'min_mining_halite': 38,
-    'min_ships': 21,
-    'min_shipyard_distance': 3,
-    'mining_score_alpha': 0.9589844497492351,
-    'mining_score_beta': 0.9537942931739294,
-    'mining_score_delta': 4.668370782920545,
-    'mining_score_gamma': 0.9894455380469283,
-    'move_preference_base': 107,
-    'move_preference_hunting': 115,
-    'move_preference_mining': 128,
-    'move_preference_return': 113,
-    'return_halite': 1253,
-    'ship_spawn_threshold': 0.7160568137539798,
-    'ships_shipyards_threshold': 0.6679291143867181,
-    'shipyard_abandon_dominance': -1.009346741753333,
-    'shipyard_conversion_threshold': 6.386501964820588,
-    'shipyard_guarding_attack_probability': 0.5,
-    'shipyard_guarding_min_dominance': 5.195672478107886,
-    'shipyard_min_dominance': 5.162767109803333,
-    'shipyard_stop': 219,
-    'spawn_min_dominance': 4.614802926818795,
-    'spawn_step_multiplier': 7,
-    'spawn_till': 290
+    'min_mining_halite': 47,
+    'min_ships': 13,
+    'min_shipyard_distance': 1,
+    'mining_score_alpha': 0.99,
+    'mining_score_beta': 0.99,
+    'mining_score_delta': 5.909304395959387,
+    'mining_score_gamma': 0.9958724155601597,
+    'move_preference_base': 109,
+    'move_preference_hunting': 107,
+    'move_preference_mining': 127,
+    'move_preference_return': 117,
+    'return_halite': 1866,
+    'ship_spawn_threshold': 0.2517015781310412,
+    'ships_shipyards_threshold': 0.867178528312429,
+    'shipyard_abandon_dominance': -0.640362150288657,
+    'shipyard_conversion_threshold': 9.02440555815,
+    'shipyard_guarding_attack_probability': 1.0,
+    'shipyard_guarding_min_dominance': 4.961712988280522,
+    'shipyard_min_dominance': 6.2981094083031,
+    'shipyard_stop': 297,
+    'spawn_min_dominance': 3.5,
+    'spawn_step_multiplier': 0,
+    'spawn_till': 390
 }
 
 BOT = None
@@ -98,6 +99,7 @@ class HaliteBot(object):
         self.ship_types = dict()
         self.mining_targets = dict()
         self.deposit_targets = dict()
+        self.hunting_targets = dict()
         self.friendly_neighbour_count = dict()
 
         self.enemies = list()
@@ -114,6 +116,7 @@ class HaliteBot(object):
         create_radius_lists(self.parameters['dominance_map_small_radius'],
                             self.parameters['dominance_map_medium_radius'])
         self.positions_in_reach_list = compute_positions_in_reach()
+        self.farthest_directions = get_farthest_directions_matrix()
 
     def step(self, board: Board, obs):
         if self.me is None:
@@ -398,6 +401,24 @@ class HaliteBot(object):
                     self.returning_ships.append(ship)
                     self.ship_types[ship.id] = ShipType.RETURNING
 
+        encoded_dirs = [1, 2, 4, 8]
+        possible_enemy_targets = [(dir, ship) for dir in encoded_dirs for ship in self.enemies for _ in
+                                  range(self.parameters['max_hunting_ships_per_direction'])]
+        hunting_scores = np.zeros(
+            (len(self.hunting_ships), len(self.enemies) * 4 * self.parameters['max_hunting_ships_per_direction']))
+        for ship_index, ship in enumerate(self.hunting_ships):
+            ship_pos = TO_INDEX[ship.position]
+            for enemy_index, (direction, enemy_ship) in enumerate(possible_enemy_targets):
+                farthest_dirs = self.farthest_directions[ship_pos][TO_INDEX[enemy_ship.position]]
+                if farthest_dirs == direction or (farthest_dirs - direction) in encoded_dirs:
+                    hunting_scores[ship_index, enemy_index] = self.calculate_hunting_score(ship, enemy_ship)
+                else:
+                    hunting_scores[ship_index, enemy_index] = -999999
+
+        row, col = scipy.optimize.linear_sum_assignment(hunting_scores, maximize=True)
+        for r, c in zip(row, col):
+            self.hunting_targets[self.hunting_ships[r].id] = possible_enemy_targets[c][1]
+
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
             return self.ship_types[ship.id]
@@ -484,7 +505,10 @@ class HaliteBot(object):
 
     def handle_hunting_ship(self, ship: Ship, board: Board):
         if len(self.enemies) > 0:
-            target = max(self.enemies, key=lambda enemy: self.calculate_hunting_score(ship, enemy))
+            if ship.id in self.hunting_targets.keys():
+                target = self.hunting_targets[ship.id]
+            else:
+                target = max(self.enemies, key=lambda enemy: self.calculate_hunting_score(ship, enemy))
             if target.halite > ship.halite:
                 self.prefer_moves(ship, navigate(ship.position, target.position, self.size),
                                   self.parameters['move_preference_hunting'])
