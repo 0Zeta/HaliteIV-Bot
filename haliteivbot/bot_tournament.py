@@ -51,9 +51,8 @@ class Tournament(object):
                     self.ratings[self.bot_to_idx[bot]] = new_ratings[i][0]
                 print([(idx, rating) if not isinstance(self.bots[idx], str) else (
                     self.bots[idx].replace('evolutionary/bots/', '').replace('.py', ''), rating) for idx, rating in
-                       sorted(self.ratings.items(), key=lambda item: item[1].mu - 0.5 * item[1].sigma, reverse=True)])
+                       sorted(self.ratings.items(), key=lambda item: item[1].mu, reverse=True)])
 
         print([(self.bots[idx], rating) for idx, rating in self.ratings.items()])
         return [self.bots[bot_index] for bot_index, _ in
-                sorted(self.ratings.items(), key=lambda item: item[1].mu - 0.5 * item[1].sigma,
-                       reverse=True)]  # only subtract 1.5 * sigma as long as the number of games each bot plays varies greatly
+                sorted(self.ratings.items(), key=lambda item: item[1].mu, reverse=True)]

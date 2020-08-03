@@ -11,26 +11,58 @@ logging.basicConfig(level=logging.WARNING)
 
 env = make("halite", debug=True)
 
-PARAMETERS = {'cell_score_enemy_halite': 0.5, 'cell_score_neighbour_discount': 0.6314176680808354,
-              'cell_score_ship_halite': 0.0006475776727929211, 'conflict_map_alpha': 1.6204313907158685,
-              'conflict_map_sigma': 0.7758427455727701, 'conflict_map_zeta': 0.8638736196759889,
-              'convert_when_attacked_threshold': 566, 'disable_hunting_till': 74, 'dominance_map_medium_radius': 5,
-              'dominance_map_medium_sigma': 0.07032581227654462, 'dominance_map_small_radius': 3,
-              'dominance_map_small_sigma': 0.16162648714299707, 'end_return_extra_moves': 6, 'end_start': 380,
-              'ending_halite_threshold': 26, 'hunting_halite_threshold': 1, 'hunting_score_alpha': 0.8341107700885344,
-              'hunting_score_beta': 1.9068001523156506, 'hunting_score_delta': 0.5142337849582957,
-              'hunting_score_gamma': 0.9124755750840987, 'hunting_threshold': 5.9551109040067285,
-              'map_blur_gamma': 0.46063343500277076, 'map_blur_sigma': 0.5434126106796429,
-              'max_halite_attack_shipyard': 204, 'max_hunting_ships_per_direction': 1, 'max_ship_advantage': 0,
-              'max_shipyard_distance': 12, 'min_mining_halite': 44, 'min_ships': 14, 'min_shipyard_distance': 1,
-              'mining_score_alpha': 0.99, 'mining_score_beta': 0.9151352865019396, 'mining_score_gamma': 0.9999,
-              'mining_score_delta': 8.222842191153497, 'move_preference_base': 106, 'move_preference_hunting': 108,
-              'move_preference_mining': 126, 'move_preference_return': 115, 'return_halite': 1777,
-              'ship_spawn_threshold': 0.45803692967349235, 'ships_shipyards_threshold': 0.8587873052400228,
-              'shipyard_abandon_dominance': -0.814848142470677, 'shipyard_conversion_threshold': 9.672876704555344,
-              'shipyard_guarding_attack_probability': 1.0, 'shipyard_guarding_min_dominance': 5.337764506648078,
-              'shipyard_min_dominance': 7.0, 'shipyard_stop': 283, 'spawn_min_dominance': 3.8657244812902714,
-              'spawn_step_multiplier': 1, 'spawn_till': 378}
+PARAMETERS = {
+    'cell_score_enemy_halite': 0.5,
+    'cell_score_neighbour_discount': 0.5666033969939952,
+    'cell_score_ship_halite': 0.0006413833657954024,
+    'conflict_map_alpha': 1.5680459520099566,
+    'conflict_map_sigma': 0.7758427455727701,
+    'conflict_map_zeta': 0.8970120401490058,
+    'convert_when_attacked_threshold': 528,
+    'disable_hunting_till': 78,
+    'dominance_map_medium_radius': 5,
+    'dominance_map_medium_sigma': 0.20147198605671574,
+    'dominance_map_small_radius': 3,
+    'dominance_map_small_sigma': 0.11623455541829122,
+    'end_return_extra_moves': 6,
+    'end_start': 382,
+    'ending_halite_threshold': 27,
+    'hunting_halite_threshold': 7,
+    'hunting_score_alpha': 0.9721397416958631,
+    'hunting_score_beta': 2.6828527535683517,
+    'hunting_score_delta': 0.6769838756696485,
+    'hunting_score_gamma': 0.9479697908505702,
+    'hunting_threshold': 6.595670539178029,
+    'map_blur_gamma': 0.5181262300586338,
+    'map_blur_sigma': 0.5434126106796429,
+    'max_halite_attack_shipyard': 204,
+    'max_hunting_ships_per_direction': 1,
+    'max_ship_advantage': -1,
+    'max_shipyard_distance': 12,
+    'min_mining_halite': 43,
+    'min_ships': 14,
+    'min_shipyard_distance': 4,
+    'mining_score_alpha': 0.99,
+    'mining_score_beta': 0.9151352865019396,
+    'mining_score_delta': 6.8052367261580615,
+    'mining_score_gamma': 0.9909440276439139,
+    'move_preference_base': 106,
+    'move_preference_hunting': 113,
+    'move_preference_mining': 126,
+    'move_preference_return': 115,
+    'return_halite': 1777,
+    'ship_spawn_threshold': 0.45803692967349235,
+    'ships_shipyards_threshold': 0.34447709977213503,
+    'shipyard_abandon_dominance': -1.8513695799207515,
+    'shipyard_conversion_threshold': 9.219395743207055,
+    'shipyard_guarding_attack_probability': 1.0,
+    'shipyard_guarding_min_dominance': 6.355055354872542,
+    'shipyard_min_dominance': 7.0,
+    'shipyard_stop': 279,
+    'spawn_min_dominance': 3.574515150993868,
+    'spawn_step_multiplier': 1,
+    'spawn_till': 348
+}
 
 BOT = None
 
@@ -431,6 +463,9 @@ class HaliteBot(object):
             'min_shipyard_distance'] <= distance_to_nearest_shipyard <= \
                 self.parameters[
                     'max_shipyard_distance'] and self.halite + ship.halite >= self.config.convert_cost:
+            if (self.shipyard_count == 1) and (25 < board.step < 60) and (3 < distance_to_nearest_shipyard < 8):
+                self.convert_to_shipyard(ship)  # Force an early second shipyard
+                return
             if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
                 'shipyard_conversion_threshold'] \
                     and self.shipyard_count / self.ship_count < self.parameters['ships_shipyards_threshold'] \
@@ -624,7 +659,7 @@ class HaliteBot(object):
         # ship.next_action = ShipAction.CONVERT
         self.ship_types[ship.id] = ShipType.CONVERTING
         self.ship_position_preferences[self.ship_to_index[ship],
-        len(self.position_to_index):len(self.position_to_index) + self.available_shipyard_conversions] = 9999999
+        len(self.position_to_index):-1] = 9999999  # TODO: fix the amount of available shipyard conversions
         self.halite += ship.halite
         self.halite -= self.config.convert_cost
         self.ship_count -= 1

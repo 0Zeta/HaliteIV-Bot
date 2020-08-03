@@ -13,7 +13,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = ""
+POOL_NAME = "2020-08-03 23-54"
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),
@@ -221,7 +221,7 @@ def optimize():
             pool.append("evolutionary/bots/" + baseline_bot + ".py")
         print("Testing new genomes")
         tournament = Tournament(pool)
-        results = tournament.play_tournament(rounds=5)
+        results = tournament.play_tournament(rounds=6)
         pool = [genome for genome in results if isinstance(genome, dict)]
         best_genome = pool[0]
         print("Best genome so far: " + str(best_genome))
