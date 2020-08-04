@@ -7,13 +7,13 @@ from kaggle_environments import make
 
 from haliteivbot.utils import imdict
 
-MUTATION_PROBABILITY = 0.15
+MUTATION_PROBABILITY = 0.05
 POOL_SIZE = 12
 SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-08-03 23-54"
+POOL_NAME = "2020-08-04 02-57"
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),
@@ -199,7 +199,7 @@ def create_new_genome(parents):
 
 
 def optimize():
-    baseline_bots = ["optimusmine", "uninstalllol4", "threesigma", "piratehaven"]
+    baseline_bots = ["optimusmine", "uninstalllol4", "threesigma", "piratehaven", "swarm_intelligence"]
     if POOL_NAME != "":
         pool = load_pool(POOL_NAME)
         print("Best genome: " + str(pool[0]))
