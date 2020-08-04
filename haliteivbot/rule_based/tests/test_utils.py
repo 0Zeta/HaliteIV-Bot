@@ -1,6 +1,6 @@
 import unittest
 
-from haliteivbot.utils import *
+from haliteivbot.rule_based.utils import *
 
 
 class TestUtils(unittest.TestCase):

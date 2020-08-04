@@ -5,7 +5,7 @@ from random import random, choice
 import numpy as np
 from kaggle_environments import make
 
-from haliteivbot.utils import imdict
+from haliteivbot.rule_based.utils import imdict
 
 MUTATION_PROBABILITY = 0.05
 POOL_SIZE = 12
@@ -13,7 +13,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-08-04 02-57"
+POOL_NAME = "2020-08-04 16-19"
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),
@@ -175,7 +175,7 @@ second_genome = {
 }
 
 if __name__ == "__main__":
-    from haliteivbot.bot_tournament import Tournament
+    from haliteivbot.rule_based.bot_tournament import Tournament
 
     env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=True)
 

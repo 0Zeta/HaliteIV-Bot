@@ -2,8 +2,8 @@ from random import randrange
 
 from kaggle_environments import make, evaluate
 
-from haliteivbot.bot import HaliteBot
-from haliteivbot.evolutionary_optimization import wrap_bot
+from haliteivbot.rule_based.bot import HaliteBot
+from haliteivbot.rule_based.evolutionary_optimization import wrap_bot
 
 if __name__ == '__main__':
     genome = {

@@ -7,7 +7,7 @@ from kaggle_environments import make
 from kaggle_environments.envs.halite.helpers import Board
 from trueskill import Rating, rate
 
-from haliteivbot.bot import HaliteBot
+from haliteivbot.rule_based.bot import HaliteBot
 
 
 def wrap_bot(bot):
