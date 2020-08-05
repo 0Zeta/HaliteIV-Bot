@@ -51,6 +51,7 @@ PARAMETERS = {
     'move_preference_mining': 130,
     'move_preference_return': 116,
     'move_preference_longest_axis': 15,
+    'move_preference_stay_on_shipyard': -130,
     'return_halite': 1586,
     'ship_spawn_threshold': 0.35385497733106647,
     'ships_shipyards_threshold': 0.15,
@@ -209,6 +210,9 @@ class HaliteBot(object):
                 self.ship_position_preferences[
                     ship_index, self.position_to_index[position]] = self.calculate_cell_score(ship,
                                                                                               board.cells[position])
+            if ship.cell.shipyard is not None:
+                self.ship_position_preferences[ship_index, self.position_to_index[ship.position]] += self.parameters[
+                    'move_preference_stay_on_shipyard']
 
         self.planned_shipyards.clear()
         self.ship_types.clear()
@@ -497,6 +501,11 @@ class HaliteBot(object):
         if target != ship.position:
             self.prefer_moves(ship, nav(ship_pos, target_pos), self.farthest_directions[ship_pos][target_pos],
                               self.parameters['move_preference_base'])
+            if self.shipyard_distances[ship_pos] == 1:
+                for neighbour in get_neighbours(ship.cell):
+                    if neighbour.shipyard is not None and neighbour.shipyard.player_id == self.player_id:
+                        self.change_position_score(ship, neighbour.position,
+                                                   self.parameters['move_preference_stay_on_shipyard'])
 
         else:
             self.change_position_score(ship, target, self.parameters['move_preference_mining'])
