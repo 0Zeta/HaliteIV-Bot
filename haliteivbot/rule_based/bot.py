@@ -50,6 +50,7 @@ PARAMETERS = {
     'move_preference_hunting': 113,
     'move_preference_mining': 130,
     'move_preference_return': 116,
+    'move_preference_longest_axis': 15,
     'return_halite': 1586,
     'ship_spawn_threshold': 0.35385497733106647,
     'ships_shipyards_threshold': 0.15,
@@ -60,7 +61,6 @@ PARAMETERS = {
     'shipyard_min_dominance': 6.980137883872445,
     'shipyard_stop': 277,
     'spawn_min_dominance': 5.290290410672599,
-    'spawn_step_multiplier': 2,
     'spawn_till': 320
 }
 
@@ -248,19 +248,16 @@ class HaliteBot(object):
                 # There is an enemy ship next to the shipyard.
                 self.spawn_ship(shipyard)
                 continue
-            if self.halite < self.config.spawn_cost + board.step * self.parameters['spawn_step_multiplier']:
+            if self.halite < self.config.spawn_cost:
                 continue
             if self.reached_spawn_limit(board):
                 continue
             if self.ship_count >= self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
                     self.parameters['ship_spawn_threshold']:
                 continue
-            if dominance < self.parameters['spawn_min_dominance'] and board.step > 25 and self.shipyard_count > 1:
+            if dominance < self.parameters['spawn_min_dominance'] and board.step > 75 and self.shipyard_count > 1:
                 continue
-            if any(filter(lambda cell: cell.ship is None and cell.position not in self.planned_moves,
-                          get_neighbours(shipyard.cell))):
-                # Only spawn a ship if there are not too many own ships around the shipyard
-                self.spawn_ship(shipyard)
+            self.spawn_ship(shipyard)
 
     def reached_spawn_limit(self, board: Board):
         return board.step > self.parameters['spawn_till'] or ((self.ship_count >= max(
@@ -478,15 +475,16 @@ class HaliteBot(object):
                     ship.position) + ".")
                 return
 
+        ship_pos = TO_INDEX[ship.position]
+        destination_pos = TO_INDEX[destination]
         if self.ship_types[ship.id] == ShipType.ENDING:
-            ship_pos = TO_INDEX[ship.position]
-            destination_pos = TO_INDEX[destination]
             if get_distance(ship_pos, destination_pos) == 1:
                 self.change_position_score(ship, destination, 9999)  # probably unnecessary
                 logging.debug("Ending ship " + str(ship.id) + " returns to a shipyard at position " + str(destination))
                 return
 
         self.prefer_moves(ship, navigate(ship.position, destination, self.size),
+                          self.farthest_directions[ship_pos][destination_pos],
                           self.parameters['move_preference_return'])
 
     def handle_mining_ship(self, ship: Ship, board: Board):
@@ -494,19 +492,15 @@ class HaliteBot(object):
             logging.critical("Mining ship " + str(ship.id) + " has no valid mining target.")
             return
         target = self.mining_targets[ship.id]
+        ship_pos = TO_INDEX[ship.position]
+        target_pos = TO_INDEX[target]
         if target != ship.position:
-            preferred_moves = navigate(ship.position, target, self.size)
-            for move in preferred_moves:
-                position = (ship.position + move.to_point()) % self.size
-                self.change_position_score(ship, position, self.parameters['move_preference_base'])
-            for move in get_inefficient_directions(preferred_moves):
-                position = (ship.position + move.to_point()) % self.size
-                self.change_position_score(ship, position, -self.parameters['move_preference_base'])
+            self.prefer_moves(ship, nav(ship_pos, target_pos), self.farthest_directions[ship_pos][target_pos],
+                              self.parameters['move_preference_base'])
+
         else:
             self.change_position_score(ship, target, self.parameters['move_preference_mining'])
-            for move in DIRECTIONS:
-                position = (ship.position + move.to_point()) % self.size
-                self.change_position_score(ship, position, -self.parameters['move_preference_mining'])
+            self.prefer_moves(ship, [], [], self.parameters['move_preference_mining'])
 
     def handle_hunting_ship(self, ship: Ship, board: Board):
         if len(self.enemies) > 0:
@@ -518,10 +512,8 @@ class HaliteBot(object):
                 ship_position = ship.position
                 target_position = target.position
                 self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
+                                  self.farthest_directions[TO_INDEX[ship_position]][TO_INDEX[target_position]],
                                   self.parameters['move_preference_hunting'])
-                # Prefer moves in a direction along the axis with the biggest difference between the two positions' coordinates
-                self.prefer_moves(ship, self.farthest_directions[TO_INDEX[ship_position]][TO_INDEX[target_position]],
-                                  15)
 
     def guard_shipyards(self, board: Board):
         for shipyard in self.me.shipyards:
@@ -635,9 +627,12 @@ class HaliteBot(object):
     def calculate_player_map_presence(self, player):
         return len(player.ships) + len(player.shipyards)
 
-    def prefer_moves(self, ship, directions, weight):
+    def prefer_moves(self, ship, directions, longest_axis, weight):
         for dir in directions:
             position = (ship.position + dir.to_point()) % self.size
+            w = weight
+            if dir in longest_axis:
+                w += self.parameters['move_preference_longest_axis']
             self.change_position_score(ship, position, weight)
         for dir in get_inefficient_directions(directions):
             position = (ship.position + dir.to_point()) % self.size
