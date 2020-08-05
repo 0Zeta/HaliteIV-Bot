@@ -8,12 +8,13 @@ from kaggle_environments import make
 from haliteivbot.rule_based.utils import imdict
 
 MUTATION_PROBABILITY = 0.05
+CROSSOVER_PROBABILITY = 0.07
 POOL_SIZE = 12
 SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-08-04 16-19"
+POOL_NAME = "2020-08-05 02-16"
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),
@@ -182,9 +183,12 @@ if __name__ == "__main__":
 
 def create_new_genome(parents):
     genome = dict()
+    current_parent = choice(parents)
     for characteristic in hyperparameters.keys():
+        if random() <= CROSSOVER_PROBABILITY:
+            current_parent = choice([parent for parent in parents if parent != current_parent])
         if random() <= MUTATION_PROBABILITY:
-            mutation = choice(parents)[characteristic]
+            mutation = current_parent[characteristic]
             if hyperparameters[characteristic][0] == "float":
                 genome[characteristic] = np.clip(np.random.normal(mutation, (
                         hyperparameters[characteristic][1][1] - hyperparameters[characteristic][1][0]) / 10),
@@ -194,7 +198,7 @@ def create_new_genome(parents):
                         hyperparameters[characteristic][1][1] - hyperparameters[characteristic][1][0]) / 10)),
                                                  *hyperparameters[characteristic][1])
         else:
-            genome[characteristic] = choice(parents)[characteristic]
+            genome[characteristic] = current_parent[characteristic]
     return genome
 
 
