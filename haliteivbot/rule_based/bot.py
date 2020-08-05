@@ -116,7 +116,8 @@ class HaliteBot(object):
         create_radius_lists(self.parameters['dominance_map_small_radius'],
                             self.parameters['dominance_map_medium_radius'])
         self.positions_in_reach_list = compute_positions_in_reach()
-        self.farthest_directions = get_farthest_directions_matrix()
+        self.farthest_directions_indices = get_farthest_directions_matrix()
+        self.farthest_directions = get_farthest_directions_list()
 
     def step(self, board: Board, obs):
         if self.me is None:
@@ -410,7 +411,7 @@ class HaliteBot(object):
         for ship_index, ship in enumerate(self.hunting_ships):
             ship_pos = TO_INDEX[ship.position]
             for enemy_index, (direction, enemy_ship) in enumerate(possible_enemy_targets):
-                farthest_dirs = self.farthest_directions[ship_pos][TO_INDEX[enemy_ship.position]]
+                farthest_dirs = self.farthest_directions_indices[ship_pos][TO_INDEX[enemy_ship.position]]
                 if farthest_dirs == direction or (farthest_dirs - direction) in encoded_dirs:
                     hunting_scores[ship_index, enemy_index] = self.calculate_hunting_score(ship, enemy_ship)
                 else:
@@ -514,9 +515,13 @@ class HaliteBot(object):
             else:
                 target = max(self.enemies, key=lambda enemy: self.calculate_hunting_score(ship, enemy))
             if target.halite > ship.halite:
-                self.prefer_moves(ship, navigate(ship.position, target.position, self.size),
-                                  # TODO: Should we choose the direction with the longest distance?
+                ship_position = ship.position
+                target_position = target.position
+                self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
                                   self.parameters['move_preference_hunting'])
+                # Prefer moves in a direction along the axis with the biggest difference between the two positions' coordinates
+                self.prefer_moves(ship, self.farthest_directions[TO_INDEX[ship_position]][TO_INDEX[target_position]],
+                                  15)
 
     def guard_shipyards(self, board: Board):
         for shipyard in self.me.shipyards:

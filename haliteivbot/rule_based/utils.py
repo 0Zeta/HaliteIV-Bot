@@ -7,6 +7,7 @@ DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WE
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
 DISTANCES = None
 NAVIGATION = None
+FARTHEST_DIRECTIONS_IDX = None
 FARTHEST_DIRECTIONS = None
 POSITIONS_IN_REACH = None
 POSITIONS_IN_SMALL_RADIUS = None
@@ -176,8 +177,11 @@ def create_navigation_lists(size):
     farthest_directions[coldist > rowdist] += direction_y[coldist > rowdist]
     farthest_directions[coldist == rowdist] += direction_x[coldist == rowdist] + direction_y[coldist == rowdist]
 
+    global FARTHEST_DIRECTIONS_IDX
+    FARTHEST_DIRECTIONS_IDX = farthest_directions.reshape((size ** 2, size ** 2))
+
     global FARTHEST_DIRECTIONS
-    FARTHEST_DIRECTIONS = farthest_directions.reshape((size ** 2, size ** 2))
+    FARTHEST_DIRECTIONS = [[idx_to_action_list[a] for a in b] for b in FARTHEST_DIRECTIONS_IDX]
 
 
 def create_radius_lists(small_radius, medium_radius):
@@ -230,6 +234,10 @@ def get_distance_matrix():
 
 
 def get_farthest_directions_matrix():
+    return FARTHEST_DIRECTIONS_IDX
+
+
+def get_farthest_directions_list():
     return FARTHEST_DIRECTIONS
 
 
