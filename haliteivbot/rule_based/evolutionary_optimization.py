@@ -1,6 +1,6 @@
 import pickle
 from datetime import datetime
-from random import random, choice
+from random import random, choice, sample
 
 import numpy as np
 from kaggle_environments import make
@@ -32,8 +32,8 @@ hyperparameters = {
     'end_return_extra_moves': ('int', (6, 15)),
     'end_start': ('int', (380, 390)),
     'ending_halite_threshold': ('int', (5, 30)),
-    'hunting_halite_threshold': ('int', (0, 30)),
-    'hunting_score_alpha': ('float', (0.5, 1.2)),
+    'hunting_halite_threshold': ('int', (0, 50)),
+    'hunting_score_alpha': ('float', (-1, 1.2)),
     'hunting_score_beta': ('float', (1.2, 4)),
     'hunting_score_delta': ('float', (0.5, 1.5)),
     'hunting_score_gamma': ('float', (0.75, 0.99)),
@@ -44,6 +44,7 @@ hyperparameters = {
     'max_hunting_ships_per_direction': ('int', (1, 3)),
     'max_ship_advantage': ('int', (-5, 15)),
     'max_shipyard_distance': ('int', (11, 20)),
+    'max_shipyards': ('int', (2, 5)),
     'min_mining_halite': ('int', (1, 50)),
     'min_ships': ('int', (8, 40)),
     'min_shipyard_distance': ('int', (1, 10)),
@@ -65,6 +66,7 @@ hyperparameters = {
     'shipyard_guarding_attack_probability': ('float', (0.1, 1)),
     'shipyard_guarding_min_dominance': ('float', (2, 7)),
     'shipyard_min_dominance': ('float', (4, 7)),
+    'shipyard_start': ('int', (20, 60)),
     'shipyard_stop': ('int', (200, 350)),
     'spawn_min_dominance': ('float', (3.5, 8)),
     'spawn_till': ('int', (200, 350))
@@ -78,7 +80,7 @@ first_genome = {
     'conflict_map_sigma': 0.8,
     'conflict_map_zeta': 0.8722136499708464,
     'convert_when_attacked_threshold': 540,
-    'disable_hunting_till': 78,
+    'disable_hunting_till': 40,
     'dominance_map_medium_radius': 5,
     'dominance_map_medium_sigma': 0.33970481838807126,
     'dominance_map_small_radius': 3,
@@ -87,7 +89,7 @@ first_genome = {
     'end_start': 382,
     'ending_halite_threshold': 27,
     'hunting_halite_threshold': 5,
-    'hunting_score_alpha': 1.0122074915618837,
+    'hunting_score_alpha': -0.5,
     'hunting_score_beta': 2.6022792696008183,
     'hunting_score_delta': 0.5,
     'hunting_score_gamma': 0.9747362728981035,
@@ -98,6 +100,7 @@ first_genome = {
     'max_hunting_ships_per_direction': 1,
     'max_ship_advantage': 5,
     'max_shipyard_distance': 11,
+    'max_shipyards': 4,
     'min_mining_halite': 38,
     'min_ships': 8,
     'min_shipyard_distance': 1,
@@ -110,6 +113,7 @@ first_genome = {
     'move_preference_mining': 130,
     'move_preference_return': 116,
     'move_preference_longest_axis': 20,
+    'move_preference_stay_on_shipyard': -100,
     'return_halite': 1586,
     'ship_spawn_threshold': 0.35385497733106647,
     'ships_shipyards_threshold': 0.22400570922219704,
@@ -118,6 +122,7 @@ first_genome = {
     'shipyard_guarding_attack_probability': 1.0,
     'shipyard_guarding_min_dominance': 5.899371757054431,
     'shipyard_min_dominance': 6.980137883872445,
+    'shipyard_start': 30,
     'shipyard_stop': 277,
     'spawn_min_dominance': 5.253645801315921,
     'spawn_step_multiplier': 2,
@@ -152,6 +157,7 @@ second_genome = {
     'max_hunting_ships_per_direction': 1,
     'max_ship_advantage': 6,
     'max_shipyard_distance': 9,
+    'max_shipyards': 3,
     'min_mining_halite': 38,
     'min_ships': 8,
     'min_shipyard_distance': 3,
@@ -164,6 +170,7 @@ second_genome = {
     'move_preference_mining': 130,
     'move_preference_return': 116,
     'move_preference_longest_axis': 15,
+    'move_preference_stay_on_shipyard': -110,
     'return_halite': 1586,
     'ship_spawn_threshold': 0.35385497733106647,
     'ships_shipyards_threshold': 0.15,
@@ -172,6 +179,7 @@ second_genome = {
     'shipyard_guarding_attack_probability': 0.8,
     'shipyard_guarding_min_dominance': 5.899371757054431,
     'shipyard_min_dominance': 6.980137883872445,
+    'shipyard_start': 45,
     'shipyard_stop': 277,
     'spawn_min_dominance': 5.290290410672599,
     'spawn_till': 320
@@ -222,7 +230,10 @@ def optimize():
         pool = new_pool.copy()
         print("Filling pool with current size of %i" % len(pool))
         for i in range(POOL_SIZE - len(new_pool) - ((POOL_SIZE + len(baseline_bots)) % 4)):
-            pool.append(create_new_genome([choice(new_pool) for n in range(NB_PARENTS)]))
+            if len(new_pool) > NB_PARENTS:
+                pool.append(create_new_genome(sample(new_pool, k=NB_PARENTS)))
+            else:
+                pool.append(create_new_genome(new_pool))
         pool = [imdict(genome) for genome in pool]
         for baseline_bot in baseline_bots:
             pool.append("evolutionary/bots/" + baseline_bot + ".py")

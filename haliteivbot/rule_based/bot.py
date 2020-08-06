@@ -19,7 +19,7 @@ PARAMETERS = {
     'conflict_map_sigma': 0.7572100660853711,
     'conflict_map_zeta': 0.9,
     'convert_when_attacked_threshold': 540,
-    'disable_hunting_till': 78,
+    'disable_hunting_till': 45,
     'dominance_map_medium_radius': 5,
     'dominance_map_medium_sigma': 0.33970481838807126,
     'dominance_map_small_radius': 3,
@@ -28,7 +28,7 @@ PARAMETERS = {
     'end_start': 381,
     'ending_halite_threshold': 27,
     'hunting_halite_threshold': 5,
-    'hunting_score_alpha': 1.0122074915618837,
+    'hunting_score_alpha': -0.5,
     'hunting_score_beta': 2.6022792696008183,
     'hunting_score_delta': 0.5142337849582957,
     'hunting_score_gamma': 0.948335898856567,
@@ -39,6 +39,7 @@ PARAMETERS = {
     'max_hunting_ships_per_direction': 1,
     'max_ship_advantage': 6,
     'max_shipyard_distance': 9,
+    'max_shipyards': 3,
     'min_mining_halite': 38,
     'min_ships': 8,
     'min_shipyard_distance': 3,
@@ -60,6 +61,7 @@ PARAMETERS = {
     'shipyard_guarding_attack_probability': 0.8,
     'shipyard_guarding_min_dominance': 5.899371757054431,
     'shipyard_min_dominance': 6.980137883872445,
+    'shipyard_start': 35,
     'shipyard_stop': 277,
     'spawn_min_dominance': 5.290290410672599,
     'spawn_till': 320
@@ -462,13 +464,11 @@ class HaliteBot(object):
         nearest_shipyard = self.get_nearest_shipyard(ship.position)
         distance_to_nearest_shipyard = calculate_distance(ship.position,
                                                           nearest_shipyard.position) if nearest_shipyard is not None else 20
-        if board.step <= self.parameters['shipyard_stop'] and self.parameters[
+        if self.shipyard_count < self.parameters['max_shipyards'] and self.parameters['shipyard_start'] <= board.step <= \
+                self.parameters['shipyard_stop'] and self.parameters[
             'min_shipyard_distance'] <= distance_to_nearest_shipyard <= \
                 self.parameters[
                     'max_shipyard_distance'] and self.halite + ship.halite >= self.config.convert_cost:
-            if (self.shipyard_count == 1) and (25 < board.step < 60) and (2 < distance_to_nearest_shipyard < 6):
-                self.convert_to_shipyard(ship)  # Force an early second shipyard
-                return
             if self.average_halite_per_cell / self.shipyard_count >= self.parameters[
                 'shipyard_conversion_threshold'] \
                     and self.shipyard_count / self.ship_count < self.parameters['ships_shipyards_threshold'] \
