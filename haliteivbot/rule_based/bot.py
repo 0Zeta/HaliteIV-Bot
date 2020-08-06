@@ -29,7 +29,7 @@ PARAMETERS = {
     'ending_halite_threshold': 27,
     'hunting_min_ships': 16,
     'hunting_halite_threshold': 5,
-    'hunting_score_alpha': -0.5,
+    'hunting_score_alpha': -0.3,
     'hunting_score_beta': 2.6022792696008183,
     'hunting_score_delta': 0.5142337849582957,
     'hunting_score_gamma': 0.948335898856567,
@@ -48,8 +48,8 @@ PARAMETERS = {
     'mining_score_beta': 0.9151352865019396,
     'mining_score_delta': 2.9044182229094444,
     'mining_score_gamma': 0.99,
-    'mining_score_dominance_clip': 5,
-    'mining_score_dominance_norm': 0.4,
+    'mining_score_dominance_clip': 4,
+    'mining_score_dominance_norm': 0.6,
     'move_preference_base': 109,
     'move_preference_hunting': 113,
     'move_preference_mining': 130,
@@ -511,8 +511,13 @@ class HaliteBot(object):
             if self.shipyard_distances[ship_pos] == 1:
                 for neighbour in get_neighbours(ship.cell):
                     if neighbour.shipyard is not None and neighbour.shipyard.player_id == self.player_id:
-                        self.change_position_score(ship, neighbour.position,
-                                                   self.parameters['move_preference_stay_on_shipyard'])
+                        if self.step_count <= 11 and self.halite >= self.config.spawn_cost:
+                            # We really want to get our ships out
+                            self.change_position_score(ship, neighbour.position,
+                                                       5 * self.parameters['move_preference_stay_on_shipyard'])
+                        else:
+                            self.change_position_score(ship, neighbour.position,
+                                                       self.parameters['move_preference_stay_on_shipyard'])
 
         else:
             self.change_position_score(ship, target, self.parameters['move_preference_mining'])
@@ -600,8 +605,8 @@ class HaliteBot(object):
             1.02 ** distance_from_ship * halite_val, 500) * 1.02 ** mining_steps) / (
                         distance_from_ship + mining_steps + self.parameters[
                     'mining_score_alpha'] * distance_from_shipyard)
-        # if distance_from_shipyard == 0 and self.step_count <= 50:
-        #     score *= 0.3
+        if distance_from_shipyard == 0 and self.step_count <= 11:
+            score *= 0.1  # We don't want to block the shipyard.
         return score
 
     def calculate_hunting_score(self, ship: Ship, enemy: Ship) -> float:
@@ -625,7 +630,7 @@ class HaliteBot(object):
                 score -= (500 + ship.halite)
             elif cell.ship.halite == ship.halite:
                 score -= 500
-            elif self.step_count > 50:  # Don't attempt to scare opponents away early on; focus on mining instead
+            else:
                 score += cell.ship.halite * self.parameters['cell_score_enemy_halite']
         neighbour_value = 0
         for neighbour in get_neighbours(cell):
