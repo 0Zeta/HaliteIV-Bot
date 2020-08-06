@@ -27,6 +27,7 @@ PARAMETERS = {
     'end_return_extra_moves': 6,
     'end_start': 381,
     'ending_halite_threshold': 27,
+    'hunting_min_ships': 20,
     'hunting_halite_threshold': 5,
     'hunting_score_alpha': -0.5,
     'hunting_score_beta': 2.6022792696008183,
@@ -371,12 +372,13 @@ class HaliteBot(object):
         assigned_scores = [mining_scores[r][c] for r, c in zip(row, col)]
         hunting_threshold = np.mean(assigned_scores) - np.std(assigned_scores) * self.parameters[
             'hunting_score_alpha'] if len(assigned_scores) > 0 else -1
+        hunting_enabled = board.step > self.parameters['disable_hunting_till'] and self.ship_count >= self.parameters[
+            'hunting_min_ships']
 
         for r, c in zip(row, col):
             if (mining_scores[r][c] < self.parameters['hunting_threshold'] or (
                     mining_scores[r][c] < hunting_threshold and self.mining_ships[r].halite <= self.parameters[
-                'hunting_halite_threshold']) and self.map_presence_rank <= 1) and board.step > self.parameters[
-                'disable_hunting_till']:
+                'hunting_halite_threshold'])) and hunting_enabled:
                 continue
             if target_positions[c] >= 1000:
                 ship_targets[self.mining_ships[r].id] = target_positions[c] % 1000
