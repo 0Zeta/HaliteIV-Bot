@@ -27,7 +27,7 @@ PARAMETERS = {
     'end_return_extra_moves': 6,
     'end_start': 381,
     'ending_halite_threshold': 27,
-    'hunting_min_ships': 20,
+    'hunting_min_ships': 16,
     'hunting_halite_threshold': 5,
     'hunting_score_alpha': -0.5,
     'hunting_score_beta': 2.6022792696008183,
@@ -37,24 +37,26 @@ PARAMETERS = {
     'map_blur_gamma': 0.7569741178073052,
     'map_blur_sigma': 0.6042835862403136,
     'max_halite_attack_shipyard': 250,
-    'max_hunting_ships_per_direction': 1,
+    'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 6,
     'max_shipyard_distance': 9,
     'max_shipyards': 3,
     'min_mining_halite': 38,
-    'min_ships': 8,
+    'min_ships': 25,
     'min_shipyard_distance': 3,
     'mining_score_alpha': 0.99,
     'mining_score_beta': 0.9151352865019396,
     'mining_score_delta': 2.9044182229094444,
     'mining_score_gamma': 0.99,
+    'mining_score_dominance_clip': 5,
+    'mining_score_dominance_norm': 0.4,
     'move_preference_base': 109,
     'move_preference_hunting': 113,
     'move_preference_mining': 130,
     'move_preference_return': 116,
     'move_preference_longest_axis': 15,
     'move_preference_stay_on_shipyard': -130,
-    'return_halite': 1586,
+    'return_halite': 1500,
     'ship_spawn_threshold': 0.35385497733106647,
     'ships_shipyards_threshold': 0.15,
     'shipyard_abandon_dominance': -3.299048786606774,
@@ -62,7 +64,7 @@ PARAMETERS = {
     'shipyard_guarding_attack_probability': 0.8,
     'shipyard_guarding_min_dominance': 5.899371757054431,
     'shipyard_min_dominance': 6.980137883872445,
-    'shipyard_start': 35,
+    'shipyard_start': 50,
     'shipyard_stop': 277,
     'spawn_min_dominance': 5.290290410672599,
     'spawn_till': 320
@@ -133,6 +135,7 @@ class HaliteBot(object):
         self.opponents = board.opponents
         self.ships = self.me.ships
         self.halite = self.me.halite
+        self.step_count = board.step
         self.ship_count = len(self.ships)
         self.shipyard_count = len(self.me.shipyards)
         # self.friendly_neighbour_count = {
@@ -173,6 +176,8 @@ class HaliteBot(object):
             # self.blurred_conflict_map = get_blurred_conflict_map(self.me, self.opponents, self.parameters['conflict_map_alpha'], self.parameters['conflict_map_zeta'], self.parameters['conflict_map_sigma'])
             self.small_dominance_map = get_dominance_map(self.me, self.opponents,
                                                          self.parameters['dominance_map_small_sigma'], 'small')
+            #    if self.step_count % 10 == 0:
+            #        display_matrix(self.small_dominance_map.reshape((21, 21)))
             self.medium_dominance_map = get_dominance_map(self.me, self.opponents,
                                                           self.parameters['dominance_map_medium_sigma'], 'medium')
             # if board.step % 25 == 0:
@@ -586,11 +591,18 @@ class HaliteBot(object):
             ch = int(math.log(ship_halite / halite_val) * 2.5 + 5.5)
             ch = clip(ch, 0, 10)
         mining_steps = self.optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1][ch]
-        return self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
-                self.parameters['mining_score_beta'] * ship_halite + (1 - 0.75 ** mining_steps) * min(
-            1.02 ** (distance_from_ship) * halite_val, 500) * 1.02 ** mining_steps) / (
-                       distance_from_ship + mining_steps + self.parameters[
-                   'mining_score_alpha'] * distance_from_shipyard)
+        dominance = (1 - self.parameters['mining_score_dominance_norm']) * clip(
+            self.small_dominance_map[cell_position] + self.parameters['mining_score_dominance_clip'], 0,
+            self.parameters['mining_score_dominance_clip'] * 2) / (self.parameters['mining_score_dominance_clip'] * 2) + \
+                    self.parameters['mining_score_dominance_norm']
+        score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
+                self.parameters['mining_score_beta'] * dominance * ship_halite + (1 - 0.75 ** mining_steps) * min(
+            1.02 ** distance_from_ship * halite_val, 500) * 1.02 ** mining_steps) / (
+                        distance_from_ship + mining_steps + self.parameters[
+                    'mining_score_alpha'] * distance_from_shipyard)
+        # if distance_from_shipyard == 0 and self.step_count <= 50:
+        #     score *= 0.3
+        return score
 
     def calculate_hunting_score(self, ship: Ship, enemy: Ship) -> float:
         d_halite = enemy.halite - ship.halite
@@ -613,7 +625,7 @@ class HaliteBot(object):
                 score -= (500 + ship.halite)
             elif cell.ship.halite == ship.halite:
                 score -= 500
-            else:
+            elif self.step_count > 50:  # Don't attempt to scare opponents away early on; focus on mining instead
                 score += cell.ship.halite * self.parameters['cell_score_enemy_halite']
         neighbour_value = 0
         for neighbour in get_neighbours(cell):

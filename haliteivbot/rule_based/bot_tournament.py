@@ -18,18 +18,17 @@ class Tournament(object):
 
     def __init__(self, bots):
         self.ratings = {i: Rating(mu=600, sigma=50) for i in range(len(bots))}
-        self.env = make("halite", configuration={"size": 21, "startingHalite": 5000}, debug=True)
         self.bots = bots
         self.bot_to_idx = {bot: index for index, bot in enumerate(bots)}
 
     def play_game(self, bots):
         try:
-            self.env.configuration['randomSeed'] = randrange((1 << 32) - 1)
-            self.env.reset(4)
+            env = make("halite", configuration={"size": 21, 'randomSeed': randrange((1 << 32) - 1)}, debug=True)
+            env.reset(4)
             shuffled_indices = np.random.permutation(4)
             bots[:] = [bots[i] for i in shuffled_indices]
             results = evaluate("halite", [wrap_bot(HaliteBot(bot)) if isinstance(bot, dict) else bot for bot in bots],
-                               self.env.configuration)[0]
+                               env.configuration)[0]
             results[:] = [results[i] for i in shuffled_indices]
             standings = 3 - np.argsort(results)
         except Exception as exception:
