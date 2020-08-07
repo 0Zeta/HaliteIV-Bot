@@ -96,7 +96,7 @@ def _get_player_map(player, max_halite, size=21):
     return player_map.reshape((size, size))
 
 
-def get_dominance_map(me, opponents, sigma, radius, size=21):
+def get_dominance_map(me, opponents, sigma, radius, halite_clip, size=21):
     dominance_map = np.zeros((size ** 2,), dtype=np.float)
     if radius == 'small':
         radius_map = POSITIONS_IN_SMALL_RADIUS
@@ -106,7 +106,8 @@ def get_dominance_map(me, opponents, sigma, radius, size=21):
         raise Exception('Invalid radius type: ', radius)
 
     for ship in me.ships:
-        dominance_map[radius_map[TO_INDEX[ship.position]]] += 1
+        dominance_map[radius_map[TO_INDEX[ship.position]]] += clip(halite_clip - ship.halite, 0,
+                                                                   halite_clip) / halite_clip
     for shipyard in me.shipyards:
         dominance_map[radius_map[TO_INDEX[shipyard.position]]] += 2
     for player in opponents:
