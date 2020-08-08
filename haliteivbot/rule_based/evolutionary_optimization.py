@@ -41,7 +41,7 @@ hyperparameters = {
     'hunting_score_gamma': ('float', (0.75, 0.99)),
     'hunting_score_iota': ('float', (0.2, 0.6)),
     'hunting_score_kappa': ('float', (0.15, 0.4)),
-    'hunting_threshold': ('float', (0.3, 8)),
+    'hunting_threshold': ('float', (4, 30)),
     'map_blur_gamma': ('float', (0.4, 0.95)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
     'max_halite_attack_shipyard': ('int', (10, 250)),
