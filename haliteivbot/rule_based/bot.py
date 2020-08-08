@@ -34,6 +34,7 @@ PARAMETERS = {
     'hunting_score_beta': 2.5942517199955524,
     'hunting_score_delta': 0.5316893166228572,
     'hunting_score_gamma': 0.948335898856567,
+    'hunting_score_kappa': 0.25,
     'hunting_threshold': 5.923173510655287,
     'map_blur_gamma': 0.8013766949565679,
     'map_blur_sigma': 0.693995126086896,
@@ -150,8 +151,12 @@ class HaliteBot(object):
         for shipyard in self.me.shipyards:
             self.shipyard_positions.append(TO_INDEX[shipyard.position])
 
-        ranking = np.argsort([self.calculate_player_score(player) for player in [self.me] + self.opponents])[::-1]
+        players = [self.me] + self.opponents
+        ranking = np.argsort([self.calculate_player_score(player) for player in players])[::-1]
         self.rank = int(np.where(ranking == 0)[0])
+        self.player_ranking = dict()
+        for i, player in enumerate(players):
+            self.player_ranking[player.id] = int(np.where(ranking == i)[0])
 
         map_presence_ranking = np.argsort(
             [self.calculate_player_map_presence(player) for player in [self.me] + self.opponents])[::-1]
@@ -616,7 +621,8 @@ class HaliteBot(object):
         distance = calculate_distance(ship.position, enemy.position)
         return self.parameters['hunting_score_gamma'] ** distance * d_halite * (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
-            self.medium_dominance_map[TO_INDEX[enemy.position]] + 30, 0, 60) / 60)
+            self.medium_dominance_map[TO_INDEX[enemy.position]] + 30, 0, 60) / 60) * (
+                           1 + (self.parameters['hunting_score_kappa'] * (3 - self.player_ranking[ship.player_id])))
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         score = 0
@@ -651,7 +657,7 @@ class HaliteBot(object):
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
     def calculate_player_score(self, player):
-        return player.halite + len(player.ships) * 500 + sum(
+        return player.halite + len(player.ships) * (500 - self.step_count) + sum(
             [ship.halite / 4 for ship in player.ships] if len(player.ships) > 0 else [0])
 
     def calculate_player_map_presence(self, player):
