@@ -1,5 +1,6 @@
 import logging
 from enum import Enum
+from math import floor
 from random import random
 
 from kaggle_environments import make
@@ -28,9 +29,9 @@ PARAMETERS = {
     'end_return_extra_moves': 6,
     'end_start': 380,
     'ending_halite_threshold': 15,
-    'hunting_halite_threshold': 3,  # TODO: replace with average based approach
+    'hunting_halite_threshold': 0.15,
     'hunting_min_ships': 18,
-    'hunting_score_alpha': 0.05,
+    'hunting_score_alpha': 0.9,
     'hunting_score_beta': 2.5942517199955524,
     'hunting_score_delta': 0.5142337849582957,
     'hunting_score_gamma': 0.9647931896975708,
@@ -237,6 +238,9 @@ class HaliteBot(object):
         self.deposit_targets.clear()
         self.enemies = [ship for player in board.players.values() for ship in player.ships if
                         player.id != self.player_id]
+        enemy_cargo = [ship.halite for ship in self.enemies]
+        self.hunting_halite_threshold = enemy_cargo[
+            floor(len(enemy_cargo) * self.parameters['hunting_halite_threshold'])] if len(enemy_cargo) > 0 else 0
 
         self.spawn_limit_reached = self.reached_spawn_limit(board)
 
@@ -267,7 +271,7 @@ class HaliteBot(object):
             dominance = self.medium_dominance_map[TO_INDEX[shipyard.position]]
             if any(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
                           get_neighbours(shipyard.cell))) and dominance >= self.parameters[
-                'shipyard_guarding_min_dominance'] and board.step < 370:
+                'shipyard_guarding_min_dominance'] and self.step_count < 370:
                 # There is an enemy ship next to the shipyard.
                 self.spawn_ship(shipyard)
                 continue
@@ -393,8 +397,8 @@ class HaliteBot(object):
 
         for r, c in zip(row, col):
             if (mining_scores[r][c] < self.parameters['hunting_threshold'] or (
-                    mining_scores[r][c] < hunting_threshold and self.mining_ships[r].halite <= self.parameters[
-                'hunting_halite_threshold'])) and hunting_enabled:
+                    mining_scores[r][c] < hunting_threshold and self.mining_ships[
+                r].halite <= self.hunting_halite_threshold)) and hunting_enabled:
                 continue
             if target_positions[c] >= 1000:
                 ship_targets[self.mining_ships[r].id] = target_positions[c] % 1000
@@ -417,7 +421,7 @@ class HaliteBot(object):
 
         for ship in self.mining_ships:
             if ship.id not in self.mining_targets.keys():
-                if ship.halite <= self.parameters['hunting_halite_threshold']:
+                if ship.halite <= self.hunting_halite_threshold:
                     self.hunting_ships.append(ship)
                     self.ship_types[ship.id] = ShipType.HUNTING
                 else:

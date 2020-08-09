@@ -34,7 +34,7 @@ hyperparameters = {
     'end_start': ('int', (380, 390)),
     'ending_halite_threshold': ('int', (5, 30)),
     'hunting_min_ships': ('int', (10, 25)),
-    'hunting_halite_threshold': ('int', (0, 50)),
+    'hunting_halite_threshold': ('float', (0.01, 0.5)),
     'hunting_score_alpha': ('float', (-1, 1.2)),
     'hunting_score_beta': ('float', (1.2, 4)),
     'hunting_score_delta': ('float', (0.5, 1.5)),
