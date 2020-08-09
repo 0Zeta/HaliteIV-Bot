@@ -14,7 +14,7 @@ env = make("halite", debug=True)
 
 PARAMETERS = {
     'cell_score_enemy_halite': 0.35,
-    'cell_score_neighbour_discount': 0.5,
+    'cell_score_neighbour_discount': 0.7,
     'cell_score_ship_halite': 0.0006600467572978282,
     'conflict_map_alpha': 1.5582849784278563,
     'conflict_map_sigma': 0.7972236445783817,
@@ -31,7 +31,7 @@ PARAMETERS = {
     'ending_halite_threshold': 15,
     'hunting_halite_threshold': 0.15,
     'hunting_min_ships': 18,
-    'hunting_score_alpha': 0.9,
+    'hunting_score_alpha': 1,
     'hunting_score_beta': 2.5942517199955524,
     'hunting_score_delta': 0.5142337849582957,
     'hunting_score_gamma': 0.9647931896975708,
@@ -646,8 +646,8 @@ class HaliteBot(object):
             shipyard = cell.shipyard
             if shipyard.player_id != self.player_id:
                 if ship.halite > self.parameters['max_halite_attack_shipyard']:
-                    score -= (500 + ship.halite)
-                elif ship.halite == 0 and self.player_ranking[shipyard.player_id] >= self.rank:
+                    score -= (300 + ship.halite)
+                elif ship.halite == 0 and self.rank == 0:  # only crash into enemy shipyards if we're in a good position
                     score += 400  # Attack the enemy shipyard
             elif self.halite >= self.config.convert_cost and self.shipyard_count == 1 and not self.spawn_limit_reached:
                 if self.step_count <= 75 or self.medium_dominance_map[TO_INDEX[shipyard.position]] >= self.parameters[

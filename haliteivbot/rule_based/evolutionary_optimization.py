@@ -18,7 +18,7 @@ POOL_NAME = ""
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),
-    'cell_score_neighbour_discount': ('float', (0.45, 0.8)),
+    'cell_score_neighbour_discount': ('float', (0.6, 0.8)),
     'cell_score_ship_halite': ('float', (0.0005, 0.001)),
     'conflict_map_alpha': ('float', (1.1, 1.8)),
     'conflict_map_sigma': ('float', (0.2, 0.8)),
