@@ -37,10 +37,10 @@ PARAMETERS = {
     'hunting_score_gamma': 0.9647931896975708,
     'hunting_score_iota': 0.5,
     'hunting_score_kappa': 0.3114198925625326,
-    'hunting_threshold': 17,
+    'hunting_threshold': 12,
     'map_blur_gamma': 0.75,
     'map_blur_sigma': 0.6,
-    'max_halite_attack_shipyard': 20,
+    'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 3,
     'max_shipyard_distance': 7,
@@ -142,9 +142,6 @@ class HaliteBot(object):
         self.step_count = board.step
         self.ship_count = len(self.ships)
         self.shipyard_count = len(self.me.shipyards)
-        # self.friendly_neighbour_count = {
-        #    TO_INDEX[ship.cell.position]: self.get_friendly_neighbour_count(ship.cell) for ship in
-        #    self.me.ships}
 
         self.average_halite_per_cell = sum([halite for halite in self.observation['halite']]) / self.size ** 2
 
@@ -238,7 +235,7 @@ class HaliteBot(object):
         self.deposit_targets.clear()
         self.enemies = [ship for player in board.players.values() for ship in player.ships if
                         player.id != self.player_id]
-        enemy_cargo = [ship.halite for ship in self.enemies]
+        enemy_cargo = sorted([ship.halite for ship in self.enemies])
         self.hunting_halite_threshold = enemy_cargo[
             floor(len(enemy_cargo) * self.parameters['hunting_halite_threshold'])] if len(enemy_cargo) > 0 else 0
 
