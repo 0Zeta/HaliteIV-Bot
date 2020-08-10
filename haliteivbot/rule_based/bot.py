@@ -26,9 +26,9 @@ PARAMETERS = {
     'dominance_map_medium_sigma': 0.05,
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 0.05,
-    'end_return_extra_moves': 6,
+    'end_return_extra_moves': 8,
     'end_start': 380,
-    'ending_halite_threshold': 15,
+    'ending_halite_threshold': 1,
     'hunting_halite_threshold': 0.15,
     'hunting_min_ships': 18,
     'hunting_score_alpha': 1,
@@ -37,12 +37,12 @@ PARAMETERS = {
     'hunting_score_gamma': 0.9647931896975708,
     'hunting_score_iota': 0.5,
     'hunting_score_kappa': 0.3114198925625326,
-    'hunting_threshold': 12,
+    'hunting_threshold': 10,
     'map_blur_gamma': 0.75,
     'map_blur_sigma': 0.6,
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
-    'max_ship_advantage': 3,
+    'max_ship_advantage': 25,
     'max_shipyard_distance': 7,
     'max_shipyards': 2,
     'min_mining_halite': 37,
@@ -61,7 +61,7 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -112,
     'move_preference_block_shipyard': -130,
     'return_halite': 1970,
-    'ship_spawn_threshold': 0.8,
+    'ship_spawn_threshold': 0.55,
     'ships_shipyards_threshold': 0.09,
     'shipyard_abandon_dominance': -3.5,
     'shipyard_conversion_threshold': 10,
@@ -71,7 +71,7 @@ PARAMETERS = {
     'shipyard_start': 55,
     'shipyard_stop': 260,
     'spawn_min_dominance': 4.5,
-    'spawn_till': 300
+    'spawn_till': 240
 }
 
 BOT = None
@@ -448,7 +448,7 @@ class HaliteBot(object):
             return self.ship_types[ship.id]
         if board.step >= 380:
             if self.shipyard_distances[TO_INDEX[ship.position]] + board.step + self.parameters[
-                'end_return_extra_moves'] >= 400 and ship.halite >= self.parameters['ending_halite_threshold']:
+                'end_return_extra_moves'] >= 398 and ship.halite >= self.parameters['ending_halite_threshold']:
                 return ShipType.ENDING
         if ship.halite >= self.parameters['return_halite']:
             return ShipType.RETURNING
@@ -561,7 +561,7 @@ class HaliteBot(object):
                     self.ship_types[shipyard.cell.ship.id] = ShipType.GUARDING
                     if self.halite < self.config.spawn_cost or dominance < self.parameters[
                         'shipyard_guarding_min_dominance'] or random() > self.parameters[
-                        'shipyard_guarding_attack_probability']:  # TODO: mabe add step check
+                        'shipyard_guarding_attack_probability'] or self.step_count >= 365:
                         if dominance > self.parameters['shipyard_abandon_dominance']:
                             self.change_position_score(shipyard.cell.ship, shipyard.cell.position, 10000)
                             logging.debug("Ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
