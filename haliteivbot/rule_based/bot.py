@@ -3,14 +3,11 @@ from enum import Enum
 from math import floor
 from random import random
 
-from kaggle_environments import make
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship
 
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.WARNING)
-
-env = make("halite", debug=True)
 
 PARAMETERS = {
     'cell_score_enemy_halite': 0.35,
@@ -27,7 +24,7 @@ PARAMETERS = {
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 0.05,
     'end_return_extra_moves': 8,
-    'end_start': 380,
+    'end_start': 375,
     'ending_halite_threshold': 1,
     'hunting_halite_threshold': 0.15,
     'hunting_min_ships': 18,
@@ -42,7 +39,7 @@ PARAMETERS = {
     'map_blur_sigma': 0.6,
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
-    'max_ship_advantage': 25,
+    'max_ship_advantage': 30,
     'max_shipyard_distance': 7,
     'max_shipyards': 2,
     'min_mining_halite': 37,
@@ -253,6 +250,7 @@ class HaliteBot(object):
             # Immediately spawn a shipyard
             self.convert_to_shipyard(self.me.ships[0])
             logging.debug("Ship " + str(self.me.ships[0].id) + " converts to a shipyard at the start of the game.")
+            return False
 
     def spawn_ships(self, board: Board):
         # Spawn a ship if there are none left
@@ -446,7 +444,7 @@ class HaliteBot(object):
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
             return self.ship_types[ship.id]
-        if board.step >= 380:
+        if board.step >= self.parameters['end_start']:
             if self.shipyard_distances[TO_INDEX[ship.position]] + board.step + self.parameters[
                 'end_return_extra_moves'] >= 398 and ship.halite >= self.parameters['ending_halite_threshold']:
                 return ShipType.ENDING

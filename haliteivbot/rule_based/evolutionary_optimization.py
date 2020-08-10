@@ -56,7 +56,7 @@ hyperparameters = {
     'mining_score_beta': ('float', (0.65, 0.99)),
     'mining_score_gamma': ('float', (0.97, 0.9999)),
     'mining_score_dominance_clip': ('float', (2, 7)),
-    'mining_score_dominance_norm': ('float', (0, 0.8)),
+    'mining_score_dominance_norm': ('float', (0.45, 0.95)),
     'move_preference_base': ('int', (85, 110)),
     'move_preference_hunting': ('int', (85, 115)),
     'move_preference_mining': ('int', (110, 135)),
