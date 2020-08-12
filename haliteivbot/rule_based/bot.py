@@ -10,10 +10,11 @@ from haliteivbot.rule_based.utils import *
 logging.basicConfig(level=logging.WARNING)
 
 PARAMETERS = {
-    'cell_score_enemy_halite': 0.2,
+    'cargo_map_halite_norm': 300,
+    'cell_score_enemy_halite': 0.25,
     'cell_score_neighbour_discount': 0.7,
     'cell_score_ship_halite': 0.0006600467572978282,
-    'cell_score_dominance': 5,
+    'cell_score_dominance': 3,
     'convert_when_attacked_threshold': 500,
     'disable_hunting_till': 65,
     'dominance_map_halite_clip': 350,
@@ -30,9 +31,10 @@ PARAMETERS = {
     'hunting_score_beta': 2.5942517199955524,
     'hunting_score_delta': 0.5142337849582957,
     'hunting_score_gamma': 0.92,
+    'hunting_score_zeta': 1,
     'hunting_score_iota': 0.5,
     'hunting_score_kappa': 0.3114198925625326,
-    'hunting_threshold': 4,
+    'hunting_threshold': 6,
     'map_blur_gamma': 0.75,
     'map_blur_sigma': 0.6,
     'max_halite_attack_shipyard': 0,
@@ -173,17 +175,13 @@ class HaliteBot(object):
                 self.shipyard_distances.append(min_distance)
 
         if len(self.me.ships) > 0:
-            # self.blurred_conflict_map = get_blurred_conflict_map(self.me, self.opponents, self.parameters['conflict_map_alpha'], self.parameters['conflict_map_zeta'], self.parameters['conflict_map_sigma'])
             self.small_dominance_map = get_dominance_map(self.me, self.opponents,
                                                          self.parameters['dominance_map_small_sigma'], 'small',
                                                          self.parameters['dominance_map_halite_clip'])
-            #    if self.step_count % 10 == 0:
-            #        display_matrix(self.small_dominance_map.reshape((21, 21)))
             self.medium_dominance_map = get_dominance_map(self.me, self.opponents,
                                                           self.parameters['dominance_map_medium_sigma'], 'medium',
                                                           self.parameters['dominance_map_halite_clip'])
-            # if board.step % 25 == 0:
-            #     display_matrix(self.medium_dominance_map.reshape((self.size, self.size)))
+            self.cargo_map = get_cargo_map(self.me.ships, self.parameters['cargo_map_halite_norm'])
 
         self.planned_moves.clear()
         self.spawn_limit_reached = self.reached_spawn_limit(board)
@@ -633,7 +631,8 @@ class HaliteBot(object):
             self.medium_dominance_map[enemy_pos] + 30, 0, 60) / 60) * (
                        1 + (self.parameters['hunting_score_kappa'] * (3 - self.player_ranking[ship.player_id]))) * (
                        1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
-                                                                         500) / 500)
+                                                                         500) / 500)) * (
+                       1 + (self.parameters['hunting_score_zeta'] * self.cargo_map[enemy_pos])
                )
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:

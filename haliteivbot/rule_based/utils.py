@@ -96,6 +96,13 @@ def _get_player_map(player, max_halite, size=21):
     return player_map.reshape((size, size))
 
 
+def get_cargo_map(ships, halite_norm, size=21):
+    cargo_map = np.zeros((size ** 2,), dtype=np.float)
+    for ship in ships:
+        cargo_map[POSITIONS_IN_SMALL_RADIUS[TO_INDEX[ship.position]]] += ship.halite / halite_norm
+    return cargo_map
+
+
 def get_dominance_map(me, opponents, sigma, radius, halite_clip, size=21):
     dominance_map = np.zeros((size ** 2,), dtype=np.float)
     if radius == 'small':
