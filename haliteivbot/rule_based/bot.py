@@ -10,7 +10,7 @@ from haliteivbot.rule_based.utils import *
 logging.basicConfig(level=logging.WARNING)
 
 PARAMETERS = {
-    'cell_score_enemy_halite': 0.35,
+    'cell_score_enemy_halite': 0.2,
     'cell_score_neighbour_discount': 0.7,
     'cell_score_ship_halite': 0.0006600467572978282,
     'cell_score_dominance': 5,
@@ -32,7 +32,7 @@ PARAMETERS = {
     'hunting_score_gamma': 0.92,
     'hunting_score_iota': 0.5,
     'hunting_score_kappa': 0.3114198925625326,
-    'hunting_threshold': 8,
+    'hunting_threshold': 4,
     'map_blur_gamma': 0.75,
     'map_blur_sigma': 0.6,
     'max_halite_attack_shipyard': 0,
@@ -44,7 +44,7 @@ PARAMETERS = {
     'min_ships': 25,
     'min_shipyard_distance': 2,
     'mining_score_alpha': 0.96,
-    'mining_score_beta': 0.7,
+    'mining_score_beta': 0.85,
     'mining_score_dominance_clip': 4,
     'mining_score_dominance_norm': 0.7,
     'mining_score_gamma': 0.98,
@@ -382,7 +382,7 @@ class HaliteBot(object):
         target_positions = mining_positions + dropoff_positions
 
         assigned_scores = [mining_scores[r][c] for r, c in zip(row, col)]
-        # print(np.mean(assigned_scores))
+        logging.debug("assigned mining scores mean: {}".format(np.mean(assigned_scores)))
         hunting_threshold = np.mean(assigned_scores) - np.std(assigned_scores) * self.parameters[
             'hunting_score_alpha'] if len(assigned_scores) > 0 else -1
         hunting_enabled = board.step > self.parameters['disable_hunting_till'] and self.ship_count >= self.parameters[
@@ -424,6 +424,7 @@ class HaliteBot(object):
         encoded_dirs = [1, 2, 4, 8]
         possible_enemy_targets = [(dir, ship) for dir in encoded_dirs for ship in self.enemies for _ in
                                   range(self.parameters['max_hunting_ships_per_direction'])]
+        logging.debug("Number of hunting ships: {}".format(len(self.hunting_ships)))
         hunting_scores = np.zeros(
             (len(self.hunting_ships), len(self.enemies) * 4 * self.parameters['max_hunting_ships_per_direction']))
         for ship_index, ship in enumerate(self.hunting_ships):
@@ -550,6 +551,8 @@ class HaliteBot(object):
                 continue
             enemies = set(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
                                  get_neighbours(shipyard.cell)))
+            max_halite = min([cell.ship.halite for cell in enemies]) if len(enemies) > 0 else 500
+
             if len(enemies) > 0:
                 dominance = self.medium_dominance_map[TO_INDEX[shipyard.position]]
                 # TODO: maybe don't move on the shipyard if the dominance score is too low
@@ -573,7 +576,7 @@ class HaliteBot(object):
                 else:
                     # TODO: add max halite the guarding ship can have
                     potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
-                                        neighbour.ship is not None and neighbour.ship.player_id == self.player_id]
+                                        neighbour.ship is not None and neighbour.ship.player_id == self.player_id and neighbour.ship.halite <= max_halite]
                     if len(potential_guards) > 0 and (
                             self.reached_spawn_limit(board) or self.halite < self.config.spawn_cost):
                         guard = sorted(potential_guards, key=lambda ship: ship.halite)[0]

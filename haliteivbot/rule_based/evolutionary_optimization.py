@@ -16,7 +16,7 @@ NB_PARENTS = 3
 POOL_NAME = ""
 
 hyperparameters = {
-    'cell_score_enemy_halite': ('float', (0.15, 0.5)),
+    'cell_score_enemy_halite': ('float', (0.05, 0.5)),
     'cell_score_neighbour_discount': ('float', (0.6, 0.8)),
     'cell_score_ship_halite': ('float', (0.0005, 0.001)),
     'cell_score_dominance': ('float', (1, 8)),
@@ -32,13 +32,13 @@ hyperparameters = {
     'ending_halite_threshold': ('int', (1, 30)),
     'hunting_min_ships': ('int', (15, 25)),
     'hunting_halite_threshold': ('float', (0.01, 0.5)),
-    'hunting_score_alpha': ('float', (-1, 1.2)),
+    'hunting_score_alpha': ('float', (-1, 2.5)),
     'hunting_score_beta': ('float', (1.2, 4)),
     'hunting_score_delta': ('float', (0.5, 1.5)),
     'hunting_score_gamma': ('float', (0.75, 0.99)),
     'hunting_score_iota': ('float', (0.2, 0.8)),
     'hunting_score_kappa': ('float', (0.15, 0.4)),
-    'hunting_threshold': ('float', (4, 30)),
+    'hunting_threshold': ('float', (1, 17)),
     'map_blur_gamma': ('float', (0.4, 0.95)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
     'max_halite_attack_shipyard': ('int', (0, 0)),
