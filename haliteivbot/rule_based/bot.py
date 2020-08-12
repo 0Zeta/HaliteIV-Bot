@@ -13,6 +13,7 @@ PARAMETERS = {
     'cell_score_enemy_halite': 0.35,
     'cell_score_neighbour_discount': 0.7,
     'cell_score_ship_halite': 0.0006600467572978282,
+    'cell_score_dominance': 5,
     'convert_when_attacked_threshold': 500,
     'disable_hunting_till': 65,
     'dominance_map_halite_clip': 350,
@@ -667,7 +668,7 @@ class HaliteBot(object):
                     neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
                                        self.parameters['cell_score_neighbour_discount']
         score += neighbour_value
-        score += self.small_dominance_map[TO_INDEX[cell.position]]
+        score += self.parameters['cell_score_dominance'] * self.small_dominance_map[TO_INDEX[cell.position]]
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
     def calculate_player_score(self, player):
