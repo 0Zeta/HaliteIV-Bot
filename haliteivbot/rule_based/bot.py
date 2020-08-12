@@ -651,7 +651,7 @@ class HaliteBot(object):
                     score += self.parameters['move_preference_block_shipyard']
         if cell.ship is not None and cell.ship.player_id != self.player_id:
             if cell.ship.halite < ship.halite:
-                score -= (500 + ship.halite)
+                score -= (500 + ship.halite - 0.5 * cell.ship.halite)
             elif cell.ship.halite == ship.halite:
                 score -= 500
             else:
