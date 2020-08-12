@@ -13,7 +13,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = ""
+POOL_NAME = "2020-08-12 06-05"
 
 hyperparameters = {
     'cell_score_enemy_halite': ('float', (0.15, 0.5)),

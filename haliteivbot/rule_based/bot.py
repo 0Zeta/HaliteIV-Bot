@@ -185,6 +185,7 @@ class HaliteBot(object):
             #     display_matrix(self.medium_dominance_map.reshape((self.size, self.size)))
 
         self.planned_moves.clear()
+        self.spawn_limit_reached = self.reached_spawn_limit(board)
         self.positions_in_reach = []
         for ship in self.me.ships:
             self.positions_in_reach.extend(self.positions_in_reach_list[ship.position])
@@ -232,8 +233,6 @@ class HaliteBot(object):
         enemy_cargo = sorted([ship.halite for ship in self.enemies])
         self.hunting_halite_threshold = enemy_cargo[
             floor(len(enemy_cargo) * self.parameters['hunting_halite_threshold'])] if len(enemy_cargo) > 0 else 0
-
-        self.spawn_limit_reached = self.reached_spawn_limit(board)
 
         self.handle_special_steps(board)
         self.guard_shipyards(board)
@@ -565,6 +564,7 @@ class HaliteBot(object):
                     else:
                         self.spawn_ship(shipyard)
                         for enemy in enemies:
+                            logging.debug("Attacking a ship near our shipyard")
                             self.change_position_score(shipyard.cell.ship, enemy.position,
                                                        500)  # equalize to crash into the ship even if that means we also lose our ship
                             self.attack_position(
@@ -572,7 +572,7 @@ class HaliteBot(object):
                 else:
                     # TODO: add max halite the guarding ship can have
                     potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
-                                        neighbour.ship is not None and neighbour.ship.id == self.player_id]
+                                        neighbour.ship is not None and neighbour.ship.player_id == self.player_id]
                     if len(potential_guards) > 0 and (
                             self.reached_spawn_limit(board) or self.halite < self.config.spawn_cost):
                         guard = sorted(potential_guards, key=lambda ship: ship.halite)[0]
@@ -582,6 +582,7 @@ class HaliteBot(object):
                             shipyard.position) + " to protect a shipyard.")
                     elif self.halite > self.config.spawn_cost and (dominance >= self.parameters[
                         'shipyard_guarding_min_dominance'] or board.step <= 25 or self.shipyard_count == 1):
+                        logging.debug("Shipyard " + str(shipyard.id) + " spawns a ship to defend the position.")
                         self.spawn_ship(shipyard)
                     else:
                         logging.debug("Shipyard " + str(shipyard.id) + " cannot be protected.")
