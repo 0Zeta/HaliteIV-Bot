@@ -286,7 +286,6 @@ class HaliteBot(object):
     def move_ships(self, board: Board):
         if len(self.me.ships) == 0:
             return
-        # TODO: remove these lists
         self.returning_ships.clear()
         self.mining_ships.clear()
         self.hunting_ships.clear()
@@ -361,6 +360,9 @@ class HaliteBot(object):
                 dropoff_positions.add(shipyard_pos + get_distance(TO_INDEX[ship.position], shipyard_pos) * 1000)
         dropoff_positions = list(dropoff_positions)
 
+        self.mining_score_beta = self.parameters['mining_score_beta'] if self.step_count >= 60 else 0.65 * \
+                                                                                                    self.parameters[
+                                                                                                        'mining_score_beta']  # Don't return too often early in the game
         mining_scores = np.zeros((len(self.mining_ships), len(mining_positions) + len(dropoff_positions)))
         for ship_index, ship in enumerate(self.mining_ships):
             ship_pos = TO_INDEX[ship.position]
@@ -572,7 +574,6 @@ class HaliteBot(object):
                             self.attack_position(
                                 enemy.position)  # Maybe also do this if we don't spawn a ship, but can move one to the shipyard
                 else:
-                    # TODO: add max halite the guarding ship can have
                     potential_guards = [neighbour.ship for neighbour in get_neighbours(shipyard.cell) if
                                         neighbour.ship is not None and neighbour.ship.player_id == self.player_id and neighbour.ship.halite <= max_halite]
                     if len(potential_guards) > 0 and (
@@ -612,7 +613,7 @@ class HaliteBot(object):
             self.parameters['mining_score_dominance_clip'] * 2) / (self.parameters['mining_score_dominance_clip'] * 2) + \
                     self.parameters['mining_score_dominance_norm']
         score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
-                self.parameters['mining_score_beta'] * ship_halite + (1 - 0.75 ** mining_steps) * min(
+                self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * min(
             1.02 ** distance_from_ship * halite_val, 500)) * dominance / (
                         distance_from_ship + mining_steps + self.parameters[
                     'mining_score_alpha'] * distance_from_shipyard)
