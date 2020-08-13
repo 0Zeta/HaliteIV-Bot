@@ -10,65 +10,66 @@ from haliteivbot.rule_based.utils import *
 logging.basicConfig(level=logging.WARNING)
 
 PARAMETERS = {
-    'cargo_map_halite_norm': 300,
-    'cell_score_enemy_halite': 0.25,
+    'cargo_map_halite_norm': 259,
+    'cell_score_dominance': 2.0690023066592538,
+    'cell_score_enemy_halite': 0.40986189593968725,
     'cell_score_neighbour_discount': 0.7,
     'cell_score_ship_halite': 0.0006600467572978282,
-    'cell_score_dominance': 3,
-    'convert_when_attacked_threshold': 500,
-    'disable_hunting_till': 65,
-    'dominance_map_halite_clip': 350,
+    'convert_when_attacked_threshold': 520,
+    'disable_hunting_till': 81,
+    'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 0.05,
+    'dominance_map_medium_sigma': 0.15718059530479717,
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 0.05,
-    'end_return_extra_moves': 8,
-    'end_start': 375,
-    'ending_halite_threshold': 1,
-    'hunting_halite_threshold': 0.15,
-    'hunting_min_ships': 18,
-    'hunting_score_alpha': 0.8,
-    'hunting_score_beta': 2.5942517199955524,
-    'hunting_score_delta': 0.5142337849582957,
-    'hunting_score_gamma': 0.92,
-    'hunting_score_zeta': 1,
-    'hunting_score_iota': 0.5,
-    'hunting_score_kappa': 0.3114198925625326,
-    'hunting_threshold': 6,
-    'map_blur_gamma': 0.75,
-    'map_blur_sigma': 0.6,
+    'end_return_extra_moves': 7,
+    'end_start': 377,
+    'ending_halite_threshold': 3,
+    'hunting_halite_threshold': 0.258104350651479,
+    'hunting_min_ships': 19,
+    'hunting_score_alpha': 0.6185031612833689,
+    'hunting_score_beta': 2.6052114574581884,
+    'hunting_score_delta': 0.8709006820260277,
+    'hunting_score_gamma': 0.9647931896975708,
+    'hunting_score_iota': 0.48901814674196414,
+    'hunting_score_kappa': 0.34774561811044974,
+    'hunting_score_zeta': 1.2,
+    'hunting_score_cargo_clip': 2.5,
+    'hunting_threshold': 13.789006382752898,
+    'map_blur_gamma': 0.6534115332552308,
+    'map_blur_sigma': 0.6556642121639878,
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 30,
     'max_shipyard_distance': 7,
-    'max_shipyards': 1,
-    'min_mining_halite': 37,
-    'min_ships': 25,
-    'min_shipyard_distance': 2,
-    'mining_score_alpha': 0.96,
-    'mining_score_beta': 0.85,
+    'max_shipyards': 4,
+    'min_mining_halite': 38,
+    'min_ships': 30,
+    'min_shipyard_distance': 1,
+    'mining_score_alpha': 0.9081426212090371,
+    'mining_score_beta': 0.7277067758648436,
     'mining_score_dominance_clip': 4,
-    'mining_score_dominance_norm': 0.7,
+    'mining_score_dominance_norm': 0.6161301729692376,
     'mining_score_gamma': 0.98,
-    'move_preference_base': 106,
-    'move_preference_hunting': 113,
+    'move_preference_base': 104,
+    'move_preference_block_shipyard': -97,
+    'move_preference_hunting': 115,
     'move_preference_longest_axis': 10,
     'move_preference_mining': 130,
     'move_preference_return': 116,
-    'move_preference_stay_on_shipyard': -112,
-    'move_preference_block_shipyard': -130,
+    'move_preference_stay_on_shipyard': -125,
     'return_halite': 1970,
-    'ship_spawn_threshold': 0.55,
-    'ships_shipyards_threshold': 0.01,
-    'shipyard_abandon_dominance': -3.5,
-    'shipyard_conversion_threshold': 10,
+    'ship_spawn_threshold': 1.4001702394113038,
+    'ships_shipyards_threshold': 0.07791666764994667,
+    'shipyard_abandon_dominance': -4.115371900722006,
+    'shipyard_conversion_threshold': 10.122728414396494,
     'shipyard_guarding_attack_probability': 0.35,
-    'shipyard_guarding_min_dominance': 6,
+    'shipyard_guarding_min_dominance': 6.643278855975787,
     'shipyard_min_dominance': 7,
-    'shipyard_start': 55,
-    'shipyard_stop': 260,
-    'spawn_min_dominance': 4.5,
-    'spawn_till': 240
+    'shipyard_start': 54,
+    'shipyard_stop': 225,
+    'spawn_min_dominance': 4.305778383923281,
+    'spawn_till': 221
 }
 
 BOT = None
@@ -181,7 +182,7 @@ class HaliteBot(object):
             self.medium_dominance_map = get_dominance_map(self.me, self.opponents,
                                                           self.parameters['dominance_map_medium_sigma'], 'medium',
                                                           self.parameters['dominance_map_halite_clip'])
-            self.cargo_map = get_cargo_map(self.me.ships, self.parameters['cargo_map_halite_norm'])
+            self.cargo_map = get_cargo_map(self.me.ships, self.me.shipyards, self.parameters['cargo_map_halite_norm'])
 
         self.planned_moves.clear()
         self.spawn_limit_reached = self.reached_spawn_limit(board)
@@ -633,8 +634,10 @@ class HaliteBot(object):
                        1 + (self.parameters['hunting_score_kappa'] * (3 - self.player_ranking[ship.player_id]))) * (
                        1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
                                                                          500) / 500)) * (
-                       1 + (self.parameters['hunting_score_zeta'] * self.cargo_map[enemy_pos])
-               )
+                1 + (self.parameters['hunting_score_zeta'] * clip(self.cargo_map[enemy_pos], 0,
+                                                                  self.parameters['hunting_score_cargo_clip']) /
+                     self.parameters['hunting_score_cargo_clip'])
+        )
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         score = 0
