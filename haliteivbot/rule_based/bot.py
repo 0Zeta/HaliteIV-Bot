@@ -28,7 +28,7 @@ PARAMETERS = {
     'hunting_halite_threshold': 0.3538383892609748,
     'hunting_min_ships': 18,
     'hunting_score_alpha': 0.6185031612833689,
-    'hunting_score_beta': 2.6052114574581884,
+    'hunting_score_beta': 2,
     'hunting_score_cargo_clip': 2.3871353729126477,
     'hunting_score_delta': 0.5,
     'hunting_score_gamma': 0.9647931896975708,
@@ -636,7 +636,7 @@ class HaliteBot(object):
         distance = get_distance(ship_pos, enemy_pos)
         return self.parameters['hunting_score_gamma'] ** distance * (d_halite + ship_bonus) * (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
-            self.medium_dominance_map[enemy_pos] + 30, 0, 60) / 60) * (
+            self.medium_dominance_map[enemy_pos] + 20, 0, 40) / 40) * (
                        1 + (self.parameters['hunting_score_kappa'] * self.map_presence_ranking[ship.player_id])) * (
                        1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
                                                                          500) / 500)) * (
