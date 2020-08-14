@@ -123,6 +123,7 @@ class HaliteBot(object):
         create_navigation_lists(self.size)
         create_radius_lists(self.parameters['dominance_map_small_radius'],
                             self.parameters['dominance_map_medium_radius'])
+        self.distances = get_distance_matrix()
         self.positions_in_reach_list = compute_positions_in_reach()
         self.farthest_directions_indices = get_farthest_directions_matrix()
         self.farthest_directions = get_farthest_directions_list()
@@ -386,8 +387,8 @@ class HaliteBot(object):
         logging.debug("assigned mining scores mean: {}".format(np.mean(assigned_scores)))
         hunting_threshold = np.mean(assigned_scores) - np.std(assigned_scores) * self.parameters[
             'hunting_score_alpha'] if len(assigned_scores) > 0 else -1
-        hunting_enabled = board.step > self.parameters['disable_hunting_till'] and self.ship_count >= self.parameters[
-            'hunting_min_ships']
+        hunting_enabled = board.step > self.parameters['disable_hunting_till'] and (self.ship_count >= self.parameters[
+            'hunting_min_ships'] or board.step > self.parameters['spawn_till'])
 
         for r, c in zip(row, col):
             if (mining_scores[r][c] < self.parameters['hunting_threshold'] or (

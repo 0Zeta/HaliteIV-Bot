@@ -43,7 +43,6 @@ class Tournament(object):
                                env.configuration)[0]
             results[:] = [results[i] for i in shuffled_indices]
             standings = 3 - np.argsort(results)
-            print("Game finished")
             pipe.send((bots, standings))
         except Exception as exception:
             logging.critical("An error occurred.")
