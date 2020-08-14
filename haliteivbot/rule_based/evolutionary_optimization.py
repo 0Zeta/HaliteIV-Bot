@@ -4,8 +4,6 @@ from random import random, choice, sample
 
 import numpy as np
 
-from haliteivbot.rule_based.utils import imdict
-
 MUTATION_PROBABILITY = 0.08
 CROSSOVER_PROBABILITY = 0.1
 POOL_SIZE = 12
@@ -13,7 +11,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = ""
+POOL_NAME = "2020-08-14 14-27"
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (50, 500)),
@@ -250,7 +248,8 @@ def optimize():
                 pool.append(create_new_genome(sample(new_pool, k=NB_PARENTS)))
             else:
                 pool.append(create_new_genome(new_pool))
-        pool = [imdict(genome) for genome in pool]
+        for index, genome in enumerate(pool):
+            genome['evo_id'] = index
         for baseline_bot in baseline_bots:
             pool.append("evolutionary/bots/" + baseline_bot + ".py")
         print("Testing new genomes")

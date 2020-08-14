@@ -1,4 +1,5 @@
 import logging
+from multiprocessing import Process, Pipe
 from random import randrange, sample
 
 import numpy as np
@@ -19,9 +20,20 @@ class Tournament(object):
     def __init__(self, bots):
         self.ratings = {i: Rating(mu=600, sigma=50) for i in range(len(bots))}
         self.bots = bots
-        self.bot_to_idx = {bot: index for index, bot in enumerate(bots)}
+        self.bot_to_idx = dict()
+        for index, bot in enumerate(bots):
+            if isinstance(bot, str):
+                self.bot_to_idx[bot] = index
+            else:
+                self.bot_to_idx[bot['evo_id']] = index
 
-    def play_game(self, bots):
+    def bot_to_index(self, bot):
+        if isinstance(bot, str):
+            return self.bot_to_idx[bot]
+        else:
+            return self.bot_to_idx[bot['evo_id']]
+
+    def play_game(self, bots, pipe):
         try:
             env = make("halite", configuration={"size": 21, 'randomSeed': randrange((1 << 32) - 1)}, debug=True)
             env.reset(4)
@@ -31,27 +43,39 @@ class Tournament(object):
                                env.configuration)[0]
             results[:] = [results[i] for i in shuffled_indices]
             standings = 3 - np.argsort(results)
+            print("Game finished")
+            pipe.send((bots, standings))
         except Exception as exception:
             logging.critical("An error occurred.")
             print(exception)
-            return [0, 0, 0, 0]
-        return standings
+            pipe.send((bots, [0, 0, 0, 0]))
 
     def play_tournament(self, rounds):
         for round in range(rounds):
+            print("Starting round {}/{}".format(round + 1, rounds))
             round_bots = sample(self.bots, k=len(self.bots))
             games_per_round = len(self.bots) // 4
+            results = []
+            processes = []
             for game in range(games_per_round):
-                print("Playing game {}/{} of round {}/{}".format(game + 1, games_per_round, round + 1, rounds))
                 bots = round_bots[game * 4:(game + 1) * 4]
-                standings = self.play_game(bots)
-                new_ratings = rate([[self.ratings[self.bot_to_idx[bot]]] for bot in bots], ranks=standings)
+                recv, send = Pipe(False)
+                p = Process(target=self.play_game, args=(bots, send))
+                processes.append(p)
+                results.append(recv)
+                p.start()
+            for process in processes:
+                process.join()
+            for recv in results:
+                result = recv.recv()
+                bots = result[0]
+                standings = result[1]
+                new_ratings = rate([[self.ratings[self.bot_to_index(bot)]] for bot in bots], ranks=standings)
                 for i, bot in enumerate(bots):
-                    self.ratings[self.bot_to_idx[bot]] = new_ratings[i][0]
-                print([(idx, rating) if not isinstance(self.bots[idx], str) else (
-                    self.bots[idx].replace('evolutionary/bots/', '').replace('.py', ''), rating) for idx, rating in
-                       sorted(self.ratings.items(), key=lambda item: item[1].mu, reverse=True)])
+                    self.ratings[self.bot_to_index(bot)] = new_ratings[i][0]
+            print([(idx, rating) if not isinstance(self.bots[idx], str) else (
+            self.bots[idx].replace('evolutionary/bots/', '').replace('.py', ''), rating) for idx, rating in
+                   sorted(self.ratings.items(), key=lambda item: item[1].mu, reverse=True)])
 
-        print([(self.bots[idx], rating) for idx, rating in self.ratings.items()])
         return [self.bots[bot_index] for bot_index, _ in
                 sorted(self.ratings.items(), key=lambda item: item[1].mu, reverse=True)]
