@@ -560,8 +560,10 @@ class HaliteBot(object):
                 # TODO: maybe don't move on the shipyard if the dominance score is too low
                 if shipyard.cell.ship is not None:
                     self.ship_types[shipyard.cell.ship.id] = ShipType.GUARDING
-                    if self.halite < self.config.spawn_cost or dominance < self.parameters[
-                        'shipyard_guarding_min_dominance'] or random() > self.parameters[
+                    if self.halite < self.config.spawn_cost or (
+                            self.step_count > self.parameters['spawn_till'] and self.shipyard_count > 1) or dominance < \
+                            self.parameters[
+                                'shipyard_guarding_min_dominance'] or random() > self.parameters[
                         'shipyard_guarding_attack_probability'] or self.step_count >= 365:
                         if dominance > self.parameters['shipyard_abandon_dominance']:
                             self.change_position_score(shipyard.cell.ship, shipyard.cell.position, 10000)
