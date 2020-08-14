@@ -11,7 +11,7 @@ SELECTION_CAP = 5  # take the fittest five genomes of a generation
 IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-08-14 14-27"
+POOL_NAME = "2020-08-14 19-40"
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (50, 500)),
