@@ -1,17 +1,19 @@
+import os
 import pickle
 from datetime import datetime
 from random import random, choice, sample
 
 import numpy as np
 
-MUTATION_PROBABILITY = 0.08
+MUTATION_PROBABILITY = 0.05
 CROSSOVER_PROBABILITY = 0.1
-POOL_SIZE = 12
-SELECTION_CAP = 5  # take the fittest five genomes of a generation
-IGNORE_SELECTION_PROBABILITY = 0.1  # the probability to let another genome survive
+POOL_SIZE = 16
+SELECTION_CAP = 4  # take the fittest four genomes of a generation
+NB_OLD_GENOMES = 3
+IGNORE_SELECTION_PROBABILITY = 0.03  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = "2020-08-14 21-30"
+POOL_NAME = ""
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (50, 500)),
@@ -212,7 +214,7 @@ if __name__ == "__main__":
 def create_new_genome(parents):
     genome = dict()
     current_parent = choice(parents)
-    for characteristic in hyperparameters.keys():
+    for characteristic in sample(hyperparameters.keys(), k=len(hyperparameters)):
         if random() <= CROSSOVER_PROBABILITY:
             current_parent = choice([parent for parent in parents if parent != current_parent])
         if random() <= MUTATION_PROBABILITY:
@@ -245,6 +247,11 @@ def optimize():
             if random() <= IGNORE_SELECTION_PROBABILITY:
                 new_pool.append(genome)
         pool = new_pool.copy()
+        old_genomes = list(os.listdir('evolutionary/genomes'))
+        for _ in range(min(NB_OLD_GENOMES, len(old_genomes))):  # Put some random old genomes into the pool
+            random_pool = load_pool(choice(old_genomes))[:2]  # consider only the best two genomes of the pool
+            pool.append(choice(random_pool))
+
         print("Filling pool with current size of %i" % len(pool))
         for i in range(POOL_SIZE - len(new_pool) - ((POOL_SIZE + len(baseline_bots)) % 4)):
             if len(new_pool) > NB_PARENTS:
