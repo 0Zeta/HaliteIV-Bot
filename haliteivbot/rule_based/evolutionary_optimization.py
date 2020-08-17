@@ -13,7 +13,7 @@ NB_OLD_GENOMES = 3
 IGNORE_SELECTION_PROBABILITY = 0.03  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = ""
+POOL_NAME = "2020-08-15 21-42"
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (50, 500)),
@@ -48,11 +48,11 @@ hyperparameters = {
     'max_halite_attack_shipyard': ('int', (0, 0)),
     'max_hunting_ships_per_direction': ('int', (1, 3)),
     'max_ship_advantage': ('int', (-5, 30)),
-    'max_shipyard_distance': ('int', (7, 20)),
+    'max_shipyard_distance': ('int', (7, 8)),
     'max_shipyards': ('int', (2, 5)),
     'min_mining_halite': ('int', (1, 50)),
     'min_ships': ('int', (8, 40)),
-    'min_shipyard_distance': ('int', (1, 10)),
+    'min_shipyard_distance': ('int', (5, 6)),
     'mining_score_alpha': ('float', (0.65, 0.99)),
     'mining_score_beta': ('float', (0.55, 0.99)),
     'mining_score_gamma': ('float', (0.97, 0.9999)),
