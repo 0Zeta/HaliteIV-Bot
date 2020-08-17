@@ -105,6 +105,26 @@ def get_cargo_map(ships, shipyards, halite_norm, size=21):
     return cargo_map
 
 
+def get_farming_positions(shipyard_distances, shipyard_positions, farming_radius):
+    farming_positions = []
+    if len(shipyard_positions) == 0:
+        return farming_positions
+    required_in_range = min(3, max(2, len(shipyard_positions)))
+    for pos in range(SIZE ** 2):
+        if pos in shipyard_positions:
+            continue
+        if shipyard_distances[pos] > farming_radius:
+            continue
+        nb_in_range = 0
+        for shipyard_pos in shipyard_positions:
+            if DISTANCES[shipyard_pos][pos] <= farming_radius:
+                nb_in_range += 1
+                if nb_in_range >= required_in_range:
+                    farming_positions.append(pos)
+                    continue
+    return farming_positions
+
+
 def get_dominance_map(me, opponents, sigma, radius, halite_clip, size=21):
     dominance_map = np.zeros((size ** 2,), dtype=np.float)
     if radius == 'small':

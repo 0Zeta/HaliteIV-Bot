@@ -48,10 +48,11 @@ PARAMETERS = {
     'min_ships': 30,
     'min_shipyard_distance': 6,
     'mining_score_alpha': 0.9301155348792725,
-    'mining_score_beta': 0.8090153388632068,
+    'mining_score_beta': 0.95,
     'mining_score_dominance_clip': 4,
     'mining_score_dominance_norm': 0.738615898106214,
     'mining_score_gamma': 0.98,
+    'mining_score_farming_penalty': 0.05,
     'move_preference_base': 100,
     'move_preference_block_shipyard': -100,
     'move_preference_hunting': 107,
@@ -59,10 +60,11 @@ PARAMETERS = {
     'move_preference_mining': 130,
     'move_preference_return': 116,
     'move_preference_stay_on_shipyard': -125,
+    'farming_end': 350,
     'return_halite': 1970,
     'ship_spawn_threshold': 1.4001702394113038,
     'ships_shipyards_threshold': 0.07791666764994667,
-    'shipyard_abandon_dominance': -7,
+    'shipyard_abandon_dominance': -15,
     'shipyard_conversion_threshold': 13.016513149297758,
     'shipyard_guarding_attack_probability': 0.1,
     'shipyard_guarding_min_dominance': 1,
@@ -177,11 +179,14 @@ class HaliteBot(object):
             self.shipyard_distances = []
             for position in range(self.size ** 2):
                 min_distance = float('inf')
-                for shipyard in self.me.shipyards:  # TODO: consider planned shipyards
-                    distance = get_distance(position, TO_INDEX[shipyard.position])
+                for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
+                    distance = get_distance(position, shipyard_position)
                     if distance < min_distance:
                         min_distance = distance
                 self.shipyard_distances.append(min_distance)
+
+        self.farming_positions = get_farming_positions(self.shipyard_distances, self.shipyard_positions,
+                                                       self.parameters['min_shipyard_distance'])
 
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_dominance_map(self.me, self.opponents,
@@ -596,6 +601,8 @@ class HaliteBot(object):
                         logging.debug("Shipyard " + str(shipyard.id) + " cannot be protected.")
 
     def should_convert(self, ship: Ship):
+        if self.shipyard_count == 0:
+            return True  # TODO: choose best ship
         if self.shipyard_count >= self.parameters['max_shipyards']:
             return False
         if self.halite + ship.halite < self.config.convert_cost:
@@ -608,8 +615,6 @@ class HaliteBot(object):
         if self.medium_dominance_map[ship_pos] < self.parameters['shipyard_min_dominance']:
             return False
         distance_to_nearest_shipyard = self.shipyard_distances[ship_pos]
-        if self.shipyard_count == 0:
-            return True  # TODO: choose best ship
         if self.parameters['min_shipyard_distance'] <= distance_to_nearest_shipyard <= self.parameters[
             'max_shipyard_distance']:
             if self.shipyard_count < 2:
@@ -652,6 +657,9 @@ class HaliteBot(object):
                     'mining_score_alpha'] * distance_from_shipyard)
         if distance_from_shipyard == 0 and self.step_count <= 11:
             score *= 0.1  # We don't want to block the shipyard.
+        if self.step_count < self.parameters[
+            'farming_end'] and halite_val < 499 and cell_position in self.farming_positions:
+            score *= self.parameters['mining_score_farming_penalty']
         return score
 
     def calculate_hunting_score(self, ship: Ship, enemy: Ship) -> float:
