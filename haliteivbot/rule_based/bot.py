@@ -29,13 +29,13 @@ PARAMETERS = {
     'hunting_halite_threshold': 0.35513712837131095,
     'hunting_min_ships': 16,
     'hunting_score_alpha': 0.65,
-    'hunting_score_beta': 2.6052114574581884,
+    'hunting_score_beta': 3,
     'hunting_score_cargo_clip': 2.434932143755778,
     'hunting_score_delta': 0.8709006820260277,
     'hunting_score_gamma': 0.9509334468781269,
     'hunting_score_iota': 0.5105732890493775,
     'hunting_score_kappa': 0.39357038462375626,
-    'hunting_score_zeta': 0.8569974451111834,
+    'hunting_score_zeta': 2,
     'hunting_threshold': 12.12833619658105,
     'map_blur_gamma': 0.6534115332552308,
     'map_blur_sigma': 0.7762017145865703,
@@ -48,10 +48,10 @@ PARAMETERS = {
     'min_ships': 30,
     'min_shipyard_distance': 6,
     'mining_score_alpha': 0.9301155348792725,
-    'mining_score_beta': 0.95,
+    'mining_score_beta': 0.85,
     'mining_score_dominance_clip': 4,
     'mining_score_dominance_norm': 0.738615898106214,
-    'mining_score_gamma': 0.98,
+    'mining_score_gamma': 0.96,
     'mining_score_farming_penalty': 0.05,
     'move_preference_base': 100,
     'move_preference_block_shipyard': -100,
@@ -63,11 +63,11 @@ PARAMETERS = {
     'farming_end': 350,
     'return_halite': 1970,
     'ship_spawn_threshold': 1.4001702394113038,
-    'ships_shipyards_threshold': 0.07791666764994667,
+    'ships_shipyards_threshold': 0.12,
     'shipyard_abandon_dominance': -15,
-    'shipyard_conversion_threshold': 13.016513149297758,
+    'shipyard_conversion_threshold': 8,
     'shipyard_guarding_attack_probability': 0.1,
-    'shipyard_guarding_min_dominance': 1,
+    'shipyard_guarding_min_dominance': -8,
     'shipyard_min_dominance': 5,
     'shipyard_start': 45,
     'shipyard_stop': 280,
@@ -171,22 +171,27 @@ class HaliteBot(object):
             self.map_presence_ranking[player.id] = int(np.where(map_presence_ranks == i)[0])
             self.halite_ranking[player.id] = int(np.where(halite_ranks == i)[0])
 
+        self.farming_positions = []
         # Compute distances to the next shipyard:
         if self.shipyard_count == 0:
             # There is no shipyard, but we still need to mine.
             self.shipyard_distances = [3] * self.size ** 2
         else:
+            # Also compute farming positions
+            required_in_range = min(3, max(2, len(self.shipyard_positions)))
             self.shipyard_distances = []
             for position in range(self.size ** 2):
+                nb_in_farming_range = 0
                 min_distance = float('inf')
                 for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
                     distance = get_distance(position, shipyard_position)
+                    if position not in self.shipyard_positions and distance <= self.parameters['min_shipyard_distance']:
+                        nb_in_farming_range += 1
+                        if nb_in_farming_range == required_in_range:
+                            self.farming_positions.append(position)
                     if distance < min_distance:
                         min_distance = distance
                 self.shipyard_distances.append(min_distance)
-
-        self.farming_positions = get_farming_positions(self.shipyard_distances, self.shipyard_positions,
-                                                       self.parameters['min_shipyard_distance'])
 
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_dominance_map(self.me, self.opponents,
@@ -601,11 +606,11 @@ class HaliteBot(object):
                         logging.debug("Shipyard " + str(shipyard.id) + " cannot be protected.")
 
     def should_convert(self, ship: Ship):
+        if self.halite + ship.halite < self.config.convert_cost:
+            return False
         if self.shipyard_count == 0:
             return True  # TODO: choose best ship
         if self.shipyard_count >= self.parameters['max_shipyards']:
-            return False
-        if self.halite + ship.halite < self.config.convert_cost:
             return False
         if self.average_halite_per_cell / self.shipyard_count < self.parameters[
             'shipyard_conversion_threshold'] or self.shipyard_count / self.ship_count >= self.parameters[
