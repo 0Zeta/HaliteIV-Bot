@@ -669,20 +669,21 @@ class HaliteBot(object):
 
     def calculate_hunting_score(self, ship: Ship, enemy: Ship) -> float:
         d_halite = enemy.halite - ship.halite
-        ship_bonus = 500 - self.step_count if d_halite > 0 else 0
+        ship_bonus = 500 * self.step_count / 398 if d_halite > 0 else 0
         ship_pos = TO_INDEX[ship.position]
         enemy_pos = TO_INDEX[enemy.position]
         distance = get_distance(ship_pos, enemy_pos)
+        player_score = 1 + self.parameters['hunting_score_kappa'] * (
+            3 - self.player_ranking[ship.player_id] if self.rank <= 1 else self.player_ranking[ship.player_id])
         return self.parameters['hunting_score_gamma'] ** distance * (d_halite + ship_bonus) * (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
-            self.medium_dominance_map[enemy_pos] + 20, 0, 40) / 40) * (
-                       1 + (self.parameters['hunting_score_kappa'] * (3 - self.halite_ranking[ship.player_id]))) * (
+            self.medium_dominance_map[enemy_pos] + 20, 0, 40) / 40) * player_score * (
                        1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
                                                                          500) / 500)) * (
-                1 + (self.parameters['hunting_score_zeta'] * clip(self.cargo_map[enemy_pos], 0,
-                                                                  self.parameters['hunting_score_cargo_clip']) /
-                     self.parameters['hunting_score_cargo_clip'])
-        )
+                       1 + (self.parameters['hunting_score_zeta'] * clip(self.cargo_map[enemy_pos], 0,
+                                                                         self.parameters['hunting_score_cargo_clip']) /
+                            self.parameters['hunting_score_cargo_clip'])
+               )
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         score = 0
@@ -723,7 +724,7 @@ class HaliteBot(object):
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
     def calculate_player_score(self, player):
-        return player.halite + len(player.ships) * (500 - self.step_count) + sum(
+        return player.halite + len(player.ships) * 500 * self.step_count / 398 + sum(
             [ship.halite / 4 for ship in player.ships] if len(player.ships) > 0 else [0])
 
     def calculate_player_map_presence(self, player):

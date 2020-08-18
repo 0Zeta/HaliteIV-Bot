@@ -139,7 +139,7 @@ first_genome = {
     'shipyard_abandon_dominance': -15,
     'shipyard_conversion_threshold': 8,
     'shipyard_guarding_attack_probability': 0.1,
-    'shipyard_guarding_min_dominance': -4,
+    'shipyard_guarding_min_dominance': -8,
     'shipyard_min_dominance': 5,
     'shipyard_start': 45,
     'shipyard_stop': 280,
