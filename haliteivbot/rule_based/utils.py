@@ -99,9 +99,9 @@ def _get_player_map(player, max_halite, size=21):
 def get_cargo_map(ships, shipyards, halite_norm, size=21):
     cargo_map = np.zeros((size ** 2,), dtype=np.float)
     for ship in ships:
-        cargo_map[POSITIONS_IN_SMALL_RADIUS[TO_INDEX[ship.position]]] += ship.halite / halite_norm
+        cargo_map[POSITIONS_IN_MEDIUM_RADIUS[TO_INDEX[ship.position]]] += ship.halite / halite_norm
     for shipyard in shipyards:
-        cargo_map[POSITIONS_IN_SMALL_RADIUS[TO_INDEX[shipyard.position]]] += 400 / halite_norm
+        cargo_map[POSITIONS_IN_MEDIUM_RADIUS[TO_INDEX[shipyard.position]]] += 700 / halite_norm
     return cargo_map
 
 
@@ -118,12 +118,12 @@ def get_dominance_map(me, opponents, sigma, radius, halite_clip, size=21):
         dominance_map[radius_map[TO_INDEX[ship.position]]] += clip(halite_clip - ship.halite, 0,
                                                                    halite_clip) / halite_clip
     for shipyard in me.shipyards:
-        dominance_map[radius_map[TO_INDEX[shipyard.position]]] += 1
+        dominance_map[radius_map[TO_INDEX[shipyard.position]]] += 1.5
     for player in opponents:
         for ship in player.ships:
-            dominance_map[radius_map[TO_INDEX[ship.position]]] -= 1
+            dominance_map[radius_map[TO_INDEX[ship.position]]] -= 1.5
         for shipyard in player.shipyards:
-            dominance_map[radius_map[TO_INDEX[shipyard.position]]] -= 1
+            dominance_map[radius_map[TO_INDEX[shipyard.position]]] -= 1.5
 
     blurred_dominance_map = gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma, mode='wrap')
     return blurred_dominance_map.reshape((-1,))
