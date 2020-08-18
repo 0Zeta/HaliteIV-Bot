@@ -255,6 +255,11 @@ def get_neighbours(cell: Cell):
     return [cell.neighbor(point) for point in NEIGHBOURS]
 
 
+def get_hunting_proportion(players, halite_threshold=0):
+    return [sum([1 for ship in player.ships if ship.halite <= halite_threshold]) / len(player.ships) if len(
+        player.ships) > 0 else 1 for player in players]
+
+
 def clip(a, minimum, maximum):
     if a <= minimum:
         return minimum

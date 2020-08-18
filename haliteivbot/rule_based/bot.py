@@ -74,7 +74,7 @@ PARAMETERS = {
     'shipyard_start': 45,
     'shipyard_stop': 280,
     'spawn_min_dominance': 3.528656727561098,
-    'spawn_till': 250
+    'spawn_till': 280
 }
 
 BOT = None
