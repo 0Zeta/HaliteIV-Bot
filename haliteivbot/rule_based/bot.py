@@ -37,13 +37,15 @@ PARAMETERS = {
     'hunting_score_kappa': 0.39357038462375626,
     'hunting_score_zeta': 2,
     'hunting_threshold': 12.12833619658105,
+    'hunting_score_ship_bonus': 150,
+    'hunting_score_halite_norm': 100,
     'map_blur_gamma': 0.6534115332552308,
     'map_blur_sigma': 0.7762017145865703,
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 30,
     'max_shipyard_distance': 7,
-    'max_shipyards': 8,
+    'max_shipyards': 4,
     'min_mining_halite': 32,
     'min_ships': 30,
     'min_shipyard_distance': 6,
@@ -669,13 +671,20 @@ class HaliteBot(object):
 
     def calculate_hunting_score(self, ship: Ship, enemy: Ship) -> float:
         d_halite = enemy.halite - ship.halite
-        ship_bonus = 500 * self.step_count / 398 if d_halite > 0 else 0
         ship_pos = TO_INDEX[ship.position]
         enemy_pos = TO_INDEX[enemy.position]
         distance = get_distance(ship_pos, enemy_pos)
+        if d_halite < 0:
+            halite_score = -1
+        elif d_halite == 0:
+            halite_score = 0.25 * self.parameters['hunting_score_ship_bonus'] * (1 - self.step_count / 398) / \
+                           self.parameters['hunting_score_halite_norm']
+        else:
+            ship_bonus = self.parameters['hunting_score_ship_bonus'] * (1 - self.step_count / 398)
+            halite_score = (ship_bonus + d_halite) / self.parameters['hunting_score_halite_norm']
         player_score = 1 + self.parameters['hunting_score_kappa'] * (
             3 - self.player_ranking[ship.player_id] if self.rank <= 1 else self.player_ranking[ship.player_id])
-        return self.parameters['hunting_score_gamma'] ** distance * (d_halite + ship_bonus) * (
+        return self.parameters['hunting_score_gamma'] ** distance * halite_score * (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
             self.medium_dominance_map[enemy_pos] + 20, 0, 40) / 40) * player_score * (
                        1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
@@ -724,7 +733,7 @@ class HaliteBot(object):
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
     def calculate_player_score(self, player):
-        return player.halite + len(player.ships) * 500 * self.step_count / 398 + sum(
+        return player.halite + len(player.ships) * 500 * (1 - self.step_count / 398) + sum(
             [ship.halite / 4 for ship in player.ships] if len(player.ships) > 0 else [0])
 
     def calculate_player_map_presence(self, player):

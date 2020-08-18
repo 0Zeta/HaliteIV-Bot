@@ -42,6 +42,8 @@ hyperparameters = {
     'hunting_score_iota': ('float', (0.2, 0.8)),
     'hunting_score_kappa': ('float', (0.15, 0.4)),
     'hunting_score_cargo_clip': ('float', (1.5, 4.5)),
+    'hunting_score_ship_bonus': ('int', (100, 350)),
+    'hunting_score_halite_norm': ('int', (50, 300)),
     'hunting_threshold': ('float', (1, 17)),
     'map_blur_gamma': ('float', (0.4, 0.95)),
     'map_blur_sigma': ('float', (0.15, 0.8)),
