@@ -197,12 +197,12 @@ def create_navigation_lists(size):
 def create_radius_lists(small_radius, medium_radius):
     global POSITIONS_IN_SMALL_RADIUS
     global POSITIONS_IN_MEDIUM_RADIUS
-    POSITIONS_IN_SMALL_RADIUS = _create_radius_list(small_radius)
-    POSITIONS_IN_MEDIUM_RADIUS = _create_radius_list(medium_radius)
+    POSITIONS_IN_SMALL_RADIUS = create_radius_list(small_radius)
+    POSITIONS_IN_MEDIUM_RADIUS = create_radius_list(medium_radius)
     return POSITIONS_IN_SMALL_RADIUS, POSITIONS_IN_MEDIUM_RADIUS
 
 
-def _create_radius_list(radius):
+def create_radius_list(radius):
     radius_list = []
     for i in range(SIZE ** 2):
         radius_list.append(np.argwhere(DISTANCES[i] <= radius).reshape((-1,)).tolist())
@@ -258,6 +258,75 @@ def get_neighbours(cell: Cell):
 def get_hunting_proportion(players, halite_threshold=0):
     return [sum([1 for ship in player.ships if ship.halite <= halite_threshold]) / len(player.ships) if len(
         player.ships) > 0 else 1 for player in players]
+
+
+class Vector(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __add__(self, other):
+        if isinstance(other, Vector):
+            return Vector(self.x + other.x, self.y + other.y)
+        else:
+            return Vector(self.x + other, self.y + other)
+
+    def __sub__(self, other):
+        if isinstance(other, Vector):
+            return Vector(self.x - other.x, self.y - other.y)
+        else:
+            return Vector(self.x - other, self.y - other)
+
+    def __mul__(self, other):
+        return Vector(self.x * other, self.y * other)
+
+    def __rmul__(self, other):
+        return Vector(self.x * other, self.y * other)
+
+    def __abs__(self):
+        return math.sqrt(self.x ** 2 + self.y ** 2)
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
+
+    def __mod__(self, other):
+        return Vector(self.x % other, self.y % other)
+
+    def __str__(self):
+        return '(%g, %g)' % (self.x, self.y)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)  # reuse __eq__
+
+
+def get_excircle_midpoint(A: Point, B: Point, C: Point):
+    assert A != B != C
+    AB = get_vector(A, B)
+    AC = get_vector(A, C)
+    r = get_orthogonal_vector(AB)
+    v = get_orthogonal_vector(AC)
+    M1, M2 = 0.5 * Vector(AB.x, AB.y), 0.5 * Vector(AC.x, AC.y)
+    yololon = (M1.x * v.y - M2.x * v.y - M1.y * v.x + M2.y * v.x) / (r.y * v.x - r.x * v.y)
+    Q = (Vector(A.x, A.y) + M1 + yololon * r) % SIZE
+    return Point(round(Q.x), round(Q.y))
+
+
+def get_vector(A: Point, B: Point):
+    def calculate_component(a1, a2):
+        amin = min(a1, a2)
+        amax = max(a1, a2)
+        adiff = amax - amin
+        adist = min(adiff, SIZE - adiff)
+        if adiff == adist:
+            return adiff if a2 == amax else -adiff
+        else:
+            return -adist if a2 == amax else adist
+
+    return Vector(calculate_component(A.x, B.x), calculate_component(A.y, B.y))
+
+
+def get_orthogonal_vector(v: Vector):
+    return Vector(-v.y, v.x)
 
 
 def clip(a, minimum, maximum):

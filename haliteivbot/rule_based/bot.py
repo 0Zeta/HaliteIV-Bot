@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from math import floor
+from math import floor, ceil
 from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship
@@ -128,6 +128,7 @@ class HaliteBot(object):
         create_navigation_lists(self.size)
         create_radius_lists(self.parameters['dominance_map_small_radius'],
                             self.parameters['dominance_map_medium_radius'])
+        self.farming_radius_list = create_radius_list(ceil(self.parameters['max_shipyard_distance'] / 2))
         self.distances = get_distance_matrix()
         self.positions_in_reach_list = compute_positions_in_reach()
         self.farthest_directions_indices = get_farthest_directions_matrix()
