@@ -28,7 +28,7 @@ PARAMETERS = {
     'hunting_avg_halite_threshold': 25,
     'hunting_halite_threshold': 0.05,
     'hunting_min_ships': 16,
-    'hunting_score_alpha': 0.8,
+    'hunting_score_alpha': 0.6,
     'hunting_score_beta': 3,
     'hunting_score_cargo_clip': 2.434932143755778,
     'hunting_score_delta': 0.8709006820260277,
@@ -70,11 +70,12 @@ PARAMETERS = {
     'shipyard_conversion_threshold': 5,
     'shipyard_guarding_attack_probability': 0.1,
     'shipyard_guarding_min_dominance': -25,
+    'shipyard_min_population': 0.7,
     'shipyard_min_dominance': 5,
     'shipyard_start': 45,
-    'shipyard_stop': 280,
+    'shipyard_stop': 260,
     'spawn_min_dominance': 3.528656727561098,
-    'spawn_till': 280
+    'spawn_till': 260
 }
 
 BOT = None
@@ -149,6 +150,9 @@ class HaliteBot(object):
         self.shipyard_count = len(self.me.shipyards)
 
         self.average_halite_per_cell = sum([halite for halite in self.observation['halite']]) / self.size ** 2
+        self.average_halite_population = sum(
+            [1 if halite > 0 else 0 for halite in self.observation['halite']]) / self.size ** 2
+        self.nb_cells_in_farming_radius = len(self.farming_radius_list[0])
 
         self.blurred_halite_map = get_blurred_halite_map(self.observation['halite'], self.parameters['map_blur_sigma'])
 
@@ -626,16 +630,37 @@ class HaliteBot(object):
         distance_to_nearest_shipyard = self.shipyard_distances[ship_pos]
         if self.parameters['min_shipyard_distance'] <= distance_to_nearest_shipyard <= self.parameters[
             'max_shipyard_distance']:
-            if self.shipyard_count < 2:
-                return True
-            nb_good_distance = 0
+            ship_point = ship.position
+            good_distance = []
             for shipyard_position in self.shipyard_positions:
                 if self.parameters['min_shipyard_distance'] <= get_distance(ship_pos, shipyard_position) <= \
                         self.parameters['max_shipyard_distance']:
-                    nb_good_distance += 1
-                    if nb_good_distance >= 2:
-                        return True
+                    good_distance.append(Point.from_index(shipyard_position, SIZE))
+            if len(good_distance) == 0:
+                return False
+            midpoints = []
+            if self.shipyard_count == 1:
+                half = 0.5 * get_vector(ship_point, good_distance[0])
+                half = Point(round(half.x), round(half.y))
+                midpoints.append((ship_point + half) % SIZE)
+            else:
+                for i in range(len(good_distance)):
+                    for j in range(i + 1, len(good_distance)):
+                        pos1, pos2 = good_distance[i], good_distance[j]
+                        if (pos1.x == pos2.x == ship_point.x) or (
+                                pos1.y == pos2.y == ship_point.y):  # rays don't intersect
+                            midpoints.append(ship_point)
+                        else:
+                            midpoints.append(get_excircle_midpoint(pos1, pos2, ship_point))
+            threshold = self.parameters[
+                            'shipyard_min_population'] * self.average_halite_population * self.nb_cells_in_farming_radius
+            if any([self.get_populated_cells_in_radius_count(TO_INDEX[midpoint]) >= threshold for midpoint in
+                    set(midpoints)]):
+                return True
         return False
+
+    def get_populated_cells_in_radius_count(self, position):
+        return sum([1 if self.observation['halite'][cell] > 0 else 0 for cell in self.farming_radius_list[position]])
 
     def calculate_mining_score(self, ship_position: int, cell_position: int, halite, blurred_halite,
                                ship_halite) -> float:

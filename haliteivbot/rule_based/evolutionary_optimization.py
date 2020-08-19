@@ -73,6 +73,7 @@ hyperparameters = {
     'ship_spawn_threshold': ('float', (0.1, 4.0)),
     'ships_shipyards_threshold': ('float', (0.01, 0.8)),
     'shipyard_abandon_dominance': ('float', (-50, 0)),
+    'shipyard_min_population': ('float', (0.5, 1.5)),
     'shipyard_conversion_threshold': ('float', (0.3, 17)),
     'shipyard_guarding_attack_probability': ('float', (0.1, 1)),
     'shipyard_guarding_min_dominance': ('float', (-40, 7)),
@@ -144,11 +145,12 @@ first_genome = {
     'shipyard_conversion_threshold': 5,
     'shipyard_guarding_attack_probability': 0.1,
     'shipyard_guarding_min_dominance': -25,
+    'shipyard_min_population': 0.7,
     'shipyard_min_dominance': 5,
     'shipyard_start': 45,
     'shipyard_stop': 280,
     'spawn_min_dominance': 3.528656727561098,
-    'spawn_till': 270
+    'spawn_till': 280
 }
 
 second_genome = {
