@@ -3,7 +3,7 @@ from enum import Enum
 from math import floor, ceil
 from random import random
 
-from kaggle_environments.envs.halite.helpers import Shipyard, Ship
+from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
 from haliteivbot.rule_based.utils import *
 
@@ -35,7 +35,7 @@ PARAMETERS = {
     'hunting_score_gamma': 0.9509334468781269,
     'hunting_score_iota': 0.5105732890493775,
     'hunting_score_kappa': 0.39357038462375626,
-    'hunting_score_zeta': 4,
+    'hunting_score_zeta': 3,
     'hunting_threshold': 12.12833619658105,
     'hunting_score_ship_bonus': 150,
     'hunting_score_halite_norm': 100,
@@ -126,14 +126,6 @@ class HaliteBot(object):
         self.optimal_mining_steps = create_optimal_mining_steps_tensor(self.parameters['mining_score_alpha'],
                                                                        self.parameters['mining_score_beta'],
                                                                        self.parameters['mining_score_gamma'])
-        create_navigation_lists(self.size)
-        create_radius_lists(self.parameters['dominance_map_small_radius'],
-                            self.parameters['dominance_map_medium_radius'])
-        self.farming_radius_list = create_radius_list(ceil(self.parameters['max_shipyard_distance'] / 2))
-        self.distances = get_distance_matrix()
-        self.positions_in_reach_list = compute_positions_in_reach()
-        self.farthest_directions_indices = get_farthest_directions_matrix()
-        self.farthest_directions = get_farthest_directions_list()
 
     def step(self, board: Board, obs):
         if self.me is None:
@@ -148,6 +140,9 @@ class HaliteBot(object):
         self.step_count = board.step
         self.ship_count = len(self.ships)
         self.shipyard_count = len(self.me.shipyards)
+
+        if self.handle_special_steps(board):
+            return self.me.next_actions
 
         self.average_halite_per_cell = sum([halite for halite in self.observation['halite']]) / self.size ** 2
         self.average_halite_population = sum(
@@ -259,7 +254,6 @@ class HaliteBot(object):
         self.hunting_halite_threshold = enemy_cargo[
             floor(len(enemy_cargo) * self.parameters['hunting_halite_threshold'])] if len(enemy_cargo) > 0 else 0
 
-        self.handle_special_steps(board)
         self.guard_shipyards(board)
         self.build_shipyards()
         self.move_ships(board)
@@ -270,9 +264,24 @@ class HaliteBot(object):
         step = board.step
         if step == 0:
             # Immediately spawn a shipyard
-            self.convert_to_shipyard(self.me.ships[0])
+            self.me.ships[0].next_action = ShipAction.CONVERT
             logging.debug("Ship " + str(self.me.ships[0].id) + " converts to a shipyard at the start of the game.")
-            return False
+            return True
+        elif step == 1:
+            # Immediately spawn a ship
+            self.me.shipyards[0].next_action = ShipyardAction.SPAWN
+
+            # Do some initialization stuff
+            create_navigation_lists(self.size)
+            self.distances = get_distance_matrix()
+            self.positions_in_reach_list = compute_positions_in_reach()
+            self.farthest_directions_indices = get_farthest_directions_matrix()
+            self.farthest_directions = get_farthest_directions_list()
+            create_radius_lists(self.parameters['dominance_map_small_radius'],
+                                self.parameters['dominance_map_medium_radius'])
+            self.farming_radius_list = create_radius_list(ceil(self.parameters['max_shipyard_distance'] / 2))
+            return True
+        return False
 
     def build_shipyards(self):
         if self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters['shipyard_stop']:
