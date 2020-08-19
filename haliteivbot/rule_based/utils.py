@@ -310,8 +310,8 @@ def get_excircle_midpoint(A: Point, B: Point, C: Point):
     v = get_orthogonal_vector(AC)
     M1, M2 = 0.5 * Vector(AB.x, AB.y), 0.5 * Vector(AC.x, AC.y)
     yololon = (M1.x * v.y - M2.x * v.y - M1.y * v.x + M2.y * v.x) / (r.y * v.x - r.x * v.y)
-    Q = (Vector(A.x, A.y) + M1 + yololon * r) % SIZE
-    return Point(round(Q.x), round(Q.y))
+    Q = Vector(A.x, A.y) + M1 + yololon * r
+    return Point(round(Q.x), round(Q.y)) % SIZE
 
 
 def get_vector(A: Point, B: Point):

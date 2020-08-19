@@ -35,7 +35,7 @@ PARAMETERS = {
     'hunting_score_gamma': 0.9509334468781269,
     'hunting_score_iota': 0.5105732890493775,
     'hunting_score_kappa': 0.39357038462375626,
-    'hunting_score_zeta': 3,
+    'hunting_score_zeta': 2.5,
     'hunting_threshold': 12.12833619658105,
     'hunting_score_ship_bonus': 150,
     'hunting_score_halite_norm': 100,
