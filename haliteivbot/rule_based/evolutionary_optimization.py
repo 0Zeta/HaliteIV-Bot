@@ -66,7 +66,7 @@ hyperparameters = {
     'move_preference_mining': ('int', (110, 135)),
     'move_preference_return': ('int', (115, 145)),
     'move_preference_longest_axis': ('int', (10, 30)),
-    'move_preference_stay_on_shipyard': ('int', (-150, -90)),
+    'move_preference_stay_on_shipyard': ('int', (-150, -20)),
     'move_preference_block_shipyard': ('int', (-200, -50)),
     'farming_end': ('int', (340, 370)),
     'return_halite': ('int', (250, 3000)),
