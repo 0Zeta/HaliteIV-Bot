@@ -12,70 +12,71 @@ logging.basicConfig(level=logging.WARNING)
 PARAMETERS = {
     'cargo_map_halite_norm': 197,
     'cell_score_dominance': 1.9,
-    'cell_score_enemy_halite': 0.35,
+    'cell_score_enemy_halite': 0.3208283626314189,
     'cell_score_neighbour_discount': 0.7,
-    'cell_score_ship_halite': 0.0007164173686311706,
-    'convert_when_attacked_threshold': 520,
+    'cell_score_ship_halite': 0.000600485620060368,
+    'convert_when_attacked_threshold': 548,
     'disable_hunting_till': 85,
     'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 0.1057639771905976,
+    'dominance_map_medium_sigma': 0.05,
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 0.1,
     'end_return_extra_moves': 7,
-    'end_start': 374,
+    'end_start': 377,
     'ending_halite_threshold': 9,
-    'farming_end': 300,
+    'farming_end': 340,
     'hunting_avg_halite_threshold': 45,
-    'hunting_halite_threshold': 0.3,
+    'hunting_halite_threshold': 0.05,
     'hunting_min_ships': 16,
-    'hunting_score_alpha': 0.9,
+    'hunting_score_alpha': 0.6,
     'hunting_score_beta': 2.7,
     'hunting_score_cargo_clip': 2.434932143755778,
     'hunting_score_delta': 0.73,
-    'hunting_score_gamma': 0.9643566026683889,
+    'hunting_score_gamma': 0.9304122168876546,
     'hunting_score_halite_norm': 100,
-    'hunting_score_iota': 0.4063606913148085,
-    'hunting_score_kappa': 0.39357038462375626,
-    'hunting_score_ship_bonus': 150,
+    'hunting_score_iota': 0.5105732890493775,
+    'hunting_score_kappa': 0.38242526169255725,
+    'hunting_score_ship_bonus': 200,
     'hunting_score_zeta': 2,
     'hunting_threshold': 12.12833619658105,
-    'map_blur_gamma': 0.6534115332552308,
-    'map_blur_sigma': 0.7762017145865703,
+    'map_blur_gamma': 0.681565359099412,
+    'map_blur_sigma': 0.8,
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 30,
     'max_shipyard_distance': 7,
     'max_shipyards': 8,
-    'min_mining_halite': 32,
+    'min_mining_halite': 30,
     'min_ships': 30,
     'min_shipyard_distance': 6,
-    'mining_score_alpha': 0.8973162015810808,
-    'mining_score_beta': 0.85,
+    'mining_score_alpha': 1.1,
+    'mining_score_beta': 0.8023092904239091,
     'mining_score_dominance_clip': 4,
-    'mining_score_dominance_norm': 1,
-    'mining_score_farming_penalty': 0.03,
-    'mining_score_gamma': 0.98,
-    'move_preference_base': 102,
+    'mining_score_dominance_norm': 0.9895751964454698,
+    'mining_score_farming_penalty': 0.14926328812518352,
+    'mining_score_gamma': 0.9812223200662884,
+    'move_preference_base': 100,
     'move_preference_block_shipyard': -100,
-    'move_preference_hunting': 111,
+    'move_preference_hunting': 107,
     'move_preference_longest_axis': 10,
     'move_preference_mining': 130,
     'move_preference_return': 116,
     'move_preference_stay_on_shipyard': -20,
     'return_halite': 1000,
     'ship_spawn_threshold': 1.4001702394113038,
-    'ships_shipyards_threshold': 0.07478220696871965,
+    'ships_shipyards_threshold': 0.19540858693987795,
     'shipyard_abandon_dominance': -6,
-    'shipyard_conversion_threshold': 5,
+    'shipyard_conversion_threshold': 4.181922781562135,
     'shipyard_guarding_attack_probability': 0.1,
-    'shipyard_guarding_min_dominance': -3,
-    'shipyard_min_dominance': 5,
+    'shipyard_guarding_min_dominance': -15,
+    'shipyard_min_dominance': 4.615065578336876,
     'shipyard_min_population': 0.7,
     'shipyard_start': 45,
-    'shipyard_stop': 280,
-    'spawn_min_dominance': 3.528656727561098,
-    'spawn_till': 275
+    'shipyard_stop': 260,
+    'spawn_min_dominance': 3.5,
+    'spawn_till': 260,
+    'guarding_stop': 330
 }
 
 BOT = None
@@ -303,12 +304,6 @@ class HaliteBot(object):
             if shipyard.position in self.planned_moves:
                 continue
             dominance = self.medium_dominance_map[TO_INDEX[shipyard.position]]
-            if any(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
-                          get_neighbours(shipyard.cell))) and dominance >= self.parameters[
-                'shipyard_guarding_min_dominance'] and self.step_count < 370:
-                # There is an enemy ship next to the shipyard.
-                self.spawn_ship(shipyard)
-                continue
             if self.halite < self.config.spawn_cost + (0 if self.step_count < 70 else len(
                     self.me.shipyards) * self.config.spawn_cost):  # TODO: remove the halite reserve in favor of guarding ships
                 continue
@@ -591,7 +586,7 @@ class HaliteBot(object):
                             self.step_count > self.parameters['spawn_till'] and self.shipyard_count > 1) or dominance < \
                             self.parameters[
                                 'shipyard_guarding_min_dominance'] or random() > self.parameters[
-                        'shipyard_guarding_attack_probability'] or self.step_count >= 365:
+                        'shipyard_guarding_attack_probability'] or self.step_count >= self.parameters['guarding_stop']:
                         if dominance > self.parameters['shipyard_abandon_dominance']:
                             self.change_position_score(shipyard.cell.ship, shipyard.cell.position, 10000)
                             logging.debug("Ship " + str(shipyard.cell.ship.id) + " stays at position " + str(
@@ -615,8 +610,10 @@ class HaliteBot(object):
                         logging.debug("Ship " + str(guard.id) + " moves to position " + str(
                             shipyard.position) + " to protect a shipyard.")
                     elif self.halite > self.config.spawn_cost and (dominance >= self.parameters[
-                        'shipyard_guarding_min_dominance'] or board.step <= 25 or self.shipyard_count == 1) and self.step_count < \
-                            self.parameters['end_start']:
+                        'shipyard_guarding_min_dominance'] or board.step <= 25 or self.shipyard_count == 1) and (
+                            self.step_count < \
+                            self.parameters['guarding_stop'] or (
+                                    self.shipyard_count == 1 and self.step_count < self.parameters['end_start'])):
                         logging.debug("Shipyard " + str(shipyard.id) + " spawns a ship to defend the position.")
                         self.spawn_ship(shipyard)
                     else:
