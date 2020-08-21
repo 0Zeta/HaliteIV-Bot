@@ -2,8 +2,7 @@ import math
 
 import numpy as np
 import scipy.optimize
-from kaggle_environments.envs.halite.halite import ShipAction
-from kaggle_environments.envs.halite.helpers import Point, Cell
+from kaggle_environments.envs.halite.helpers import Point, Cell, ShipAction
 from scipy.ndimage import gaussian_filter
 
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
