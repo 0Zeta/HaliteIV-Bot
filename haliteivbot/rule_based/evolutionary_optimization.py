@@ -5,15 +5,16 @@ from random import random, choice, sample
 
 import numpy as np
 
-MUTATION_PROBABILITY = 0.05
-CROSSOVER_PROBABILITY = 0.1
-POOL_SIZE = 16
+MUTATION_PROBABILITY = 0.1
+CROSSOVER_PROBABILITY = 0.15
+POOL_SIZE = 12
 SELECTION_CAP = 4  # take the fittest four genomes of a generation
-NB_OLD_GENOMES = 3
+NB_OLD_GENOMES = 2
+NB_BASELINE_BOTS = 10
 IGNORE_SELECTION_PROBABILITY = 0.03  # the probability to let another genome survive
 NB_PARENTS = 3
 
-POOL_NAME = ""
+POOL_NAME = "2020-08-22 14-05"
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (50, 500)),
@@ -160,7 +161,7 @@ second_genome = {
     'cell_score_dominance': 1.9,
     'cell_score_enemy_halite': 0.35,
     'cell_score_neighbour_discount': 0.7,
-    'cell_score_ship_halite': 0.0006924718210075495,
+    'cell_score_ship_halite': 0.000600485620060368,
     'convert_when_attacked_threshold': 500,
     'disable_hunting_till': 85,
     'dominance_map_halite_clip': 340,
@@ -171,44 +172,45 @@ second_genome = {
     'end_return_extra_moves': 7,
     'end_start': 377,
     'ending_halite_threshold': 9,
-    'hunting_avg_halite_threshold': 45,
+    'farming_end': 300,
+    'guarding_stop': 340,
+    'hunting_avg_halite_threshold': 41.88822391493485,
     'hunting_halite_threshold': 0.3,
     'hunting_min_ships': 16,
-    'hunting_score_alpha': 0.9,
+    'hunting_score_alpha': 0.8123128333344004,
     'hunting_score_beta': 2.7,
     'hunting_score_cargo_clip': 2.434932143755778,
     'hunting_score_delta': 0.73,
     'hunting_score_gamma': 0.9509334468781269,
+    'hunting_score_halite_norm': 171,
     'hunting_score_iota': 0.5105732890493775,
     'hunting_score_kappa': 0.39357038462375626,
-    'hunting_score_zeta': 2,
-    'hunting_threshold': 12.12833619658105,
     'hunting_score_ship_bonus': 200,
-    'hunting_score_halite_norm': 120,
+    'hunting_score_zeta': 2,
+    'hunting_threshold': 14.6774395837237,
     'map_blur_gamma': 0.6534115332552308,
-    'map_blur_sigma': 0.7762017145865703,
+    'map_blur_sigma': 0.8,
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 30,
     'max_shipyard_distance': 7,
-    'max_shipyards': 8,
-    'min_mining_halite': 30,
+    'max_shipyards': 5,
+    'min_mining_halite': 27,
     'min_ships': 30,
     'min_shipyard_distance': 6,
-    'mining_score_alpha': 0.9,
-    'mining_score_beta': 0.85,
+    'mining_score_alpha': 1.1,
+    'mining_score_beta': 0.7887738537822371,
     'mining_score_dominance_clip': 4,
-    'mining_score_dominance_norm': 0.73,
-    'mining_score_gamma': 0.98,
-    'mining_score_farming_penalty': 0.85,
+    'mining_score_dominance_norm': 0.6513300515784521,
+    'mining_score_farming_penalty': 0.13997249688773636,
+    'mining_score_gamma': 0.9824754482027988,
     'move_preference_base': 102,
     'move_preference_block_shipyard': -100,
     'move_preference_hunting': 107,
-    'move_preference_longest_axis': 10,
+    'move_preference_longest_axis': 11,
     'move_preference_mining': 130,
-    'move_preference_return': 116,
+    'move_preference_return': 115,
     'move_preference_stay_on_shipyard': -120,
-    'farming_end': 300,
     'return_halite': 1000,
     'ship_spawn_threshold': 1.4001702394113038,
     'ships_shipyards_threshold': 0.08,
@@ -216,13 +218,12 @@ second_genome = {
     'shipyard_conversion_threshold': 8.8,
     'shipyard_guarding_attack_probability': 0.1,
     'shipyard_guarding_min_dominance': -3,
-    'shipyard_min_population': 0.1,
     'shipyard_min_dominance': 5,
+    'shipyard_min_population': 0.1,
     'shipyard_start': 45,
-    'shipyard_stop': 280,
+    'shipyard_stop': 260,
     'spawn_min_dominance': 3.528656727561098,
-    'spawn_till': 275,
-    'guarding_stop': 300
+    'spawn_till': 275
 }
 
 if __name__ == "__main__":
@@ -251,8 +252,11 @@ def create_new_genome(parents):
 
 
 def optimize():
-    baseline_bots = ["optimusmine", "swarm_intelligence2", "uninstalllol6", "uninstalllol4", "threesigma",
-                     "threesigma2", "piratehaven", "swarm_intelligence"]
+    baseline_bots_list = list(os.listdir('evolutionary/bots'))
+    if len(baseline_bots_list) < NB_BASELINE_BOTS:
+        baseline_bots = baseline_bots_list
+    else:
+        baseline_bots = sample(baseline_bots_list, k=NB_BASELINE_BOTS)
     if POOL_NAME != "":
         pool = load_pool(POOL_NAME)
         print("Best genome: " + str(pool[0]))
@@ -280,7 +284,7 @@ def optimize():
         for index, genome in enumerate(pool):
             genome['evo_id'] = index
         for baseline_bot in baseline_bots:
-            pool.append("evolutionary/bots/" + baseline_bot + ".py")
+            pool.append("evolutionary/bots/" + baseline_bot)
         print("Testing new genomes")
         tournament = Tournament(pool)
         results = tournament.play_tournament(rounds=6)
