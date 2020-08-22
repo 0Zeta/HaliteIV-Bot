@@ -102,6 +102,7 @@ first_genome = {
     'end_start': 377,
     'ending_halite_threshold': 9,
     'farming_end': 340,
+    'guarding_stop': 340,
     'hunting_avg_halite_threshold': 45,
     'hunting_halite_threshold': 0.05,
     'hunting_min_ships': 16,
@@ -273,9 +274,9 @@ def optimize():
         print("Filling pool with current size of %i" % len(pool))
         for i in range(POOL_SIZE - len(pool) - ((POOL_SIZE + len(baseline_bots)) % 4)):
             if len(pool) > NB_PARENTS:
-                pool.append(create_new_genome(sample(new_pool, k=NB_PARENTS)))
+                pool.append(create_new_genome(sample(pool, k=NB_PARENTS)))
             else:
-                pool.append(create_new_genome(new_pool))
+                pool.append(create_new_genome(pool))
         for index, genome in enumerate(pool):
             genome['evo_id'] = index
         for baseline_bot in baseline_bots:
