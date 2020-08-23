@@ -25,16 +25,16 @@ PARAMETERS = {
     'end_return_extra_moves': 7,
     'end_start': 371,
     'ending_halite_threshold': 9,
-    'farming_end': 340,
+    'farming_end': 360,
     'guarding_aggression_radius': 8,
     'guarding_distance_to_shipyard': 3,
     'guarding_norm': 0.6535341601623262,
     'guarding_radius': 4,
     'guarding_stop': 340,
-    'hunting_avg_halite_threshold': 41.735944524851895,
+    'guarding_max_ships_per_shipyard': 3,
     'hunting_halite_threshold': 0.393243121980592,
     'hunting_min_ships': 16,
-    'hunting_score_alpha': 0.6,
+    'hunting_score_alpha': 0.5,
     'hunting_score_beta': 2,
     'hunting_score_cargo_clip': 2.434932143755778,
     'hunting_score_delta': 0.73,
@@ -44,7 +44,8 @@ PARAMETERS = {
     'hunting_score_kappa': 0.39357038462375626,
     'hunting_score_ship_bonus': 200,
     'hunting_score_zeta': 1.2,
-    'hunting_threshold': 8,
+    'hunting_threshold': 4,
+    'hunting_proportion': 0.3,
     'map_blur_gamma': 0.6534115332552308,
     'map_blur_sigma': 0.8,
     'max_halite_attack_shipyard': 0,
@@ -72,13 +73,13 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -120,
     'return_halite': 1000,
     'ship_spawn_threshold': 1.4001702394113038,
-    'ships_shipyards_threshold': 0.08,
+    'ships_shipyards_threshold': 0.1,
     'shipyard_abandon_dominance': 0.0,
-    'shipyard_conversion_threshold': 5.813630085043901,
+    'shipyard_conversion_threshold': 4,
     'shipyard_guarding_attack_probability': 0.1,
     'shipyard_guarding_min_dominance': -15,
-    'shipyard_min_dominance': 5.725656901908077,
-    'shipyard_min_population': 0.5,
+    'shipyard_min_dominance': 6.5,
+    'shipyard_min_population': 0.6,
     'shipyard_start': 50,
     'shipyard_stop': 260,
     'spawn_min_dominance': 3.528656727561098,
@@ -363,7 +364,9 @@ class HaliteBot(object):
         logging.info("*** Ship type breakdown for step " + str(self.step_count) + " ***")
         ship_types_values = list(self.ship_types.values())
         for ship_type in set(ship_types_values):
-            logging.info(str(ship_type).replace("ShipType.", "") + ": " + str(ship_types_values.count(ship_type)))
+            type_count = ship_types_values.count(ship_type)
+            logging.info(str(ship_type).replace("ShipType.", "") + ": " + str(type_count) + " (" + str(
+                round(type_count / len(self.me.ships) * 100, 1)) + "%)")
 
         while len(ships) > 0:
             ship = ships[0]
@@ -424,6 +427,7 @@ class HaliteBot(object):
         self.mining_score_beta = self.parameters['mining_score_beta'] if self.step_count >= 60 else 0.65 * \
                                                                                                     self.parameters[
                                                                                                         'mining_score_beta']  # Don't return too often early in the game
+
         mining_scores = np.zeros((len(self.mining_ships), len(mining_positions) + len(dropoff_positions)))
         for ship_index, ship in enumerate(self.mining_ships):
             ship_pos = TO_INDEX[ship.position]
@@ -443,12 +447,14 @@ class HaliteBot(object):
         target_positions = mining_positions + dropoff_positions
 
         assigned_scores = [mining_scores[r][c] for r, c in zip(row, col)]
+        assigned_scores.sort()
         logging.debug("assigned mining scores mean: {}".format(np.mean(assigned_scores)))
-        hunting_threshold = np.mean(assigned_scores) - np.std(assigned_scores) * self.parameters[
-            'hunting_score_alpha'] if len(assigned_scores) > 0 else -1
         hunting_enabled = board.step > self.parameters['disable_hunting_till'] and (self.ship_count >= self.parameters[
-            'hunting_min_ships'] or board.step > self.parameters['spawn_till']) and self.average_halite_per_cell <= \
-                          self.parameters['hunting_avg_halite_threshold']
+            'hunting_min_ships'] or board.step > self.parameters['spawn_till'])
+        hunting_threshold = max(np.mean(assigned_scores) - np.std(assigned_scores) * self.parameters[
+            'hunting_score_alpha'], assigned_scores[
+                                    ceil(len(assigned_scores) * self.parameters['hunting_proportion']) - 1]) if len(
+            assigned_scores) > 0 else -1
 
         for r, c in zip(row, col):
             if (mining_scores[r][c] < self.parameters['hunting_threshold'] or (
@@ -510,8 +516,11 @@ class HaliteBot(object):
 
         # Guarding ships
         assigned_hunting_scores.sort()
-        guarding_threshold_index = ceil((clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
-                                         self.parameters['guarding_norm']) * len(self.hunting_ships)) - 1
+        guarding_threshold_index = max(
+            min(ceil((clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
+                      self.parameters['guarding_norm']) * len(self.hunting_ships)) - 1,
+                self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1),
+            min(len(self.hunting_ships) - 1, len(self.me.shipyards)))
         if guarding_threshold_index > 0:
             guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
             for r, c in zip(row, col):
