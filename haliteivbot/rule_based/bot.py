@@ -12,40 +12,40 @@ logging.basicConfig(level=logging.INFO)
 PARAMETERS = {
     'cargo_map_halite_norm': 197,
     'cell_score_dominance': 2.1600286890260088,
-    'cell_score_enemy_halite': 0.35,
-    'cell_score_neighbour_discount': 0.7,
-    'cell_score_ship_halite': 0.000600485620060368,
+    'cell_score_enemy_halite': 0.30155644007749094,
+    'cell_score_neighbour_discount': 0.6802816748681849,
+    'cell_score_ship_halite': 0.0005764610283978991,
     'convert_when_attacked_threshold': 500,
     'disable_hunting_till': 73,
     'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 0.05,
+    'dominance_map_medium_sigma': 0.0224500549710177,
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 0.14318026743743137,
     'end_return_extra_moves': 7,
     'end_start': 371,
     'ending_halite_threshold': 9,
-    'farming_end': 360,
-    'guarding_aggression_radius': 8,
-    'guarding_distance_to_shipyard': 3,
+    'farming_end': 350,
+    'guarding_aggression_radius': 7,
+    'guarding_distance_to_shipyard': 1,
+    'guarding_max_ships_per_shipyard': 2,
     'guarding_norm': 0.6535341601623262,
     'guarding_radius': 4,
-    'guarding_stop': 340,
-    'guarding_max_ships_per_shipyard': 3,
-    'hunting_halite_threshold': 0.393243121980592,
-    'hunting_min_ships': 16,
-    'hunting_score_alpha': 0.5,
-    'hunting_score_beta': 2,
-    'hunting_score_cargo_clip': 2.434932143755778,
-    'hunting_score_delta': 0.73,
-    'hunting_score_gamma': 0.9509334468781269,
-    'hunting_score_halite_norm': 171,
-    'hunting_score_iota': 0.4412732205800474,
-    'hunting_score_kappa': 0.39357038462375626,
-    'hunting_score_ship_bonus': 200,
-    'hunting_score_zeta': 1.2,
-    'hunting_threshold': 4,
+    'guarding_stop': 343,
+    'hunting_halite_threshold': 0.3850073533439147,
+    'hunting_min_ships': 12,
     'hunting_proportion': 0.3,
+    'hunting_score_alpha': 0.45,
+    'hunting_score_beta': 1.2,
+    'hunting_score_cargo_clip': 2.2374291465138816,
+    'hunting_score_delta': 0.6506609889169908,
+    'hunting_score_gamma': 0.9509334468781269,
+    'hunting_score_halite_norm': 163,
+    'hunting_score_iota': 0.3691391981114009,
+    'hunting_score_kappa': 0.39357038462375626,
+    'hunting_score_ship_bonus': 146,
+    'hunting_score_zeta': 1.2,
+    'hunting_threshold': 6.054528584760063,
     'map_blur_gamma': 0.6534115332552308,
     'map_blur_sigma': 0.8,
     'max_halite_attack_shipyard': 0,
@@ -59,31 +59,31 @@ PARAMETERS = {
     'mining_score_alpha': 0.9807755015639334,
     'mining_score_beta': 0.7980915650104368,
     'mining_score_dominance_clip': 3.769020996875946,
-    'mining_score_dominance_norm': 0.6513300515784521,
-    'mining_score_farming_penalty': 0.06543369486010683,
-    'mining_score_gamma': 0.9871204935101099,
+    'mining_score_dominance_norm': 0.5,
+    'mining_score_farming_penalty': 0.08008391529602515,
+    'mining_score_gamma': 0.9900895416083489,
     'move_preference_base': 102,
-    'move_preference_block_shipyard': -100,
+    'move_preference_block_shipyard': -170,
     'move_preference_guarding': 69,
     'move_preference_guarding_stay': -120,
     'move_preference_hunting': 107,
     'move_preference_longest_axis': 12,
     'move_preference_mining': 130,
     'move_preference_return': 115,
-    'move_preference_stay_on_shipyard': -120,
-    'return_halite': 1000,
-    'ship_spawn_threshold': 1.4001702394113038,
-    'ships_shipyards_threshold': 0.1,
-    'shipyard_abandon_dominance': -15,
-    'shipyard_conversion_threshold': 4,
-    'shipyard_guarding_attack_probability': 0.1,
-    'shipyard_guarding_min_dominance': -15,
-    'shipyard_min_dominance': 6.5,
-    'shipyard_min_population': 0.6,
-    'shipyard_start': 50,
-    'shipyard_stop': 260,
+    'move_preference_stay_on_shipyard': -83,
+    'return_halite': 948,
+    'ship_spawn_threshold': 0.3,
+    'ships_shipyards_threshold': 0.08,
+    'shipyard_abandon_dominance': -15.18510987489331,
+    'shipyard_conversion_threshold': 5.813630085043901,
+    'shipyard_guarding_attack_probability': 0.3013689907404541,
+    'shipyard_guarding_min_dominance': -13.73028322189851,
+    'shipyard_min_dominance': 5.725656901908077,
+    'shipyard_min_population': 0.5,
+    'shipyard_start': 65,
+    'shipyard_stop': 244,
     'spawn_min_dominance': 3.528656727561098,
-    'spawn_till': 275
+    'spawn_till': 270
 }
 
 BOT = None
@@ -524,8 +524,11 @@ class HaliteBot(object):
         if guarding_threshold_index > 0:
             guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
             for r, c in zip(row, col):
-                if hunting_scores[r, c] < guarding_threshold and self.shipyard_distances[
-                    TO_INDEX[possible_enemy_targets[c][1].position]] > self.parameters['guarding_radius']:
+                target_pos = TO_INDEX[possible_enemy_targets[c][1].position]
+                ship_pos = TO_INDEX[self.hunting_ships[r].position]
+                if hunting_scores[r, c] < guarding_threshold and (
+                        self.shipyard_distances[target_pos] > self.parameters['guarding_radius'] or get_distance(
+                        ship_pos, target_pos) > self.parameters['guarding_aggression_radius']):
                     self.guarding_ships.append(self.hunting_ships[r])
             for ship in self.guarding_ships:
                 ship_pos = TO_INDEX[ship.position]
@@ -833,7 +836,7 @@ class HaliteBot(object):
                     score -= (300 + ship.halite)
                 elif ship.halite == 0 and self.rank == 0:  # only crash into enemy shipyards if we're in a good position
                     score += 400  # Attack the enemy shipyard
-            elif self.halite >= self.config.convert_cost and self.shipyard_count == 1 and not self.spawn_limit_reached:
+            elif self.halite >= self.config.spawn_cost and self.shipyard_count == 1 and not self.spawn_limit_reached:
                 if self.step_count <= 75 or self.medium_dominance_map[TO_INDEX[shipyard.position]] >= self.parameters[
                     'spawn_min_dominance']:
                     score += self.parameters['move_preference_block_shipyard']
