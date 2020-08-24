@@ -74,7 +74,7 @@ PARAMETERS = {
     'return_halite': 1000,
     'ship_spawn_threshold': 1.4001702394113038,
     'ships_shipyards_threshold': 0.1,
-    'shipyard_abandon_dominance': 0.0,
+    'shipyard_abandon_dominance': -15,
     'shipyard_conversion_threshold': 4,
     'shipyard_guarding_attack_probability': 0.1,
     'shipyard_guarding_min_dominance': -15,
@@ -518,7 +518,7 @@ class HaliteBot(object):
         assigned_hunting_scores.sort()
         guarding_threshold_index = max(
             min(ceil((clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
-                      self.parameters['guarding_norm']) * len(self.hunting_ships)) - 1,
+                      self.parameters['guarding_norm']) * len(assigned_hunting_scores)) - 1,
                 self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1),
             min(len(self.hunting_ships) - 1, len(self.me.shipyards)))
         if guarding_threshold_index > 0:
