@@ -520,7 +520,7 @@ class HaliteBot(object):
             min(ceil((clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
                       self.parameters['guarding_norm']) * len(assigned_hunting_scores)) - 1,
                 self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1),
-            min(len(self.hunting_ships) - 1, len(self.me.shipyards)))
+            min(len(assigned_hunting_scores) - 1, len(self.me.shipyards)))
         if guarding_threshold_index > 0:
             guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
             for r, c in zip(row, col):
