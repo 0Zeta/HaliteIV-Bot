@@ -28,15 +28,16 @@ PARAMETERS = {
     'farming_start': 1,
     'farming_end': 350,
     'guarding_aggression_radius': 5,
-    'guarding_distance_to_shipyard': 0,
-    'guarding_max_ships_per_shipyard': 3,
-    'guarding_norm': 0.1,
-    'guarding_radius': 2,
+    'guarding_distance_to_shipyard': 2,
+    'guarding_max_ships_per_shipyard': 2,
+    'guarding_norm': 0.4,
+    'guarding_radius': 3,
     'guarding_stop': 343,
-    'hunting_halite_threshold': 0.3850073533439147,
+    'harvest_threshold': 480,
+    'hunting_halite_threshold': 0.01,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.25,
-    'hunting_score_alpha': 0.8,
+    'hunting_score_alpha': 0.7,
     'hunting_score_beta': 1.2,
     'hunting_score_cargo_clip': 2.2374291465138816,
     'hunting_score_delta': 0.6506609889169908,
@@ -71,17 +72,17 @@ PARAMETERS = {
     'move_preference_longest_axis': 12,
     'move_preference_mining': 130,
     'move_preference_return': 115,
-    'move_preference_stay_on_shipyard': -25,
+    'move_preference_stay_on_shipyard': -75,
     'return_halite': 948,
     'ship_spawn_threshold': 0.3,
-    'ships_shipyards_threshold': 0.12,
+    'ships_shipyards_threshold': 0.2,
     'shipyard_abandon_dominance': -500,
-    'shipyard_conversion_threshold': 5.813630085043901,
+    'shipyard_conversion_threshold': 3.5,
     'shipyard_guarding_attack_probability': 0.3013689907404541,
     'shipyard_guarding_min_dominance': -100,
-    'shipyard_min_dominance': 5.725656901908077,
-    'shipyard_min_population': 0.6,
-    'shipyard_start': 45,
+    'shipyard_min_dominance': 2,
+    'shipyard_min_population': 0.7,
+    'shipyard_start': 35,
     'shipyard_stop': 244,
     'spawn_min_dominance': -10,
     'spawn_till': 270
@@ -127,6 +128,7 @@ class HaliteBot(object):
         self.hunting_targets = dict()
         self.guarding_shipyards = dict()
         self.friendly_neighbour_count = dict()
+        self.shipyard_guards = list()
 
         self.enemies = list()
 
@@ -152,9 +154,14 @@ class HaliteBot(object):
         self.step_count = board.step
         self.ship_count = len(self.ships)
         self.shipyard_count = len(self.me.shipyards)
+        self.shipyard_guards.clear()
 
         if self.handle_special_steps(board):
             return self.me.next_actions
+
+        self.enemies = [ship for player in board.players.values() for ship in player.ships if
+                        player.id != self.player_id]
+        self.enemy_positions = [TO_INDEX[ship.position] for ship in self.enemies]
 
         self.average_halite_per_cell = sum([halite for halite in self.observation['halite']]) / self.size ** 2
         self.average_halite_population = sum(
@@ -211,6 +218,17 @@ class HaliteBot(object):
                         min_distance = distance
                 self.shipyard_distances.append(min_distance)
 
+        # Distances to enemy ships
+        self.enemy_distances = dict()
+        self.guarded_shipyards = list()
+        for shipyard_position in self.shipyard_positions:
+            min_distance = 20
+            for enemy_position in self.enemy_positions:
+                distance = get_distance(shipyard_position, enemy_position)
+                if distance < min_distance:
+                    min_distance = distance
+            self.enemy_distances[shipyard_position] = min_distance
+
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_dominance_map(self.me, self.opponents,
                                                          self.parameters['dominance_map_small_sigma'], 'small',
@@ -261,11 +279,10 @@ class HaliteBot(object):
                     'move_preference_stay_on_shipyard'] if self.step_count > 12 else -200  # don't block the shipyard in the early game
 
         self.planned_shipyards.clear()
+        self.guarding_shipyards.clear()
         self.ship_types.clear()
         self.mining_targets.clear()
         self.deposit_targets.clear()
-        self.enemies = [ship for player in board.players.values() for ship in player.ships if
-                        player.id != self.player_id]
         enemy_cargo = sorted([ship.halite for ship in self.enemies])
         self.hunting_halite_threshold = enemy_cargo[
             floor(len(enemy_cargo) * self.parameters['hunting_halite_threshold'])] if len(enemy_cargo) > 0 else 0
@@ -540,10 +557,11 @@ class HaliteBot(object):
                         'guarding_aggression_radius'] or ship_pos in self.shipyard_positions:
                         self.guarding_ships.append(self.hunting_ships[r])
                     else:
-                        self.ship_types[ship.id] = ShipType.DEFENDING
+                        self.ship_types[self.hunting_ships[r].id] = ShipType.DEFENDING
+
             for ship in self.guarding_ships:
                 ship_pos = TO_INDEX[ship.position]
-                if len(guarding_targets) > 0 and ship_pos not in self.shipyard_positions:
+                if len(guarding_targets) > 0 and ship.id not in self.shipyard_guards:
                     guarding_targets.sort(key=lambda enemy: get_distance(ship_pos, TO_INDEX[enemy.position]))
                     target = guarding_targets[0]
                     if get_distance(ship_pos, TO_INDEX[target.position]) <= self.parameters[
@@ -558,19 +576,20 @@ class HaliteBot(object):
                 self.ship_types[ship.id] = ShipType.GUARDING
 
         self.guarding_ships = [ship for ship in self.guarding_ships if ship not in self.hunting_ships]
-        if len(self.guarding_ships) > 0:
-            guarding_ships_per_shipyard = ceil(len(self.guarding_ships) / len(self.me.shipyards))
+        available_guarding_ships = [ship for ship in self.guarding_ships if ship.id not in self.shipyard_guards]
+        if len(available_guarding_ships) > 0:
+            guarding_ships_per_shipyard = ceil(len(available_guarding_ships) / len(self.me.shipyards))
             guarding_scores = np.zeros(
-                (len(self.guarding_ships), len(self.me.shipyards) * guarding_ships_per_shipyard))
-            for ship_index, ship in enumerate(self.guarding_ships):
+                (len(available_guarding_ships), len(self.me.shipyards) * guarding_ships_per_shipyard))
+            for ship_index, ship in enumerate(available_guarding_ships):
                 ship_pos = TO_INDEX[ship.position]
                 for shipyard_index, shipyard_position in enumerate(self.shipyard_positions):
                     guarding_scores[ship_index,
-                    guarding_ships_per_shipyard * ship_index:guarding_ships_per_shipyard * ship_index + guarding_ships_per_shipyard] = get_distance(
+                    guarding_ships_per_shipyard * shipyard_index:guarding_ships_per_shipyard * shipyard_index + guarding_ships_per_shipyard] = get_distance(
                         ship_pos, shipyard_position)
             row, col = scipy.optimize.linear_sum_assignment(guarding_scores, maximize=False)
             for r, c in zip(row, col):
-                self.guarding_shipyards[self.guarding_ships[r].id] = self.shipyard_positions[
+                self.guarding_shipyards[available_guarding_ships[r].id] = self.shipyard_positions[
                     c // guarding_ships_per_shipyard]
 
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
@@ -668,18 +687,26 @@ class HaliteBot(object):
         ship_pos = TO_INDEX[ship.position]
         shipyard_position = self.guarding_shipyards[ship.id]
         current_distance = get_distance(ship_pos, shipyard_position)
-        if current_distance <= self.parameters['guarding_distance_to_shipyard']:
+        if ship.id in self.shipyard_guards:
+            if ship_pos != shipyard_position:
+                self.prefer_moves(ship, nav(ship_pos, shipyard_position),
+                                  self.farthest_directions[ship_pos][shipyard_position],
+                                  self.parameters['move_preference_guarding'] * 2)
+            else:
+                self.change_position_score(ship, ship.position,
+                                           self.parameters['move_preference_guarding'] - self.parameters[
+                                               'move_preference_stay_on_shipyard'])
+        elif current_distance <= self.parameters['guarding_distance_to_shipyard']:
             # stay near the shipyard
-            if ship.cell.halite > 0:
+            if ship.cell.shipyard is not None:
+                if self.halite < self.config.spawn_cost or self.step_count > self.parameters['spawn_till']:
+                    self.change_position_score(ship, ship.position,
+                                               self.parameters['move_preference_guarding'] - self.parameters[
+                                                   'move_preference_stay_on_shipyard'])
+            elif ship.cell.halite > 0:
                 self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding_stay'])
-            elif current_distance <= self.parameters['guarding_distance_to_shipyard']:
-                if ship.cell.shipyard is not None:
-                    if self.halite < self.config.spawn_cost:
-                        self.change_position_score(ship, ship.position,
-                                                   self.parameters['move_preference_guarding'] - self.parameters[
-                                                       'move_preference_stay_on_shipyard'])
-                else:
-                    self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding'])
+            else:
+                self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding'])
             for position in get_neighbouring_positions(ship.position):
                 if get_distance(TO_INDEX[position], shipyard_position) <= self.parameters[
                     'guarding_distance_to_shipyard']:
@@ -690,15 +717,36 @@ class HaliteBot(object):
                               self.parameters['move_preference_guarding'])
 
     def guard_shipyards(self, board: Board):
+        shipyard_guards = dict()
         for shipyard in self.me.shipyards:
             if shipyard.position in self.planned_moves:
                 continue
+            shipyard_position = TO_INDEX[shipyard.position]
+
+            min_distance = 20
+            for ship in [ship for ship in self.me.ships if ship.halite <= self.hunting_halite_threshold]:
+                distance = get_distance(shipyard_position, TO_INDEX[ship.position])
+                if distance < min_distance:
+                    min_distance = distance
+                    shipyard_guards[shipyard_position] = ship
+            enemy_distance = self.enemy_distances[shipyard_position]
+            if enemy_distance - 1 <= min_distance and shipyard_position in shipyard_guards.keys():
+                guard = shipyard_guards[shipyard_position]
+                self.shipyard_guards.append(guard.id)
+                self.guarding_ships.append(guard)
+                self.guarding_shipyards[guard.id] = shipyard_position
+                self.ship_types[guard.id] = ShipType.GUARDING
+            elif enemy_distance - 2 <= min_distance and shipyard_position in shipyard_guards.keys():
+                guard = shipyard_guards[shipyard_position]
+                if guard.cell.halite > 0:
+                    self.change_position_score(guard, guard.position, -500)  # don't mine
+
             enemies = set(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
                                  get_neighbours(shipyard.cell)))
             max_halite = min([cell.ship.halite for cell in enemies]) if len(enemies) > 0 else 500
 
             if len(enemies) > 0:
-                dominance = self.medium_dominance_map[TO_INDEX[shipyard.position]]
+                dominance = self.medium_dominance_map[shipyard_position]
                 # TODO: maybe don't move on the shipyard if the dominance score is too low
                 if shipyard.cell.ship is not None:
                     self.ship_types[shipyard.cell.ship.id] = ShipType.SHIPYARD_GUARDING
@@ -818,7 +866,8 @@ class HaliteBot(object):
         if distance_from_shipyard == 0 and self.step_count <= 11:
             score *= 0.1  # We don't want to block the shipyard.
         if self.parameters['farming_start'] <= self.step_count < self.parameters[
-            'farming_end'] and halite_val < 499 and cell_position in self.farming_positions:
+            'farming_end'] and halite_val < self.parameters[
+            'harvest_threshold'] and cell_position in self.farming_positions:
             score *= self.parameters['mining_score_farming_penalty']
         return score
 
@@ -860,11 +909,11 @@ class HaliteBot(object):
                 elif ship.halite == 0 and self.rank == 0:  # only crash into enemy shipyards if we're in a good position
                     score += 400  # Attack the enemy shipyard
             elif self.halite >= self.config.spawn_cost + (
-            0 if self.step_count < 120 else self.config.spawn_cost) and self.shipyard_count == 1 and not self.spawn_limit_reached:
+                    0 if self.step_count < 120 else self.config.spawn_cost) and self.shipyard_count == 1 and not self.spawn_limit_reached:
                 if self.step_count <= 100 or self.medium_dominance_map[TO_INDEX[shipyard.position]] >= self.parameters[
                     'spawn_min_dominance']:
                     score += self.parameters['move_preference_block_shipyard']
-        if ship.cell.shipyard is None:  # don't distract guarding ships
+        if ship.cell.shipyard is None and cell.shipyard is None:  # don't distract guarding ships
             if cell.ship is not None and cell.ship.player_id != self.player_id:
                 if cell.ship.halite < ship.halite:
                     score -= (500 + ship.halite - 0.5 * cell.ship.halite)

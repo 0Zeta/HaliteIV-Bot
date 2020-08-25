@@ -91,7 +91,8 @@ hyperparameters = {
     'move_preference_guarding_stay': ('int', (-200, -50)),
     'move_preference_guarding': ('int', (60, 100)),
     'guarding_max_ships_per_shipyard': ('int', (1, 4)),
-    'farming_start': ('int', (1, 50))
+    'farming_start': ('int', (1, 50)),
+    'harvest_threshold': ('int', (440, 499))
 }
 
 first_genome = {
