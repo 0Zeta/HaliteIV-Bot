@@ -78,7 +78,7 @@ hyperparameters = {
     'shipyard_conversion_threshold': ('float', (0.3, 17)),
     'shipyard_guarding_attack_probability': ('float', (0.1, 1)),
     'shipyard_guarding_min_dominance': ('float', (-40, -10)),
-    'shipyard_min_dominance': ('float', (4, 7)),
+    'shipyard_min_dominance': ('float', (-15, 7)),
     'shipyard_start': ('int', (50, 100)),
     'shipyard_stop': ('int', (200, 350)),
     'spawn_min_dominance': ('float', (3.5, 8)),
@@ -92,7 +92,8 @@ hyperparameters = {
     'move_preference_guarding': ('int', (60, 100)),
     'guarding_max_ships_per_shipyard': ('int', (1, 4)),
     'farming_start': ('int', (1, 50)),
-    'harvest_threshold': ('int', (440, 499))
+    'harvest_threshold': ('int', (440, 499)),
+    'hunting_score_ypsilon': ('float', (1.1, 3))
 }
 
 first_genome = {

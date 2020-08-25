@@ -28,16 +28,16 @@ PARAMETERS = {
     'farming_start': 1,
     'farming_end': 350,
     'guarding_aggression_radius': 5,
-    'guarding_distance_to_shipyard': 2,
+    'guarding_distance_to_shipyard': 3,
     'guarding_max_ships_per_shipyard': 2,
     'guarding_norm': 0.4,
-    'guarding_radius': 3,
+    'guarding_radius': 4,
     'guarding_stop': 343,
     'harvest_threshold': 480,
     'hunting_halite_threshold': 0.01,
     'hunting_min_ships': 10,
-    'hunting_proportion': 0.25,
-    'hunting_score_alpha': 0.7,
+    'hunting_proportion': 0.2,
+    'hunting_score_alpha': 0.8,
     'hunting_score_beta': 1.2,
     'hunting_score_cargo_clip': 2.2374291465138816,
     'hunting_score_delta': 0.6506609889169908,
@@ -47,7 +47,8 @@ PARAMETERS = {
     'hunting_score_kappa': 0.39357038462375626,
     'hunting_score_ship_bonus': 146,
     'hunting_score_zeta': 1.2,
-    'hunting_threshold': 7,
+    'hunting_score_ypsilon': 2,
+    'hunting_threshold': 11,
     'map_blur_gamma': 0.6534115332552308,
     'map_blur_sigma': 0.8,
     'max_halite_attack_shipyard': 0,
@@ -74,17 +75,17 @@ PARAMETERS = {
     'move_preference_return': 115,
     'move_preference_stay_on_shipyard': -75,
     'return_halite': 948,
-    'ship_spawn_threshold': 0.3,
-    'ships_shipyards_threshold': 0.2,
-    'shipyard_abandon_dominance': -500,
-    'shipyard_conversion_threshold': 3.5,
+    'ship_spawn_threshold': 0.1,
+    'ships_shipyards_threshold': 0.15,
+    'shipyard_abandon_dominance': -20,
+    'shipyard_conversion_threshold': 1,
     'shipyard_guarding_attack_probability': 0.3013689907404541,
-    'shipyard_guarding_min_dominance': -100,
-    'shipyard_min_dominance': 2,
-    'shipyard_min_population': 0.7,
+    'shipyard_guarding_min_dominance': -15,
+    'shipyard_min_dominance': 3,
+    'shipyard_min_population': 0.8,
     'shipyard_start': 35,
     'shipyard_stop': 244,
-    'spawn_min_dominance': -10,
+    'spawn_min_dominance': -15,
     'spawn_till': 270
 }
 
@@ -578,18 +579,23 @@ class HaliteBot(object):
         self.guarding_ships = [ship for ship in self.guarding_ships if ship not in self.hunting_ships]
         available_guarding_ships = [ship for ship in self.guarding_ships if ship.id not in self.shipyard_guards]
         if len(available_guarding_ships) > 0:
-            guarding_ships_per_shipyard = ceil(len(available_guarding_ships) / len(self.me.shipyards))
+            shipyards_to_protect = [shipyard_position for shipyard_position in self.shipyard_positions if
+                                    self.medium_dominance_map[shipyard_position] > self.parameters[
+                                        'shipyard_abandon_dominance']]
+            if len(shipyards_to_protect) == 0:
+                shipyards_to_protect.append(self.shipyard_positions[0])  # guard at least one shipyard
+            guarding_ships_per_shipyard = ceil(len(available_guarding_ships) / len(shipyards_to_protect))
             guarding_scores = np.zeros(
-                (len(available_guarding_ships), len(self.me.shipyards) * guarding_ships_per_shipyard))
+                (len(available_guarding_ships), len(shipyards_to_protect) * guarding_ships_per_shipyard))
             for ship_index, ship in enumerate(available_guarding_ships):
                 ship_pos = TO_INDEX[ship.position]
-                for shipyard_index, shipyard_position in enumerate(self.shipyard_positions):
+                for shipyard_index, shipyard_position in enumerate(shipyards_to_protect):
                     guarding_scores[ship_index,
                     guarding_ships_per_shipyard * shipyard_index:guarding_ships_per_shipyard * shipyard_index + guarding_ships_per_shipyard] = get_distance(
                         ship_pos, shipyard_position)
             row, col = scipy.optimize.linear_sum_assignment(guarding_scores, maximize=False)
             for r, c in zip(row, col):
-                self.guarding_shipyards[available_guarding_ships[r].id] = self.shipyard_positions[
+                self.guarding_shipyards[available_guarding_ships[r].id] = shipyards_to_protect[
                     c // guarding_ships_per_shipyard]
 
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
@@ -722,6 +728,7 @@ class HaliteBot(object):
             if shipyard.position in self.planned_moves:
                 continue
             shipyard_position = TO_INDEX[shipyard.position]
+            dominance = self.medium_dominance_map[shipyard_position]
 
             min_distance = 20
             for ship in [ship for ship in self.me.ships if ship.halite <= self.hunting_halite_threshold]:
@@ -730,7 +737,9 @@ class HaliteBot(object):
                     min_distance = distance
                     shipyard_guards[shipyard_position] = ship
             enemy_distance = self.enemy_distances[shipyard_position]
-            if enemy_distance - 1 <= min_distance and shipyard_position in shipyard_guards.keys():
+            if dominance < self.parameters['shipyard_abandon_dominance']:
+                logging.debug("Abandoning shipyard " + str(shipyard.id))
+            elif enemy_distance - 1 <= min_distance and shipyard_position in shipyard_guards.keys():
                 guard = shipyard_guards[shipyard_position]
                 self.shipyard_guards.append(guard.id)
                 self.guarding_ships.append(guard)
@@ -746,7 +755,6 @@ class HaliteBot(object):
             max_halite = min([cell.ship.halite for cell in enemies]) if len(enemies) > 0 else 500
 
             if len(enemies) > 0:
-                dominance = self.medium_dominance_map[shipyard_position]
                 # TODO: maybe don't move on the shipyard if the dominance score is too low
                 if shipyard.cell.ship is not None:
                     self.ship_types[shipyard.cell.ship.id] = ShipType.SHIPYARD_GUARDING
@@ -801,10 +809,13 @@ class HaliteBot(object):
         ship_pos = TO_INDEX[ship.position]
         if self.medium_dominance_map[ship_pos] < self.parameters['shipyard_min_dominance']:
             return False
+        return self.creates_good_triangle(ship.position)
+
+    def creates_good_triangle(self, point):
+        ship_pos = TO_INDEX[point]
         distance_to_nearest_shipyard = self.shipyard_distances[ship_pos]
         if self.parameters['min_shipyard_distance'] <= distance_to_nearest_shipyard <= self.parameters[
             'max_shipyard_distance']:
-            ship_point = ship.position
             good_distance = []
             for shipyard_position in self.shipyard_positions:
                 if self.parameters['min_shipyard_distance'] <= get_distance(ship_pos, shipyard_position) <= \
@@ -814,18 +825,18 @@ class HaliteBot(object):
                 return False
             midpoints = []
             if self.shipyard_count == 1:
-                half = 0.5 * get_vector(ship_point, good_distance[0])
+                half = 0.5 * get_vector(point, good_distance[0])
                 half = Point(round(half.x), round(half.y))
-                midpoints.append((ship_point + half) % SIZE)
+                midpoints.append((point + half) % SIZE)
             else:
                 for i in range(len(good_distance)):
                     for j in range(i + 1, len(good_distance)):
                         pos1, pos2 = good_distance[i], good_distance[j]
-                        if (pos1.x == pos2.x == ship_point.x) or (
-                                pos1.y == pos2.y == ship_point.y):  # rays don't intersect
-                            midpoints.append(ship_point)
+                        if (pos1.x == pos2.x == point.x) or (
+                                pos1.y == pos2.y == point.y):  # rays don't intersect
+                            midpoints.append(point)
                         else:
-                            midpoints.append(get_excircle_midpoint(pos1, pos2, ship_point))
+                            midpoints.append(get_excircle_midpoint(pos1, pos2, point))
             threshold = self.parameters[
                             'shipyard_min_population'] * self.average_halite_population * self.nb_cells_in_farming_radius
             if any([self.get_populated_cells_in_radius_count(TO_INDEX[midpoint]) >= threshold for midpoint in
@@ -886,15 +897,19 @@ class HaliteBot(object):
             halite_score = (ship_bonus + d_halite) / self.parameters['hunting_score_halite_norm']
         player_score = 1 + self.parameters['hunting_score_kappa'] * (
             3 - self.player_ranking[ship.player_id] if self.rank <= 1 else self.player_ranking[ship.player_id])
-        return self.parameters['hunting_score_gamma'] ** distance * halite_score * (
+        score = self.parameters['hunting_score_gamma'] ** distance * halite_score * (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
             self.medium_dominance_map[enemy_pos] + 20, 0, 40) / 40) * player_score * (
-                       1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
-                                                                         500) / 500)) * (
-                       1 + (self.parameters['hunting_score_zeta'] * clip(self.cargo_map[enemy_pos], 0,
-                                                                         self.parameters['hunting_score_cargo_clip']) /
-                            self.parameters['hunting_score_cargo_clip'])
-               )
+                        1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
+                                                                          500) / 500)) * (
+                        1 + (self.parameters['hunting_score_zeta'] * clip(self.cargo_map[enemy_pos], 0,
+                                                                          self.parameters['hunting_score_cargo_clip']) /
+                             self.parameters['hunting_score_cargo_clip'])
+                )
+        if self.shipyard_count == 2 and self.creates_good_triangle(enemy.position):
+            # Clear space for a third shipyard
+            score *= self.parameters['hunting_score_ypsilon']
+        return score
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         score = 0
