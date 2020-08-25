@@ -30,11 +30,11 @@ PARAMETERS = {
     'guarding_distance_to_shipyard': 1,
     'guarding_max_ships_per_shipyard': 2,
     'guarding_norm': 0.6535341601623262,
-    'guarding_radius': 4,
+    'guarding_radius': 2,
     'guarding_stop': 343,
     'hunting_halite_threshold': 0.3850073533439147,
     'hunting_min_ships': 12,
-    'hunting_proportion': 0.3,
+    'hunting_proportion': 0.5,
     'hunting_score_alpha': 0.45,
     'hunting_score_beta': 1.2,
     'hunting_score_cargo_clip': 2.2374291465138816,
@@ -45,7 +45,7 @@ PARAMETERS = {
     'hunting_score_kappa': 0.39357038462375626,
     'hunting_score_ship_bonus': 146,
     'hunting_score_zeta': 1.2,
-    'hunting_threshold': 6.054528584760063,
+    'hunting_threshold': 12,
     'map_blur_gamma': 0.6534115332552308,
     'map_blur_sigma': 0.8,
     'max_halite_attack_shipyard': 0,
@@ -56,7 +56,7 @@ PARAMETERS = {
     'min_mining_halite': 27,
     'min_ships': 32,
     'min_shipyard_distance': 6,
-    'mining_score_alpha': 0.9807755015639334,
+    'mining_score_alpha': 1.2,
     'mining_score_beta': 0.7980915650104368,
     'mining_score_dominance_clip': 3.769020996875946,
     'mining_score_dominance_norm': 0.5,
@@ -73,14 +73,14 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -83,
     'return_halite': 948,
     'ship_spawn_threshold': 0.3,
-    'ships_shipyards_threshold': 0.08,
-    'shipyard_abandon_dominance': -15.18510987489331,
+    'ships_shipyards_threshold': 0.12,
+    'shipyard_abandon_dominance': -500,
     'shipyard_conversion_threshold': 5.813630085043901,
     'shipyard_guarding_attack_probability': 0.3013689907404541,
-    'shipyard_guarding_min_dominance': -13.73028322189851,
+    'shipyard_guarding_min_dominance': -20,
     'shipyard_min_dominance': 5.725656901908077,
-    'shipyard_min_population': 0.5,
-    'shipyard_start': 65,
+    'shipyard_min_population': 0.6,
+    'shipyard_start': 45,
     'shipyard_stop': 244,
     'spawn_min_dominance': 3.528656727561098,
     'spawn_till': 270
@@ -194,7 +194,7 @@ class HaliteBot(object):
             self.shipyard_distances = [3] * self.size ** 2
         else:
             # Also compute farming positions
-            required_in_range = min(3, max(2, len(self.shipyard_positions)))
+            required_in_range = min(3, max(1, len(self.shipyard_positions)))
             self.shipyard_distances = []
             for position in range(self.size ** 2):
                 nb_in_farming_range = 0
@@ -658,6 +658,8 @@ class HaliteBot(object):
             best_distance = min(self.parameters['guarding_distance_to_shipyard'], current_distance + 1)
             if ship.cell.halite > 0:
                 self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding_stay'])
+            elif current_distance == best_distance:
+                self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding'])
             for position in get_neighbouring_positions(ship.position):
                 if get_distance(TO_INDEX[position], shipyard_position) == best_distance:
                     self.change_position_score(ship, position, self.parameters['move_preference_guarding'])

@@ -73,7 +73,7 @@ hyperparameters = {
     'return_halite': ('int', (250, 3000)),
     'ship_spawn_threshold': ('float', (0.1, 4.0)),
     'ships_shipyards_threshold': ('float', (0.01, 0.8)),
-    'shipyard_abandon_dominance': ('float', (-50, -5)),
+    'shipyard_abandon_dominance': ('float', (-50, -15)),
     'shipyard_min_population': ('float', (0.5, 1.5)),
     'shipyard_conversion_threshold': ('float', (0.3, 17)),
     'shipyard_guarding_attack_probability': ('float', (0.1, 1)),
@@ -87,7 +87,7 @@ hyperparameters = {
     'guarding_norm': ('float', (0.25, 1.5)),
     'guarding_radius': ('int', (2, 5)),
     'guarding_aggression_radius': ('int', (4, 12)),
-    'guarding_distance_to_shipyard': ('int', (1, 4)),
+    'guarding_distance_to_shipyard': ('int', (0, 4)),
     'move_preference_guarding_stay': ('int', (-200, -50)),
     'move_preference_guarding': ('int', (60, 100)),
     'guarding_max_ships_per_shipyard': ('int', (1, 4))
