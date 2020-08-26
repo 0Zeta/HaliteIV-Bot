@@ -7,7 +7,7 @@ from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, Shipy
 
 from haliteivbot.rule_based.utils import *
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 PARAMETERS = {
     'cargo_map_halite_norm': 197,
@@ -204,7 +204,7 @@ class HaliteBot(object):
             self.shipyard_distances = [3] * self.size ** 2
         else:
             # Also compute farming positions
-            required_in_range = min(3, max(1, len(self.shipyard_positions)))
+            required_in_range = min(3, max(2, len(self.shipyard_positions)))
             self.shipyard_distances = []
             for position in range(self.size ** 2):
                 nb_in_farming_range = 0
