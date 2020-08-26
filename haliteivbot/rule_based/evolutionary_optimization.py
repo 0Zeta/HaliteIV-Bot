@@ -93,7 +93,9 @@ hyperparameters = {
     'guarding_max_ships_per_shipyard': ('int', (1, 4)),
     'farming_start': ('int', (1, 50)),
     'harvest_threshold': ('int', (440, 499)),
-    'hunting_score_ypsilon': ('float', (1.1, 3))
+    'hunting_score_ypsilon': ('float', (1.1, 3)),
+    'mining_score_juicy': ('float', (0.01, 0.4)),
+    'mining_score_start_returning': ('int', (30, 70))
 }
 
 first_genome = {
