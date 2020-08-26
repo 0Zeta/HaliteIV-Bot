@@ -327,7 +327,7 @@ class HaliteBot(object):
 
     def spawn_ships(self, board: Board):
         # Spawn a ship if there are none left
-        if len(self.me.ships) == 0:
+        if len(self.me.ships) == 0 and self.halite >= self.config.spawn_cost:
             if len(self.me.shipyards) > 0:
                 self.spawn_ship(self.me.shipyards[0])
 
