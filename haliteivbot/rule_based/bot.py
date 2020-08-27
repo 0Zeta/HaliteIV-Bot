@@ -33,7 +33,7 @@ PARAMETERS = {
     'guarding_norm': 0.4,
     'guarding_radius': 4,
     'guarding_stop': 343,
-    'harvest_threshold': 320,
+    'harvest_threshold': 340,
     'hunting_halite_threshold': 0.01,
     'hunting_min_ships': 15,
     'hunting_proportion': 0.6,
@@ -76,7 +76,7 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -75,
     'return_halite': 989,
     'ship_spawn_threshold': 0.1,
-    'ships_shipyards_threshold': 0.12,
+    'ships_shipyards_threshold': 0.13,
     'shipyard_abandon_dominance': -23.30616133925598,
     'shipyard_conversion_threshold': 6,
     'shipyard_guarding_attack_probability': 0.35,
@@ -139,10 +139,6 @@ class HaliteBot(object):
         self.mining_ships = list()
         self.hunting_ships = list()
         self.guarding_ships = list()
-
-        self.optimal_mining_steps = create_optimal_mining_steps_tensor(self.parameters['mining_score_alpha'],
-                                                                       self.parameters['mining_score_beta'],
-                                                                       self.parameters['mining_score_gamma'])
 
     def step(self, board: Board, obs):
         if self.me is None:
@@ -308,6 +304,9 @@ class HaliteBot(object):
             self.me.shipyards[0].next_action = ShipyardAction.SPAWN
 
             # Do some initialization stuff
+            self.optimal_mining_steps = create_optimal_mining_steps_tensor(self.parameters['mining_score_alpha'],
+                                                                           self.parameters['mining_score_beta'],
+                                                                           self.parameters['mining_score_gamma'])
             create_navigation_lists(self.size)
             self.distances = get_distance_matrix()
             self.positions_in_reach_list = compute_positions_in_reach()

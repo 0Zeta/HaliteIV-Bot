@@ -290,7 +290,7 @@ class Vector(object):
         return Vector(self.x * other, self.y * other)
 
     def __abs__(self):
-        return math.sqrt(self.x ** 2 + self.y ** 2)
+        return abs(self.x) + abs(self.y)
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
@@ -312,7 +312,20 @@ def get_excircle_midpoint(A: Point, B: Point, C: Point):
     r = get_orthogonal_vector(AB)
     v = get_orthogonal_vector(AC)
     M1, M2 = 0.5 * Vector(AB.x, AB.y), 0.5 * Vector(AC.x, AC.y)
-    yololon = (M1.x * v.y - M2.x * v.y - M1.y * v.x + M2.y * v.x) / (r.y * v.x - r.x * v.y)
+    a = (r.y * v.x - r.x * v.y)
+    if a == 0:
+        BC = get_vector(B, C)
+        AB_abs = abs(AB)
+        AC_abs = abs(AC)
+        BC_abs = abs(BC)
+        abs_max = max(AB_abs, AC_abs, BC_abs)
+        if AB_abs == abs_max:
+            return C
+        elif AC_abs == abs_max:
+            return B
+        else:
+            return A
+    yololon = (M1.x * v.y - M2.x * v.y - M1.y * v.x + M2.y * v.x) / a
     Q = Vector(A.x, A.y) + M1 + yololon * r
     return Point(round(Q.x), round(Q.y)) % SIZE
 
