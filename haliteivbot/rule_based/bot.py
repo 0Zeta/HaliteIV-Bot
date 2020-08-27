@@ -75,14 +75,14 @@ PARAMETERS = {
     'move_preference_return': 125,
     'move_preference_stay_on_shipyard': -75,
     'return_halite': 989,
-    'ship_spawn_threshold': 0.1,
+    'ship_spawn_threshold': 0.14,
     'ships_shipyards_threshold': 0.13,
     'shipyard_abandon_dominance': -23.30616133925598,
     'shipyard_conversion_threshold': 6,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 1.9341508153543074,
-    'shipyard_min_population': 0.9,
+    'shipyard_min_population': 1,
     'shipyard_start': 35,
     'shipyard_stop': 244,
     'spawn_min_dominance': -10,
@@ -344,6 +344,26 @@ class HaliteBot(object):
             [sum([1 for ship in player.ships if ship.halite <= 1]) for player in self.opponents if
              len(player.ships) > 0]) / max(1, sum([len(player.ships) for player in self.opponents]))
 
+        # Distances to enemy ships and shipyard connections
+        self.enemy_distances = dict()
+        self.guarded_shipyards = list()
+        self.max_shipyard_connections = 0
+        for shipyard_position in self.shipyard_positions:
+            min_distance = 20
+            connections = 0
+            for enemy_position in self.enemy_positions:
+                distance = get_distance(shipyard_position, enemy_position)
+                if distance < min_distance:
+                    min_distance = distance
+            self.enemy_distances[shipyard_position] = min_distance
+            for shipyard2_pos in self.shipyard_positions:
+                con_distance = get_distance(shipyard_position, shipyard2_pos)
+                if shipyard_position != shipyard2_pos and self.parameters['min_shipyard_distance'] <= con_distance <= \
+                        self.parameters['max_shipyard_distance']:
+                    connections += 1
+                    if self.max_shipyard_connections < connections:
+                        self.max_shipyard_connections = connections
+
         self.farming_positions = []
         # Compute distances to the next shipyard:
         if self.shipyard_count == 0:
@@ -351,31 +371,20 @@ class HaliteBot(object):
             self.shipyard_distances = [3] * self.size ** 2
         else:
             # Also compute farming positions
-            required_in_range = min(3, max(2, len(self.shipyard_positions)))
+            required_in_range = min(3, max(2, self.max_shipyard_connections + 1))
             self.shipyard_distances = []
             for position in range(self.size ** 2):
                 nb_in_farming_range = 0
                 min_distance = float('inf')
                 for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
                     distance = get_distance(position, shipyard_position)
-                    if position not in self.shipyard_positions and distance <= self.parameters['max_shipyard_distance']:
+                    if position not in self.shipyard_positions and distance <= self.parameters['min_shipyard_distance']:
                         nb_in_farming_range += 1
                         if nb_in_farming_range == required_in_range:
                             self.farming_positions.append(position)
                     if distance < min_distance:
                         min_distance = distance
                 self.shipyard_distances.append(min_distance)
-
-        # Distances to enemy ships
-        self.enemy_distances = dict()
-        self.guarded_shipyards = list()
-        for shipyard_position in self.shipyard_positions:
-            min_distance = 20
-            for enemy_position in self.enemy_positions:
-                distance = get_distance(shipyard_position, enemy_position)
-                if distance < min_distance:
-                    min_distance = distance
-            self.enemy_distances[shipyard_position] = min_distance
 
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_dominance_map(self.me, self.opponents,
@@ -975,7 +984,7 @@ class HaliteBot(object):
             if len(good_distance) == 0:
                 return False
             midpoints = []
-            if self.shipyard_count == 1:
+            if self.max_shipyard_connections == 0:
                 half = 0.5 * get_vector(point, good_distance[0])
                 half = Point(round(half.x), round(half.y))
                 midpoints.append((point + half) % SIZE)
