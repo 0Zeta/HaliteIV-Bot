@@ -94,8 +94,9 @@ hyperparameters = {
     'farming_start': ('int', (1, 50)),
     'harvest_threshold': ('int', (440, 499)),
     'hunting_score_ypsilon': ('float', (1.1, 3)),
-    'mining_score_juicy': ('float', (0.01, 0.4)),
-    'mining_score_start_returning': ('int', (30, 70))
+    'mining_score_juicy': ('float', (0.1, 0.6)),
+    'mining_score_start_returning': ('int', (30, 70)),
+    'hunting_proportion_after_farming': ('float', (0.01, 0.5))
 }
 
 first_genome = {
