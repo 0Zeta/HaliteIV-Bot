@@ -41,7 +41,7 @@ def create_optimal_mining_steps_tensor(alpha, beta, gamma):
                     return -score(n1, n2, mine, 500, CHratio * 500)
 
                 res = scipy.optimize.minimize_scalar(h, bounds=(1, 15), method='Bounded')
-                ch_opt.append(round(res.x))
+                ch_opt.append(int(round(res.x)))
             n_opt.append(ch_opt)
         tensor.append(n_opt)
     return tensor
