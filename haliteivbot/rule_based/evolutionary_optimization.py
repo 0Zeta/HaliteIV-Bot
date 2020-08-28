@@ -51,14 +51,15 @@ hyperparameters = {
     'max_halite_attack_shipyard': ('int', (0, 0)),
     'max_hunting_ships_per_direction': ('int', (1, 3)),
     'max_ship_advantage': ('int', (-5, 30)),
-    'max_shipyard_distance': ('int', (7, 8)),
+    'max_shipyard_distance': ('int', (7, 9)),
     'max_shipyards': ('int', (2, 5)),
     'min_mining_halite': ('int', (1, 50)),
     'min_ships': ('int', (8, 40)),
-    'min_shipyard_distance': ('int', (5, 6)),
+    'min_shipyard_distance': ('int', (5, 7)),
     'mining_score_alpha': ('float', (0.65, 1.5)),
     'mining_score_beta': ('float', (0.55, 0.99)),
     'mining_score_gamma': ('float', (0.97, 0.9999)),
+    'mining_score_delta': ('float', (0.8, 2.5)),
     'mining_score_dominance_clip': ('float', (2, 7)),
     'mining_score_dominance_norm': ('float', (0.2, 2)),
     'mining_score_farming_penalty': ('float', (0.01, 0.15)),
@@ -276,11 +277,11 @@ def create_new_genome(parents):
             mutation = current_parent[characteristic]
             if hyperparameters[characteristic][0] == "float":
                 genome[characteristic] = np.clip(np.random.normal(mutation, (
-                        hyperparameters[characteristic][1][1] - hyperparameters[characteristic][1][0]) / 10),
+                        hyperparameters[characteristic][1][1] - hyperparameters[characteristic][1][0]) / 7),
                                                  *hyperparameters[characteristic][1])
             elif hyperparameters[characteristic][0] == "int":
                 genome[characteristic] = np.clip(int(np.random.normal(mutation, (
-                        hyperparameters[characteristic][1][1] - hyperparameters[characteristic][1][0]) / 10)),
+                        hyperparameters[characteristic][1][1] - hyperparameters[characteristic][1][0]) / 7)),
                                                  *hyperparameters[characteristic][1])
         else:
             genome[characteristic] = current_parent[characteristic]
