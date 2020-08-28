@@ -911,11 +911,10 @@ class HaliteBot(object):
                 max(int(round(self.parameters['mining_score_alpha'] * distance_from_shipyard) - 1), 0)][ch]
         dominance = self.parameters['mining_score_dominance_norm'] * clip(
             self.small_dominance_map[cell_position] + self.parameters['mining_score_dominance_clip'], 0,
-            self.parameters['mining_score_dominance_clip'] * 2) / (
-                            self.parameters['mining_score_dominance_clip'] * 2)
+            self.parameters['mining_score_dominance_clip']) / self.parameters['mining_score_dominance_clip']
         if self.step_count < self.parameters['mining_score_start_returning']:
-            dominance *= 0.35
-        dominance += 1
+            dominance = self.parameters['mining_score_dominance_norm']
+        dominance += 1 - self.parameters['mining_score_dominance_norm'] / 2
         score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
                 self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * halite_val) * dominance / max(
             distance_from_ship + mining_steps + self.parameters[
