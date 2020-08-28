@@ -32,12 +32,13 @@ PARAMETERS = {
     'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.55,
-    'guarding_radius': 2,
+    'guarding_radius': 3,
+    'guarding_end': 370,
     'guarding_stop': 342,
     'harvest_threshold': 360,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 15,
-    'hunting_proportion': 0.3,
+    'hunting_proportion': 0.38,
     'hunting_proportion_after_farming': 0.3815610811742708,
     'hunting_score_alpha': 0.8,
     'hunting_score_beta': 2.391546761028965,
@@ -80,9 +81,9 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -95,
     'return_halite': 989,
     'ship_spawn_threshold': 0.7754566951916968,
-    'ships_shipyards_threshold': 0.17,
+    'ships_shipyards_threshold': 0.15,
     'shipyard_abandon_dominance': -36.82080985520312,
-    'shipyard_conversion_threshold': 1.8,
+    'shipyard_conversion_threshold': 3,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 2.2663304454187605,
@@ -779,9 +780,10 @@ class HaliteBot(object):
         guarding_threshold_index = max(
             min(ceil(((1 - clip(self.ship_advantage, 0, self.parameters['guarding_ship_advantage_norm']) /
                        self.parameters['guarding_ship_advantage_norm']) * (
-                                  clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
-                                  self.parameters['guarding_norm'])) * len(assigned_hunting_scores)) - 1,
-                self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1),
+                              clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
+                              self.parameters['guarding_norm'])) * len(assigned_hunting_scores)) - 1,
+                self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1,
+                0 if self.step_count >= self.parameters['guarding_end'] else 500),
             min(len(assigned_hunting_scores) - 1, len(self.me.shipyards))) - len(self.guarding_ships)
         if guarding_threshold_index > 0:
             guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
