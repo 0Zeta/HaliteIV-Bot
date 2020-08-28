@@ -15,7 +15,7 @@ PARAMETERS = {
     'cell_score_enemy_halite': 0.45741776220092856,
     'cell_score_neighbour_discount': 0.6726454003260056,
     'cell_score_ship_halite': 0.0006206102891185107,
-    'convert_when_attacked_threshold': 600,
+    'convert_when_attacked_threshold': 550,
     'disable_hunting_till': 75,
     'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
@@ -59,13 +59,13 @@ PARAMETERS = {
     'max_shipyards': 7,
     'min_mining_halite': 15,
     'min_ships': 28,
-    'min_shipyard_distance': 5,
-    'mining_score_alpha': 0.9080549101258252,
-    'mining_score_beta': 0.8,
+    'min_shipyard_distance': 6,
+    'mining_score_alpha': 1,
+    'mining_score_beta': 1,
     'mining_score_dominance_clip': 4,
     'mining_score_dominance_norm': 0.35,
     'mining_score_farming_penalty': 0.06542164541355099,
-    'mining_score_gamma': 0.9774657786055219,
+    'mining_score_gamma': 0.99,
     'move_preference_base': 95,
     'move_preference_block_shipyard': -200,
     'move_preference_guarding': 100,
@@ -77,18 +77,18 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -75,
     'return_halite': 989,
     'ship_spawn_threshold': 0.14,
-    'ships_shipyards_threshold': 0.13,
+    'ships_shipyards_threshold': 0.14,
     'shipyard_abandon_dominance': -23.30616133925598,
-    'shipyard_conversion_threshold': 6,
+    'shipyard_conversion_threshold': 4,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 1.9341508153543074,
-    'shipyard_min_population': 1,
+    'shipyard_min_population': 0.85,
     'shipyard_start': 35,
     'shipyard_stop': 244,
     'spawn_min_dominance': -10,
     'spawn_till': 280,
-    'mining_score_juicy': 0.25,
+    'mining_score_juicy': 0.35,
     'mining_score_start_returning': 50
 }
 
@@ -895,8 +895,14 @@ class HaliteBot(object):
             ch = 10
         else:
             ch = int(math.log(ship_halite / halite_val) * 2.5 + 5.5)
-            ch = clip(ch, 0, 10)
-        mining_steps = self.optimal_mining_steps[distance_from_ship - 1][distance_from_shipyard - 1][ch]
+            ch = clip(ch, 0, 14)
+        if distance_from_shipyard == 0:
+            mining_steps = 0
+            if distance_from_ship == 0:
+                return 0  # We are on the shipyard
+        else:
+            mining_steps = self.optimal_mining_steps[max(distance_from_shipyard - 1, 0)][
+                max(int(round(self.parameters['mining_score_alpha'] * distance_from_shipyard) - 1), 0)][ch]
         dominance = self.parameters['mining_score_dominance_norm'] * clip(
             self.small_dominance_map[cell_position] + self.parameters['mining_score_dominance_clip'], 0,
             self.parameters['mining_score_dominance_clip'] * 2) / (
@@ -906,9 +912,9 @@ class HaliteBot(object):
         dominance += 1
         score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
                 self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * min(
-            1.02 ** distance_from_ship * halite_val, 500)) * dominance / (
-                        distance_from_ship + mining_steps + self.parameters[
-                    'mining_score_alpha'] * distance_from_shipyard)
+            1.02 ** distance_from_ship * halite_val, 500)) * dominance / max(
+            distance_from_ship + mining_steps + self.parameters[
+                'mining_score_alpha'] * distance_from_shipyard, 1)
         if distance_from_shipyard == 0 and self.step_count <= 11:
             score *= 0.1  # We don't want to block the shipyard.
         if self.parameters['farming_start'] <= self.step_count < self.parameters[

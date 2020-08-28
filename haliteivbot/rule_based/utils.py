@@ -21,7 +21,7 @@ TO_INDEX = {Point.from_index(index, SIZE): index for index in range(SIZE ** 2)}
 def create_optimal_mining_steps_tensor(alpha, beta, gamma):
     # The optimal amount of turns spent mining on a cell based on it's distancel, the CHratio and the distance to the nearest friendly shipyard
     # Adapted from https://www.kaggle.com/solverworld/optimal-mining-with-carried-halite
-    chrange = 11
+    chrange = 15
 
     def score(n1, n2, m, H, C):
         return gamma ** (n1 + m) * (beta * C + (1 - .75 ** m) * 1.02 ** (n1 + m) * H) / (n1 + alpha * n2 + m)
