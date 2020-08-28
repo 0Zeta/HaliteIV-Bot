@@ -30,6 +30,7 @@ PARAMETERS = {
     'guarding_aggression_radius': 4,
     'guarding_distance_to_shipyard': 1,
     'guarding_max_ships_per_shipyard': 2,
+    'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.25,
     'guarding_radius': 4,
     'guarding_stop': 342,
@@ -198,6 +199,8 @@ class HaliteBot(object):
             self.player_ranking[player.id] = int(np.where(ranking == i)[0])
             self.map_presence_ranking[player.id] = int(np.where(map_presence_ranks == i)[0])
             self.halite_ranking[player.id] = int(np.where(halite_ranks == i)[0])
+
+        self.ship_advantage = len(self.me.ships) - max([len(player.ships) for player in self.opponents] + [0])
 
         self.enemy_hunting_proportion = sum(
             [sum([1 for ship in player.ships if ship.halite <= 1]) for player in self.opponents if
@@ -574,8 +577,10 @@ class HaliteBot(object):
         # Guarding ships
         assigned_hunting_scores.sort()
         guarding_threshold_index = max(
-            min(ceil((clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
-                      self.parameters['guarding_norm']) * len(assigned_hunting_scores)) - 1,
+            min(ceil(((1 - clip(self.ship_advantage, 0, self.parameters['guarding_ship_advantage_norm']) /
+                       self.parameters['guarding_ship_advantage_norm']) * (
+                                  clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
+                                  self.parameters['guarding_norm'])) * len(assigned_hunting_scores)) - 1,
                 self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1),
             min(len(assigned_hunting_scores) - 1, len(self.me.shipyards))) - len(self.guarding_ships)
         if guarding_threshold_index > 0:
@@ -996,7 +1001,8 @@ class HaliteBot(object):
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
     def calculate_player_score(self, player):
-        return player.halite + len(player.ships) * 500 * (1 - self.step_count / 398) + sum(
+        return player.halite + len(player.ships) * 500 * (1 - self.step_count / 398) + len(player.shipyards) * 750 * (
+                    1 - self.step_count / 398) + sum(
             [ship.halite / 4 for ship in player.ships] if len(player.ships) > 0 else [0])
 
     def calculate_player_map_presence(self, player):
