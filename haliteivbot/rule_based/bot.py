@@ -32,7 +32,7 @@ PARAMETERS = {
     'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.65,
-    'guarding_radius': 4,
+    'guarding_radius': 2,
     'guarding_stop': 342,
     'harvest_threshold': 430,
     'hunting_halite_threshold': 0.04077647561190107,
@@ -751,7 +751,8 @@ class HaliteBot(object):
         possible_enemy_targets = [(dir, ship) for dir in encoded_dirs for ship in self.enemies for _ in
                                   range(self.parameters['max_hunting_ships_per_direction'])]
         guarding_targets = [ship for ship in self.enemies if
-                            self.shipyard_distances[TO_INDEX[ship.position]] <= self.parameters['guarding_radius']] + \
+                            self.shipyard_distances[TO_INDEX[ship.position]] <= self.parameters['guarding_radius'] or
+                            TO_INDEX[ship.position] in self.farming_positions] + \
                            [shipyard for player in self.opponents for shipyard in player.shipyards if
                             self.shipyard_distances[TO_INDEX[shipyard.position]] <= self.parameters['guarding_radius']]
         hunting_scores = np.zeros(
@@ -789,7 +790,8 @@ class HaliteBot(object):
                 target_pos = TO_INDEX[possible_enemy_targets[c][1].position]
                 ship_pos = TO_INDEX[self.hunting_ships[r].position]
                 if hunting_scores[r, c] < guarding_threshold:
-                    if self.shipyard_distances[target_pos] > self.parameters['guarding_radius'] or get_distance(
+                    if (self.shipyard_distances[target_pos] > self.parameters[
+                        'guarding_radius'] and target_pos not in self.farming_positions) or get_distance(
                             ship_pos, target_pos) > self.parameters[
                         'guarding_aggression_radius'] or ship_pos in self.shipyard_positions:
                         self.guarding_ships.append(self.hunting_ships[r])
