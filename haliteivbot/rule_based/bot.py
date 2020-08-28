@@ -56,14 +56,14 @@ PARAMETERS = {
     'max_hunting_ships_per_direction': 1,
     'max_ship_advantage': 27,
     'max_shipyard_distance': 7,
-    'max_shipyards': 5,
+    'max_shipyards': 10,
     'min_mining_halite': 5,
     'min_ships': 29,
     'min_shipyard_distance': 6,
     'mining_score_alpha': 1.0100329915325859,
     'mining_score_beta': 0.9624023223849048,
     'mining_score_dominance_clip': 2.7914078388504846,
-    'mining_score_dominance_norm': 0.25,
+    'mining_score_dominance_norm': 0.35,
     'mining_score_farming_penalty': 0.01,
     'mining_score_gamma': 0.9921957052860305,
     'mining_score_juicy': 0.35,
@@ -79,17 +79,17 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -95,
     'return_halite': 989,
     'ship_spawn_threshold': 0.7754566951916968,
-    'ships_shipyards_threshold': 0.25853731622621545,
+    'ships_shipyards_threshold': 0.25,
     'shipyard_abandon_dominance': -36.82080985520312,
-    'shipyard_conversion_threshold': 4.774609099706526,
+    'shipyard_conversion_threshold': 1.5,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 2.2663304454187605,
-    'shipyard_min_population': 0.8498625773794799,
-    'shipyard_start': 35,
-    'shipyard_stop': 253,
+    'shipyard_min_population': 0.85,
+    'shipyard_start': 20,
+    'shipyard_stop': 280,
     'spawn_min_dominance': -10,
-    'spawn_till': 313
+    'spawn_till': 300
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = None
@@ -237,7 +237,9 @@ class HaliteBot(object):
                 min_distance = float('inf')
                 for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
                     distance = get_distance(position, shipyard_position)
-                    if position not in self.shipyard_positions and distance <= self.parameters['min_shipyard_distance']:
+                    if self.parameters['farming_start'] <= self.step_count <= self.parameters[
+                        'farming_end'] and position not in self.shipyard_positions and distance <= self.parameters[
+                        'min_shipyard_distance']:
                         nb_in_farming_range += 1
                         if nb_in_farming_range == required_in_range:
                             self.farming_positions.append(position)
@@ -885,6 +887,8 @@ class HaliteBot(object):
         halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
             'map_blur_gamma'] ** distance_from_ship * halite
         halite_val = min(1.02 ** distance_from_ship * halite_val, 500)
+        farming_activated = self.parameters['farming_start'] <= (self.step_count + distance_from_ship) < \
+                            self.parameters['farming_end']
         if distance_from_shipyard > 20:
             # There is no shipyard.
             distance_from_shipyard = 20
@@ -899,6 +903,9 @@ class HaliteBot(object):
             mining_steps = 0
             if distance_from_ship == 0:
                 return 0  # We are on the shipyard
+        elif cell_position in self.farming_positions and halite_val >= self.parameters[
+            'harvest_threshold'] and farming_activated:
+            mining_steps = ceil(math.log(self.parameters['harvest_threshold'] / halite_val, 0.75))
         else:
             mining_steps = self.optimal_mining_steps[max(distance_from_shipyard - 1, 0)][
                 max(int(round(self.parameters['mining_score_alpha'] * distance_from_shipyard) - 1), 0)][ch]
@@ -915,9 +922,8 @@ class HaliteBot(object):
                 'mining_score_alpha'] * distance_from_shipyard, 1)
         if distance_from_shipyard == 0 and self.step_count <= 11:
             score *= 0.1  # We don't want to block the shipyard.
-        if self.parameters['farming_start'] <= self.step_count < self.parameters[
-            'farming_end'] and halite_val < self.parameters[
-            'harvest_threshold'] and cell_position in self.farming_positions:
+        if halite_val < self.parameters[
+            'harvest_threshold'] and cell_position in self.farming_positions and farming_activated:
             score *= self.parameters['mining_score_farming_penalty']
         return score
 
