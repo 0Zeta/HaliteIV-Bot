@@ -912,6 +912,20 @@ class HaliteBot(object):
             self.prefer_moves(ship, [], [], self.parameters['move_preference_mining'])
 
     def handle_hunting_ship(self, ship: Ship):
+        ship_pos = TO_INDEX[ship.position]
+        ship_position = ship.position
+        if self.step_count >= self.parameters['end_start'] and ship.halite == 0:
+            enemy_shipyards = [shipyard for player in self.opponents for shipyard in player.shipyards if
+                               self.step_count + get_distance(ship_pos, TO_INDEX[shipyard.position]) <= 398]
+            if len(enemy_shipyards) > 0:
+                enemy_shipyards.sort(key=lambda shipyard: (30 - self.halite_ranking[shipyard.player_id] * 10 if
+                                                           self.halite_ranking[self.player_id] <= 1 else
+                                                           self.halite_ranking[shipyard.player_id] * 10) - get_distance(
+                    ship_pos, TO_INDEX[shipyard.position]), reverse=True)
+                target = enemy_shipyards[0]
+                self.prefer_moves(ship, navigate(ship_position, target.position, self.size),
+                                  self.farthest_directions[ship_pos][TO_INDEX[target.position]],
+                                  self.parameters['move_preference_hunting'] * 2)
         if len(self.enemies) > 0:
             if ship.id in self.hunting_targets.keys():
                 target = self.hunting_targets[ship.id]
@@ -919,10 +933,9 @@ class HaliteBot(object):
                 target = max(self.enemies, key=lambda enemy: self.calculate_hunting_score(ship, enemy))
             if (isinstance(target, Shipyard) and ship.halite <= self.parameters[
                 'max_halite_attack_shipyard']) or target.halite > ship.halite:
-                ship_position = ship.position
                 target_position = target.position
                 self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
-                                  self.farthest_directions[TO_INDEX[ship_position]][TO_INDEX[target_position]],
+                                  self.farthest_directions[ship_pos][TO_INDEX[target_position]],
                                   self.parameters['move_preference_hunting'])
 
     def handle_guarding_ship(self, ship: Ship):
