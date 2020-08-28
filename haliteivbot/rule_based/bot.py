@@ -31,13 +31,13 @@ PARAMETERS = {
     'guarding_distance_to_shipyard': 1,
     'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 0.65,
+    'guarding_norm': 0.55,
     'guarding_radius': 2,
     'guarding_stop': 342,
-    'harvest_threshold': 430,
+    'harvest_threshold': 360,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 15,
-    'hunting_proportion': 0.5,
+    'hunting_proportion': 0.3,
     'hunting_proportion_after_farming': 0.3815610811742708,
     'hunting_score_alpha': 0.8,
     'hunting_score_beta': 2.391546761028965,
@@ -50,7 +50,7 @@ PARAMETERS = {
     'hunting_score_ship_bonus': 174,
     'hunting_score_ypsilon': 1.9914928946625279,
     'hunting_score_zeta': 1.1452680492519223,
-    'hunting_threshold': 10.002606609133743,
+    'hunting_threshold': 8,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
     'max_halite_attack_shipyard': 0,
@@ -88,9 +88,9 @@ PARAMETERS = {
     'shipyard_min_dominance': 2.2663304454187605,
     'shipyard_min_population': 0.85,
     'shipyard_start': 20,
-    'shipyard_stop': 280,
+    'shipyard_stop': 250,
     'spawn_min_dominance': -10,
-    'spawn_till': 285
+    'spawn_till': 270
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -620,7 +620,6 @@ class HaliteBot(object):
             type_count = ship_types_values.count(ship_type)
             logging.info(str(ship_type).replace("ShipType.", "") + ": " + str(type_count) + " (" + str(
                 round(type_count / len(self.me.ships) * 100, 1)) + "%)")
-
         while len(ships) > 0:
             ship = ships[0]
             ship_type = self.ship_types[ship.id]
@@ -1189,11 +1188,19 @@ class HaliteBot(object):
             return score
         if cell.shipyard is not None:
             shipyard = cell.shipyard
+            owner_id = shipyard.player_id
             if shipyard.player_id != self.player_id:
-                if ship.halite > self.parameters['max_halite_attack_shipyard']:
-                    score -= (300 + ship.halite)
-                elif ship.halite == 0 and self.rank == 0:  # only crash into enemy shipyards if we're in a good position
+                if shipyard.player.halite < self.config.spawn_cost and cell.ship is None and ship.halite < 30 and sum(
+                        [1 for c in get_neighbours(cell) if c.ship is not None and
+                                                            c.ship.player_id == owner_id and c.ship.halite <= ship.halite]) == 0:  # The shipyard cannot be protected by the owner
+                    score += 300
+                elif ship.halite > self.parameters['max_halite_attack_shipyard']:
+                    score -= (400 + ship.halite)
+                elif ship.halite == 0 and (self.rank == 0 or self.step_count >= self.parameters[
+                    'end_start']):  # only crash into enemy shipyards if we're in a good position
                     score += 400  # Attack the enemy shipyard
+                else:
+                    score -= 300
             elif self.halite >= self.config.spawn_cost + (
                     0 if self.step_count < 120 else self.config.spawn_cost) and self.shipyard_count == 1 and not self.spawn_limit_reached:
                 if self.step_count <= 100 or self.medium_dominance_map[TO_INDEX[shipyard.position]] >= self.parameters[
