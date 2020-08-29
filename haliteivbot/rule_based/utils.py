@@ -235,6 +235,47 @@ def create_radius_list(radius):
     return radius_list
 
 
+def group_positions(positions, max_group_size, max_distance):
+    groups = [[position] for position in positions]
+    current_distance = 1
+    while current_distance <= max_distance:
+        if len(groups) <= 1:
+            break
+        unfinished_groups = [group for group in groups if len(group) < max_group_size]
+        if len(unfinished_groups) == 0:
+            break
+        if min([len(group) for group in unfinished_groups]) >= math.ceil(max_group_size / 2):
+            break
+        changed = True
+        while changed:
+            changed = False
+            unfinished_groups = [group for group in groups if len(group) < max_group_size]
+            unfinished_positions = [position for group in unfinished_groups for position in group]
+            in_range = {
+                position: [pos2 for pos2 in unfinished_positions if DISTANCES[position][pos2] == current_distance] for
+                position in unfinished_positions}
+            position_to_group = {position: group_id for group_id, group in enumerate(groups) for position in group}
+            for position, positions_in_range in in_range.items():
+                if len(positions_in_range) == 0:
+                    continue
+                group1 = position_to_group[position]
+                current_group_size = len(groups[group1])
+                for pos2 in positions_in_range:
+                    group2 = position_to_group[pos2]
+                    if group1 == group2:
+                        continue
+                    if current_group_size + len(groups[group2]) <= max_group_size:
+                        # merge the two groups
+                        groups[group1].extend(groups[group2])
+                        del groups[group2]
+                        changed = True
+                        break
+                if changed:
+                    break
+        current_distance += 1
+    return groups
+
+
 def navigate(source: Point, target: Point, size: int):
     return NAVIGATION[TO_INDEX[source]][TO_INDEX[target]]
 

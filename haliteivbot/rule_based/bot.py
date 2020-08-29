@@ -31,7 +31,7 @@ PARAMETERS = {
     'guarding_distance_to_shipyard': 3,
     'guarding_max_ships_per_shipyard': 3,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 0.75,
+    'guarding_norm': 1.2,
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
@@ -43,7 +43,7 @@ PARAMETERS = {
     'hunting_proportion': 0.7,
     'hunting_proportion_after_farming': 0.3,
     'hunting_score_alpha': 0.8,
-    'hunting_score_beta': 0.5,
+    'hunting_score_beta': 3,
     'hunting_score_cargo_clip': 1.5,
     'hunting_score_delta': 1,
     'hunting_score_gamma': 0.95,
@@ -718,7 +718,7 @@ class HaliteBot(object):
 
         for r, c in zip(row, col):
             if (mining_scores[r][c] < self.parameters['hunting_threshold'] or (
-                    mining_scores[r][c] < hunting_threshold and self.mining_ships[
+                    mining_scores[r][c] <= hunting_threshold and self.mining_ships[
                 r].halite <= self.hunting_halite_threshold)) and hunting_enabled:
                 continue
             if target_positions[c] >= 1000:
@@ -1210,11 +1210,14 @@ class HaliteBot(object):
             elif safe_direction != -1 and safe_direction != -2:  # The ship can only stay at it's current position or it has no safe position.
                 if safe_direction == ShipAction.WEST or safe_direction == ShipAction.EAST:
                     # chase along the x-axis
-                    interception_pos = TO_INDEX[Point(enemy.position.x, ship.position.y)]
+                    interception_pos = TO_INDEX[Point(ship.position.x, enemy.position.y)]
                 else:
                     # chase along the y-axis
-                    interception_pos = TO_INDEX[Point(ship.position.x, enemy.position.y)]
-                if get_distance(enemy_pos, interception_pos) >= get_distance(ship_pos, interception_pos):
+                    interception_pos = TO_INDEX[Point(enemy.position.x, ship.position.y)]
+                target_dir = nav(enemy_pos, interception_pos)
+                if (len(target_dir) > 0 and target_dir[0] == safe_direction) and get_distance(enemy_pos,
+                                                                                              interception_pos) >= get_distance(
+                        ship_pos, interception_pos):
                     # We can intercept the target
                     score *= self.parameters['hunting_score_intercept']
                 else:
