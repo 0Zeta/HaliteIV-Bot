@@ -16,7 +16,7 @@ PARAMETERS = {
     'cell_score_neighbour_discount': 0.676200480431318,
     'cell_score_ship_halite': 0.0006229108666303259,
     'convert_when_attacked_threshold': 469,
-    'disable_hunting_till': 10,
+    'disable_hunting_till': 75,
     'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
     'dominance_map_medium_sigma': 0.10724586649242973,
@@ -26,43 +26,39 @@ PARAMETERS = {
     'end_start': 378,
     'ending_halite_threshold': 10,
     'farming_end': 345,
-    'farming_start': 300,
+    'farming_start': 1,
     'guarding_aggression_radius': 4,
-    'guarding_distance_to_shipyard': 3,
+    'guarding_distance_to_shipyard': 1,
     'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 1.8,
+    'guarding_norm': 0.55,
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
-    'hunting_max_group_size': 3,
-    'hunting_max_group_distance': 3,
-    'hunting_score_intercept': 5,
-    'hunting_score_hunt': 10,
     'harvest_threshold': 360,
     'hunting_halite_threshold': 0.04077647561190107,
-    'hunting_min_ships': 10,
-    'hunting_proportion': 0.9,
-    'hunting_proportion_after_farming': 0.8,
-    'hunting_score_alpha': 0,
-    'hunting_score_beta': 0.05,
+    'hunting_min_ships': 15,
+    'hunting_proportion': 0.38,
+    'hunting_proportion_after_farming': 0.3815610811742708,
+    'hunting_score_alpha': 0.8,
+    'hunting_score_beta': 2.391546761028965,
     'hunting_score_cargo_clip': 1.5,
-    'hunting_score_delta': 1,
-    'hunting_score_gamma': 0.95,
+    'hunting_score_delta': 0.7181206477863321,
+    'hunting_score_gamma': 0.98,
     'hunting_score_halite_norm': 203,
-    'hunting_score_iota': 0.1,
-    'hunting_score_kappa': 0.1,
-    'hunting_score_ship_bonus': 150,
+    'hunting_score_iota': 0.6344102425255267,
+    'hunting_score_kappa': 0.39089297661963435,
+    'hunting_score_ship_bonus': 174,
     'hunting_score_ypsilon': 1.9914928946625279,
-    'hunting_score_zeta': 0.2,
-    'hunting_threshold': 4,
+    'hunting_score_zeta': 1.1452680492519223,
+    'hunting_threshold': 8,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
     'max_halite_attack_shipyard': 0,
-    'max_hunting_ships_per_direction': 2,
+    'max_hunting_ships_per_direction': 1,
     'max_ship_advantage': 27,
     'max_shipyard_distance': 7,
-    'max_shipyards': 1,
+    'max_shipyards': 10,
     'min_mining_halite': 5,
     'min_ships': 29,
     'min_shipyard_distance': 6,
@@ -87,7 +83,7 @@ PARAMETERS = {
     'ship_spawn_threshold': 0.7754566951916968,
     'ships_shipyards_threshold': 0.15,
     'shipyard_abandon_dominance': -36.82080985520312,
-    'shipyard_conversion_threshold': 4.5,
+    'shipyard_conversion_threshold': 3,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 2.2663304454187605,
@@ -95,7 +91,11 @@ PARAMETERS = {
     'shipyard_start': 20,
     'shipyard_stop': 250,
     'spawn_min_dominance': -10,
-    'spawn_till': 270
+    'spawn_till': 270,
+    'hunting_max_group_size': 3,
+    'hunting_max_group_distance': 5,
+    'hunting_score_intercept': 2,
+    'hunting_score_hunt': 3
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -1086,7 +1086,7 @@ class HaliteBot(object):
                     self.vulnerable_ships[ship.id] = -1  # stay still
                 else:
                     self.vulnerable_ships[ship.id] = get_direction_to_neighbour(ship_pos, escape_positions[0])
-        logging.info("Number of vulnerable ships: " + str(len(self.vulnerable_ships)))
+        logging.debug("Number of vulnerable ships: " + str(len(self.vulnerable_ships)))
 
     def should_convert(self, ship: Ship):
         if self.halite + ship.halite < self.config.convert_cost:
@@ -1181,7 +1181,8 @@ class HaliteBot(object):
                 mining_steps = max(mining_steps - ending_steps, 0)
         dominance = self.parameters['mining_score_dominance_norm'] * clip(
             self.small_dominance_map[cell_position] + self.parameters['mining_score_dominance_clip'], 0,
-            self.parameters['mining_score_dominance_clip']) / self.parameters['mining_score_dominance_clip']
+            1.5 * self.parameters['mining_score_dominance_clip']) / (
+                                1.5 * self.parameters['mining_score_dominance_clip'])
         if self.step_count < self.parameters['mining_score_start_returning']:
             dominance /= 2
             dominance += self.parameters['mining_score_dominance_norm'] / 2
