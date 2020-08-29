@@ -12,6 +12,7 @@ NAVIGATION = None
 FARTHEST_DIRECTIONS_IDX = None
 FARTHEST_DIRECTIONS = None
 POSITIONS_IN_REACH = None
+POSITIONS_IN_REACH_INDICES = None
 POSITIONS_IN_SMALL_RADIUS = None
 POSITIONS_IN_MEDIUM_RADIUS = None
 SIZE = 21
@@ -58,9 +59,22 @@ def compute_positions_in_reach():
             (point + NEIGHBOURS[3]) % SIZE
         )
 
-    global POSITIONS_IN_REACH
+    def get_in_reach_indices(position: int):
+        point = Point.from_index(position, SIZE)
+        return np.array([
+            TO_INDEX[point],
+            TO_INDEX[(point + NEIGHBOURS[0]) % SIZE],
+            TO_INDEX[(point + NEIGHBOURS[1]) % SIZE],
+            TO_INDEX[(point + NEIGHBOURS[2]) % SIZE],
+            TO_INDEX[(point + NEIGHBOURS[3]) % SIZE]
+        ])
+
+    global POSITIONS_IN_REACH, POSITIONS_IN_REACH_INDICES
     POSITIONS_IN_REACH = {Point.from_index(pos, SIZE): get_in_reach(pos) for pos in range(SIZE ** 2)}
-    return POSITIONS_IN_REACH
+    POSITIONS_IN_REACH_INDICES = np.ndarray((SIZE ** 2, 5), dtype=np.int)
+    for pos in range(SIZE ** 2):  # really sad, but it's 4 am
+        POSITIONS_IN_REACH_INDICES[pos] = get_in_reach_indices(pos)
+    return POSITIONS_IN_REACH, POSITIONS_IN_REACH_INDICES
 
 
 def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
@@ -105,6 +119,16 @@ def get_cargo_map(ships, shipyards, halite_norm, size=21):
     for shipyard in shipyards:
         cargo_map[POSITIONS_IN_MEDIUM_RADIUS[TO_INDEX[shipyard.position]]] += 700 / halite_norm
     return cargo_map
+
+
+def get_hunting_matrix(ships):
+    hunting_matrix = np.full(shape=(SIZE ** 2,), fill_value=99999, dtype=np.int)
+    for ship in ships:
+        for position in POSITIONS_IN_REACH_INDICES[TO_INDEX[ship.position]]:
+            if hunting_matrix[position] > ship.halite:
+                hunting_matrix[position] = ship.halite
+        # hunting_matrix[hunting_matrix > ship.halite][POSITIONS_IN_REACH_INDICES[TO_INDEX[ship.position]]] = ship.halite
+    return hunting_matrix
 
 
 def get_dominance_map(me, opponents, sigma, radius, halite_clip, size=21):
@@ -209,6 +233,53 @@ def create_radius_list(radius):
     for i in range(SIZE ** 2):
         radius_list.append(np.argwhere(DISTANCES[i] <= radius).reshape((-1,)).tolist())
     return radius_list
+
+
+def group_ships(ships, max_group_size, max_distance):
+    position_to_ship = {TO_INDEX[ship.position]: ship for ship in ships}
+    groups = group_positions([TO_INDEX[ship.position] for ship in ships], max_group_size, max_distance)
+    return [[position_to_ship[position] for position in group] for group in groups]
+
+
+def group_positions(positions, max_group_size, max_distance):
+    groups = [[position] for position in positions]
+    current_distance = 1
+    while current_distance <= max_distance:
+        if len(groups) <= 1:
+            break
+        unfinished_groups = [group for group in groups if len(group) < max_group_size]
+        if len(unfinished_groups) == 0:
+            break
+        if min([len(group) for group in unfinished_groups]) >= math.ceil(max_group_size / 2):
+            break
+        changed = True
+        while changed:
+            changed = False
+            unfinished_groups = [group for group in groups if len(group) < max_group_size]
+            unfinished_positions = [position for group in unfinished_groups for position in group]
+            in_range = {
+                position: [pos2 for pos2 in unfinished_positions if DISTANCES[position][pos2] == current_distance] for
+                position in unfinished_positions}
+            position_to_group = {position: group_id for group_id, group in enumerate(groups) for position in group}
+            for position, positions_in_range in in_range.items():
+                if len(positions_in_range) == 0:
+                    continue
+                group1 = position_to_group[position]
+                current_group_size = len(groups[group1])
+                for pos2 in positions_in_range:
+                    group2 = position_to_group[pos2]
+                    if group1 == group2:
+                        continue
+                    if current_group_size + len(groups[group2]) <= max_group_size:
+                        # merge the two groups
+                        groups[group1].extend(groups[group2])
+                        del groups[group2]
+                        changed = True
+                        break
+                if changed:
+                    break
+        current_distance += 1
+    return groups
 
 
 def navigate(source: Point, target: Point, size: int):
