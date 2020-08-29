@@ -16,7 +16,7 @@ PARAMETERS = {
     'cell_score_neighbour_discount': 0.676200480431318,
     'cell_score_ship_halite': 0.0006229108666303259,
     'convert_when_attacked_threshold': 469,
-    'disable_hunting_till': 75,
+    'disable_hunting_till': 10,
     'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
     'dominance_map_medium_sigma': 0.10724586649242973,
@@ -26,30 +26,32 @@ PARAMETERS = {
     'end_start': 378,
     'ending_halite_threshold': 10,
     'farming_end': 345,
-    'farming_start': 1,
+    'farming_start': 300,
     'guarding_aggression_radius': 4,
     'guarding_distance_to_shipyard': 3,
-    'guarding_max_ships_per_shipyard': 3,
+    'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 1.2,
+    'guarding_norm': 1.8,
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
+    'hunting_max_group_size': 3,
+    'hunting_max_group_distance': 3,
     'hunting_score_intercept': 5,
     'hunting_score_hunt': 10,
     'harvest_threshold': 360,
     'hunting_halite_threshold': 0.04077647561190107,
-    'hunting_min_ships': 15,
-    'hunting_proportion': 0.7,
-    'hunting_proportion_after_farming': 0.3,
-    'hunting_score_alpha': 0.8,
-    'hunting_score_beta': 3,
+    'hunting_min_ships': 10,
+    'hunting_proportion': 0.9,
+    'hunting_proportion_after_farming': 0.8,
+    'hunting_score_alpha': 0,
+    'hunting_score_beta': 0.05,
     'hunting_score_cargo_clip': 1.5,
     'hunting_score_delta': 1,
     'hunting_score_gamma': 0.95,
     'hunting_score_halite_norm': 203,
     'hunting_score_iota': 0.1,
-    'hunting_score_kappa': 0.15,
+    'hunting_score_kappa': 0.1,
     'hunting_score_ship_bonus': 150,
     'hunting_score_ypsilon': 1.9914928946625279,
     'hunting_score_zeta': 0.2,
@@ -60,7 +62,7 @@ PARAMETERS = {
     'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 27,
     'max_shipyard_distance': 7,
-    'max_shipyards': 10,
+    'max_shipyards': 1,
     'min_mining_halite': 5,
     'min_ships': 29,
     'min_shipyard_distance': 6,
@@ -750,7 +752,7 @@ class HaliteBot(object):
                     self.ship_types[ship.id] = ShipType.RETURNING
 
         encoded_dirs = [1, 2, 4, 8]
-        possible_enemy_targets = [(dir, ship) for dir in encoded_dirs for ship in self.enemies for _ in
+        possible_enemy_targets = [(dir, ship) for ship in self.enemies for dir in encoded_dirs for _ in
                                   range(self.parameters['max_hunting_ships_per_direction'])]
         guarding_targets = [ship for ship in self.enemies if
                             self.shipyard_distances[TO_INDEX[ship.position]] <= self.parameters['guarding_radius'] or
@@ -759,6 +761,7 @@ class HaliteBot(object):
                             self.shipyard_distances[TO_INDEX[shipyard.position]] <= self.parameters['guarding_radius']]
         hunting_scores = np.zeros(
             (len(self.hunting_ships), len(self.enemies) * 4 * self.parameters['max_hunting_ships_per_direction']))
+        hunting_ship_to_idx = {ship.id: idx for idx, ship in enumerate(self.hunting_ships)}
         for ship_index, ship in enumerate(self.hunting_ships):
             ship_pos = TO_INDEX[ship.position]
             for enemy_index, (direction, enemy_ship) in enumerate(possible_enemy_targets):
@@ -774,70 +777,88 @@ class HaliteBot(object):
             self.hunting_targets[self.hunting_ships[r].id] = possible_enemy_targets[c][1]
             assigned_hunting_scores.append(hunting_scores[r, c])
 
-        if len(self.me.shipyards) == 0:
-            return  # We don't need to guard non existing shipyards.
-
-        # Guarding ships
-        assigned_hunting_scores.sort()
-        guarding_threshold_index = max(
-            min(ceil(((1 - clip(self.ship_advantage, 0, self.parameters['guarding_ship_advantage_norm']) /
-                       self.parameters['guarding_ship_advantage_norm']) * (
-                              clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
-                              self.parameters['guarding_norm'])) * len(assigned_hunting_scores)) - 1,
-                self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1,
-                0 if self.step_count >= self.parameters['guarding_end'] else 500),
-            min(len(assigned_hunting_scores) - 1, len(self.me.shipyards))) - len(self.guarding_ships)
-        if guarding_threshold_index > 0:
-            guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
-            for r, c in zip(row, col):
-                target_pos = TO_INDEX[possible_enemy_targets[c][1].position]
-                ship_pos = TO_INDEX[self.hunting_ships[r].position]
-                if hunting_scores[r, c] < guarding_threshold:
-                    if (self.shipyard_distances[target_pos] > self.parameters[
-                        'guarding_radius'] and target_pos not in self.farming_positions) or get_distance(
+        if len(self.me.shipyards) > 0:
+            # Guarding ships
+            assigned_hunting_scores.sort()
+            guarding_threshold_index = max(
+                min(ceil(((1 - clip(self.ship_advantage, 0, self.parameters['guarding_ship_advantage_norm']) /
+                           self.parameters['guarding_ship_advantage_norm']) * (
+                                  clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
+                                  self.parameters['guarding_norm'])) * len(assigned_hunting_scores)) - 1,
+                    self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1,
+                    0 if self.step_count >= self.parameters['guarding_end'] else 500),
+                min(len(assigned_hunting_scores) - 1, len(self.me.shipyards))) - len(self.guarding_ships)
+            if guarding_threshold_index > 0:
+                guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
+                for r, c in zip(row, col):
+                    target_pos = TO_INDEX[possible_enemy_targets[c][1].position]
+                    ship_pos = TO_INDEX[self.hunting_ships[r].position]
+                    if hunting_scores[r, c] < guarding_threshold:
+                        if (self.shipyard_distances[target_pos] > self.parameters[
+                            'guarding_radius'] and target_pos not in self.farming_positions) or get_distance(
                             ship_pos, target_pos) > self.parameters[
-                        'guarding_aggression_radius'] or ship_pos in self.shipyard_positions:
-                        self.guarding_ships.append(self.hunting_ships[r])
-                    else:
-                        self.ship_types[self.hunting_ships[r].id] = ShipType.DEFENDING
+                            'guarding_aggression_radius'] or ship_pos in self.shipyard_positions:
+                            self.guarding_ships.append(self.hunting_ships[r])
+                        else:
+                            self.ship_types[self.hunting_ships[r].id] = ShipType.DEFENDING
 
-            for ship in self.guarding_ships:
-                ship_pos = TO_INDEX[ship.position]
-                if len(guarding_targets) > 0 and ship.id not in self.shipyard_guards:
-                    guarding_targets.sort(key=lambda enemy: get_distance(ship_pos, TO_INDEX[enemy.position]))
-                    target = guarding_targets[0]
-                    if get_distance(ship_pos, TO_INDEX[target.position]) <= self.parameters[
-                        'guarding_aggression_radius']:
-                        self.ship_types[ship.id] = ShipType.DEFENDING
-                        self.hunting_targets[
-                            ship.id] = target  # hunt the target (ship is still in self.guarding_ships and self.hunting_ships)
-                        continue
-                # move to a shipyard
-                if ship in self.hunting_ships:
-                    self.hunting_ships.remove(ship)
-                self.ship_types[ship.id] = ShipType.GUARDING
+                for ship in self.guarding_ships:
+                    ship_pos = TO_INDEX[ship.position]
+                    if len(guarding_targets) > 0 and ship.id not in self.shipyard_guards:
+                        guarding_targets.sort(key=lambda enemy: get_distance(ship_pos, TO_INDEX[enemy.position]))
+                        target = guarding_targets[0]
+                        if get_distance(ship_pos, TO_INDEX[target.position]) <= self.parameters[
+                            'guarding_aggression_radius']:
+                            self.ship_types[ship.id] = ShipType.DEFENDING
+                            self.hunting_targets[
+                                ship.id] = target  # hunt the target (ship is still in self.guarding_ships and self.hunting_ships)
+                            continue
+                    # move to a shipyard
+                    if ship in self.hunting_ships:
+                        self.hunting_ships.remove(ship)
+                    self.ship_types[ship.id] = ShipType.GUARDING
 
-        self.guarding_ships = [ship for ship in self.guarding_ships if ship not in self.hunting_ships]
-        available_guarding_ships = [ship for ship in self.guarding_ships if ship.id not in self.shipyard_guards]
-        if len(available_guarding_ships) > 0:
-            shipyards_to_protect = [shipyard_position for shipyard_position in self.shipyard_positions if
-                                    self.medium_dominance_map[shipyard_position] > self.parameters[
-                                        'shipyard_abandon_dominance']]
-            if len(shipyards_to_protect) == 0:
-                shipyards_to_protect.append(self.shipyard_positions[0])  # guard at least one shipyard
-            guarding_ships_per_shipyard = ceil(len(available_guarding_ships) / len(shipyards_to_protect))
-            guarding_scores = np.zeros(
-                (len(available_guarding_ships), len(shipyards_to_protect) * guarding_ships_per_shipyard))
-            for ship_index, ship in enumerate(available_guarding_ships):
-                ship_pos = TO_INDEX[ship.position]
-                for shipyard_index, shipyard_position in enumerate(shipyards_to_protect):
-                    guarding_scores[ship_index,
-                    guarding_ships_per_shipyard * shipyard_index:guarding_ships_per_shipyard * shipyard_index + guarding_ships_per_shipyard] = get_distance(
-                        ship_pos, shipyard_position)
-            row, col = scipy.optimize.linear_sum_assignment(guarding_scores, maximize=False)
+            self.guarding_ships = [ship for ship in self.guarding_ships if ship not in self.hunting_ships]
+            available_guarding_ships = [ship for ship in self.guarding_ships if ship.id not in self.shipyard_guards]
+            if len(available_guarding_ships) > 0:
+                shipyards_to_protect = [shipyard_position for shipyard_position in self.shipyard_positions if
+                                        self.medium_dominance_map[shipyard_position] > self.parameters[
+                                            'shipyard_abandon_dominance']]
+                if len(shipyards_to_protect) == 0:
+                    shipyards_to_protect.append(self.shipyard_positions[0])  # guard at least one shipyard
+                guarding_ships_per_shipyard = ceil(len(available_guarding_ships) / len(shipyards_to_protect))
+                guarding_scores = np.zeros(
+                    (len(available_guarding_ships), len(shipyards_to_protect) * guarding_ships_per_shipyard))
+                for ship_index, ship in enumerate(available_guarding_ships):
+                    ship_pos = TO_INDEX[ship.position]
+                    for shipyard_index, shipyard_position in enumerate(shipyards_to_protect):
+                        guarding_scores[ship_index,
+                        guarding_ships_per_shipyard * shipyard_index:guarding_ships_per_shipyard * shipyard_index + guarding_ships_per_shipyard] = get_distance(
+                            ship_pos, shipyard_position)
+                row, col = scipy.optimize.linear_sum_assignment(guarding_scores, maximize=False)
+                for r, c in zip(row, col):
+                    self.guarding_shipyards[available_guarding_ships[r].id] = shipyards_to_protect[
+                        c // guarding_ships_per_shipyard]
+
+        available_hunting_ships = [ship for ship in self.hunting_ships if self.ship_types[ship.id] == ShipType.HUNTING]
+        if len(available_hunting_ships) > 0:
+            hunting_groups = group_ships(available_hunting_ships, self.parameters['hunting_max_group_size'],
+                                         self.parameters['hunting_max_group_distance'])
+            hunting_group_scores = np.zeros((len(hunting_groups), len(self.enemies) * 2))
+            step = 4 * self.parameters['max_hunting_ships_per_direction']
+            for group_idx, group in enumerate(hunting_groups):
+                combined_hunting_scores = np.zeros((len(self.enemies) * 2,))
+                for ship in group:
+                    idx = hunting_ship_to_idx[ship.id]
+                    for i in range(len(combined_hunting_scores) // 2):
+                        combined_hunting_scores[i * 2:(i + 1) * 2] += clip(
+                            np.max(hunting_scores[idx, i * step:(i + 1) * step]), 0, 999999)
+                combined_hunting_scores /= len(group)
+                hunting_group_scores[group_idx] = combined_hunting_scores
+            row, col = scipy.optimize.linear_sum_assignment(hunting_group_scores, maximize=True)
             for r, c in zip(row, col):
-                self.guarding_shipyards[available_guarding_ships[r].id] = shipyards_to_protect[
-                    c // guarding_ships_per_shipyard]
+                for ship in hunting_groups[r]:
+                    self.hunting_targets[ship.id] = possible_enemy_targets[step * c // 2][1]
 
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
@@ -1220,8 +1241,6 @@ class HaliteBot(object):
                         ship_pos, interception_pos):
                     # We can intercept the target
                     score *= self.parameters['hunting_score_intercept']
-                else:
-                    score /= self.parameters['hunting_score_intercept']  # TODO: check if this is good
         return score
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:

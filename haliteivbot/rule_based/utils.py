@@ -235,6 +235,12 @@ def create_radius_list(radius):
     return radius_list
 
 
+def group_ships(ships, max_group_size, max_distance):
+    position_to_ship = {TO_INDEX[ship.position]: ship for ship in ships}
+    groups = group_positions([TO_INDEX[ship.position] for ship in ships], max_group_size, max_distance)
+    return [[position_to_ship[position] for position in group] for group in groups]
+
+
 def group_positions(positions, max_group_size, max_distance):
     groups = [[position] for position in positions]
     current_distance = 1

@@ -101,7 +101,9 @@ hyperparameters = {
     'mining_score_cargo_norm': ('int', (40, 200)),
     'guarding_end': ('int', (340, 390)),
     'hunting_score_intercept': ('float', (1.5, 10)),
-    'hunting_score_hunt': ('float', (3, 15))
+    'hunting_score_hunt': ('float', (3, 15)),
+    'hunting_max_group_size': ('int', (2, 5)),
+    'hunting_max_group_distance': ('int', (3, 9)),
 }
 
 first_genome = {
