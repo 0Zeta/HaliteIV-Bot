@@ -99,7 +99,9 @@ hyperparameters = {
     'hunting_proportion_after_farming': ('float', (0.01, 0.5)),
     'guarding_ship_advantage_norm': ('int', (10, 30)),
     'mining_score_cargo_norm': ('int', (40, 200)),
-    'guarding_end': ('int', (340, 390))
+    'guarding_end': ('int', (340, 390)),
+    'hunting_score_intercept': ('float', (1.5, 10)),
+    'hunting_score_hunt': ('float', (3, 15))
 }
 
 first_genome = {

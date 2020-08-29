@@ -12,6 +12,7 @@ NAVIGATION = None
 FARTHEST_DIRECTIONS_IDX = None
 FARTHEST_DIRECTIONS = None
 POSITIONS_IN_REACH = None
+POSITIONS_IN_REACH_INDICES = None
 POSITIONS_IN_SMALL_RADIUS = None
 POSITIONS_IN_MEDIUM_RADIUS = None
 SIZE = 21
@@ -58,9 +59,22 @@ def compute_positions_in_reach():
             (point + NEIGHBOURS[3]) % SIZE
         )
 
-    global POSITIONS_IN_REACH
+    def get_in_reach_indices(position: int):
+        point = Point.from_index(position, SIZE)
+        return np.array([
+            TO_INDEX[point],
+            TO_INDEX[(point + NEIGHBOURS[0]) % SIZE],
+            TO_INDEX[(point + NEIGHBOURS[1]) % SIZE],
+            TO_INDEX[(point + NEIGHBOURS[2]) % SIZE],
+            TO_INDEX[(point + NEIGHBOURS[3]) % SIZE]
+        ])
+
+    global POSITIONS_IN_REACH, POSITIONS_IN_REACH_INDICES
     POSITIONS_IN_REACH = {Point.from_index(pos, SIZE): get_in_reach(pos) for pos in range(SIZE ** 2)}
-    return POSITIONS_IN_REACH
+    POSITIONS_IN_REACH_INDICES = np.ndarray((SIZE ** 2, 5), dtype=np.int)
+    for pos in range(SIZE ** 2):  # really sad, but it's 4 am
+        POSITIONS_IN_REACH_INDICES[pos] = get_in_reach_indices(pos)
+    return POSITIONS_IN_REACH, POSITIONS_IN_REACH_INDICES
 
 
 def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
@@ -105,6 +119,16 @@ def get_cargo_map(ships, shipyards, halite_norm, size=21):
     for shipyard in shipyards:
         cargo_map[POSITIONS_IN_MEDIUM_RADIUS[TO_INDEX[shipyard.position]]] += 700 / halite_norm
     return cargo_map
+
+
+def get_hunting_matrix(ships):
+    hunting_matrix = np.full(shape=(SIZE ** 2,), fill_value=99999, dtype=np.int)
+    for ship in ships:
+        for position in POSITIONS_IN_REACH_INDICES[TO_INDEX[ship.position]]:
+            if hunting_matrix[position] > ship.halite:
+                hunting_matrix[position] = ship.halite
+        # hunting_matrix[hunting_matrix > ship.halite][POSITIONS_IN_REACH_INDICES[TO_INDEX[ship.position]]] = ship.halite
+    return hunting_matrix
 
 
 def get_dominance_map(me, opponents, sigma, radius, halite_clip, size=21):

@@ -31,31 +31,33 @@ PARAMETERS = {
     'guarding_distance_to_shipyard': 3,
     'guarding_max_ships_per_shipyard': 3,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 0.01,
+    'guarding_norm': 0.75,
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
+    'hunting_score_intercept': 5,
+    'hunting_score_hunt': 10,
     'harvest_threshold': 360,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 15,
-    'hunting_proportion': 0.1,
-    'hunting_proportion_after_farming': 0.3815610811742708,
+    'hunting_proportion': 0.7,
+    'hunting_proportion_after_farming': 0.3,
     'hunting_score_alpha': 0.8,
-    'hunting_score_beta': 2.391546761028965,
+    'hunting_score_beta': 0.5,
     'hunting_score_cargo_clip': 1.5,
-    'hunting_score_delta': 0.7181206477863321,
-    'hunting_score_gamma': 0.98,
+    'hunting_score_delta': 1,
+    'hunting_score_gamma': 0.95,
     'hunting_score_halite_norm': 203,
-    'hunting_score_iota': 0.6344102425255267,
-    'hunting_score_kappa': 0.39089297661963435,
-    'hunting_score_ship_bonus': 174,
+    'hunting_score_iota': 0.1,
+    'hunting_score_kappa': 0.15,
+    'hunting_score_ship_bonus': 150,
     'hunting_score_ypsilon': 1.9914928946625279,
-    'hunting_score_zeta': 1.1452680492519223,
+    'hunting_score_zeta': 0.2,
     'hunting_threshold': 4,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
     'max_halite_attack_shipyard': 0,
-    'max_hunting_ships_per_direction': 1,
+    'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 27,
     'max_shipyard_distance': 7,
     'max_shipyards': 10,
@@ -512,6 +514,8 @@ class HaliteBot(object):
 
         self.debug()
 
+        self.determine_vulnerable_enemies()
+
         self.guard_shipyards(board)
         self.build_shipyards()
         self.move_ships(board)
@@ -537,7 +541,7 @@ class HaliteBot(object):
             # Do some initialization stuff
             create_navigation_lists(self.size)
             self.distances = get_distance_matrix()
-            self.positions_in_reach_list = compute_positions_in_reach()
+            self.positions_in_reach_list, self.positions_in_reach_indices = compute_positions_in_reach()
             self.farthest_directions_indices = get_farthest_directions_matrix()
             self.farthest_directions = get_farthest_directions_list()
             create_radius_lists(self.parameters['dominance_map_small_radius'],
@@ -1047,6 +1051,22 @@ class HaliteBot(object):
                     else:
                         logging.info("Shipyard " + str(shipyard.id) + " cannot be protected.")
 
+    def determine_vulnerable_enemies(self):
+        hunting_matrix = get_hunting_matrix(self.me.ships)
+        self.vulnerable_ships = dict()
+        for ship in self.enemies:
+            ship_pos = TO_INDEX[ship.position]
+            escape_positions = [int(pos) for pos in np.argwhere(hunting_matrix >= ship.halite) if
+                                int(pos) in self.positions_in_reach_indices[ship_pos]]
+            if len(escape_positions) == 0:
+                self.vulnerable_ships[ship.id] = -2
+            elif len(escape_positions) == 1:
+                if escape_positions[0] == ship_pos:
+                    self.vulnerable_ships[ship.id] = -1  # stay still
+                else:
+                    self.vulnerable_ships[ship.id] = get_direction_to_neighbour(ship_pos, escape_positions[0])
+        logging.info("Number of vulnerable ships: " + str(len(self.vulnerable_ships)))
+
     def should_convert(self, ship: Ship):
         if self.halite + ship.halite < self.config.convert_cost:
             return False
@@ -1142,7 +1162,8 @@ class HaliteBot(object):
             self.small_dominance_map[cell_position] + self.parameters['mining_score_dominance_clip'], 0,
             self.parameters['mining_score_dominance_clip']) / self.parameters['mining_score_dominance_clip']
         if self.step_count < self.parameters['mining_score_start_returning']:
-            dominance = self.parameters['mining_score_dominance_norm']
+            dominance /= 2
+            dominance += self.parameters['mining_score_dominance_norm'] / 2
         dominance += 1 - self.parameters['mining_score_dominance_norm'] / 2
         score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
                 self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * halite_val) * dominance / max(
@@ -1181,6 +1202,23 @@ class HaliteBot(object):
         if self.max_shipyard_connections == 1 and self.creates_good_triangle(enemy.position):
             # Clear space for a third shipyard
             score *= self.parameters['hunting_score_ypsilon']
+
+        if enemy.id in self.vulnerable_ships.keys():
+            safe_direction = self.vulnerable_ships[enemy.id]
+            if distance <= 2:
+                score *= self.parameters['hunting_score_hunt']
+            elif safe_direction != -1 and safe_direction != -2:  # The ship can only stay at it's current position or it has no safe position.
+                if safe_direction == ShipAction.WEST or safe_direction == ShipAction.EAST:
+                    # chase along the x-axis
+                    interception_pos = TO_INDEX[Point(enemy.position.x, ship.position.y)]
+                else:
+                    # chase along the y-axis
+                    interception_pos = TO_INDEX[Point(ship.position.x, enemy.position.y)]
+                if get_distance(enemy_pos, interception_pos) >= get_distance(ship_pos, interception_pos):
+                    # We can intercept the target
+                    score *= self.parameters['hunting_score_intercept']
+                else:
+                    score /= self.parameters['hunting_score_intercept']  # TODO: check if this is good
         return score
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
