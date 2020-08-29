@@ -28,17 +28,17 @@ PARAMETERS = {
     'farming_end': 345,
     'farming_start': 1,
     'guarding_aggression_radius': 4,
-    'guarding_distance_to_shipyard': 1,
-    'guarding_max_ships_per_shipyard': 2,
+    'guarding_distance_to_shipyard': 3,
+    'guarding_max_ships_per_shipyard': 3,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 0.55,
+    'guarding_norm': 0.01,
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
     'harvest_threshold': 360,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 15,
-    'hunting_proportion': 0.38,
+    'hunting_proportion': 0.1,
     'hunting_proportion_after_farming': 0.3815610811742708,
     'hunting_score_alpha': 0.8,
     'hunting_score_beta': 2.391546761028965,
@@ -51,7 +51,7 @@ PARAMETERS = {
     'hunting_score_ship_bonus': 174,
     'hunting_score_ypsilon': 1.9914928946625279,
     'hunting_score_zeta': 1.1452680492519223,
-    'hunting_threshold': 8,
+    'hunting_threshold': 4,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
     'max_halite_attack_shipyard': 0,
@@ -83,7 +83,7 @@ PARAMETERS = {
     'ship_spawn_threshold': 0.7754566951916968,
     'ships_shipyards_threshold': 0.15,
     'shipyard_abandon_dominance': -36.82080985520312,
-    'shipyard_conversion_threshold': 3,
+    'shipyard_conversion_threshold': 4.5,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 2.2663304454187605,
@@ -500,6 +500,7 @@ class HaliteBot(object):
                 self.ship_position_preferences[ship_index, self.position_to_index[ship.position]] += self.parameters[
                     'move_preference_stay_on_shipyard'] if self.step_count > 12 else -200  # don't block the shipyard in the early game
 
+        self.cargo = sum([0] + [ship.halite for ship in self.me.ships])
         self.planned_shipyards.clear()
         self.guarding_shipyards.clear()
         self.ship_types.clear()
@@ -565,9 +566,6 @@ class HaliteBot(object):
             if shipyard.position in self.planned_moves:
                 continue
             dominance = self.medium_dominance_map[TO_INDEX[shipyard.position]]
-            if self.halite < self.config.spawn_cost + (
-                    0 if self.step_count < 120 else self.config.spawn_cost):  # keep a halite reserve to spawn one ship if necessary
-                continue
             if self.reached_spawn_limit(board):
                 continue
             if self.ship_count >= self.parameters['min_ships'] and self.average_halite_per_cell / self.ship_count < \
@@ -1012,7 +1010,8 @@ class HaliteBot(object):
                 if shipyard.cell.ship is not None:
                     self.ship_types[shipyard.cell.ship.id] = ShipType.SHIPYARD_GUARDING
                     if self.halite < self.config.spawn_cost or (
-                            self.step_count > self.parameters['spawn_till'] and self.shipyard_count > 1) or dominance < \
+                            self.step_count > self.parameters['spawn_till'] and (
+                            self.shipyard_count > 1 or self.step_count > 385)) or dominance < \
                             self.parameters[
                                 'shipyard_guarding_min_dominance'] or random() > self.parameters[
                         'shipyard_guarding_attack_probability'] or self.step_count >= self.parameters['guarding_stop']:
@@ -1051,7 +1050,8 @@ class HaliteBot(object):
     def should_convert(self, ship: Ship):
         if self.halite + ship.halite < self.config.convert_cost:
             return False
-        if self.shipyard_count == 0:
+        if self.shipyard_count == 0 and (self.step_count <= self.parameters[
+            'end_start'] or ship.halite >= self.config.convert_cost or self.cargo >= 1200):
             return True  # TODO: choose best ship
         if self.shipyard_count >= self.parameters['max_shipyards']:
             return False
@@ -1203,12 +1203,11 @@ class HaliteBot(object):
                     score += 400  # Attack the enemy shipyard
                 else:
                     score -= 300
-            elif self.halite >= self.config.spawn_cost + (
-                    0 if self.step_count < 120 else self.config.spawn_cost) and self.shipyard_count == 1 and not self.spawn_limit_reached:
+            elif self.halite >= self.config.spawn_cost and self.shipyard_count == 1 and not self.spawn_limit_reached:
                 if self.step_count <= 100 or self.medium_dominance_map[TO_INDEX[shipyard.position]] >= self.parameters[
                     'spawn_min_dominance']:
                     score += self.parameters['move_preference_block_shipyard']
-        if ship.cell.shipyard is None and cell.shipyard is None:  # don't distract guarding ships
+        if cell.shipyard is None:  # don't distract guarding ships
             if cell.ship is not None and cell.ship.player_id != self.player_id:
                 if cell.ship.halite < ship.halite:
                     score -= (500 + ship.halite - 0.5 * cell.ship.halite)
