@@ -220,6 +220,18 @@ def create_navigation_lists(size):
     FARTHEST_DIRECTIONS = [[idx_to_action_list[a] for a in b] for b in FARTHEST_DIRECTIONS_IDX]
 
 
+def dist(a, b):
+    diff = abs(a - b)
+    return min(diff, SIZE - diff)
+
+
+def get_axis(direction):
+    if direction == ShipAction.NORTH or direction == ShipAction.SOUTH:
+        return 'y'
+    else:
+        return 'x'
+
+
 def create_radius_lists(small_radius, medium_radius):
     global POSITIONS_IN_SMALL_RADIUS
     global POSITIONS_IN_MEDIUM_RADIUS

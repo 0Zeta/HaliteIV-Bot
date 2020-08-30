@@ -15,7 +15,7 @@ PARAMETERS = {
     'cell_score_enemy_halite': 0.4530629543797203,
     'cell_score_neighbour_discount': 0.676200480431318,
     'cell_score_ship_halite': 0.0006229108666303259,
-    'cell_score_farming': -150,
+    'cell_score_farming': -130,
     'convert_when_attacked_threshold': 469,
     'disable_hunting_till': 75,
     'dominance_map_halite_clip': 340,
@@ -28,9 +28,9 @@ PARAMETERS = {
     'ending_halite_threshold': 10,
     'farming_end': 345,
     'farming_start': 1,
-    'guarding_aggression_radius': 4,
-    'guarding_distance_to_shipyard': 3,
-    'guarding_max_ships_per_shipyard': 3,
+    'guarding_aggression_radius': 6,
+    'guarding_distance_to_shipyard': 4,
+    'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.65,
     'guarding_radius': 3,
@@ -45,14 +45,14 @@ PARAMETERS = {
     'hunting_score_beta': 2.391546761028965,
     'hunting_score_cargo_clip': 1.5,
     'hunting_score_delta': 0.7181206477863321,
-    'hunting_score_gamma': 0.98,
+    'hunting_score_gamma': 0.95,
     'hunting_score_halite_norm': 203,
     'hunting_score_iota': 0.6344102425255267,
     'hunting_score_kappa': 0.39089297661963435,
     'hunting_score_ship_bonus': 174,
     'hunting_score_ypsilon': 1.9914928946625279,
     'hunting_score_zeta': 1.1452680492519223,
-    'hunting_threshold': 7,
+    'hunting_threshold': 3,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
     'max_halite_attack_shipyard': 0,
@@ -61,14 +61,14 @@ PARAMETERS = {
     'max_shipyard_distance': 7,
     'max_shipyards': 10,
     'min_mining_halite': 5,
-    'min_ships': 29,
+    'min_ships': 20,
     'min_shipyard_distance': 6,
     'mining_score_alpha': 1.0100329915325859,
     'mining_score_beta': 0.9624023223849048,
     'mining_score_dominance_clip': 2.7914078388504846,
     'mining_score_dominance_norm': 0.35,
     'mining_score_farming_penalty': 0.01,
-    'mining_score_gamma': 0.9921957052860305,
+    'mining_score_gamma': 0.98,
     'mining_score_juicy': 0.35,
     'mining_score_start_returning': 56,
     'move_preference_base': 95,
@@ -81,7 +81,7 @@ PARAMETERS = {
     'move_preference_return': 119,
     'move_preference_stay_on_shipyard': -95,
     'return_halite': 989,
-    'ship_spawn_threshold': 0.7754566951916968,
+    'ship_spawn_threshold': 0.1,
     'ships_shipyards_threshold': 0.15,
     'shipyard_abandon_dominance': -36.82080985520312,
     'shipyard_conversion_threshold': 3,
@@ -95,7 +95,7 @@ PARAMETERS = {
     'spawn_till': 280,
     'hunting_max_group_size': 1,
     'hunting_max_group_distance': 5,
-    'hunting_score_intercept': 1.4,
+    'hunting_score_intercept': 1.25,
     'hunting_score_hunt': 2
 }
 
@@ -433,6 +433,7 @@ class HaliteBot(object):
                         self.max_shipyard_connections = connections
 
         self.farming_positions = []
+        self.real_farming_points = []
         # Compute distances to the next shipyard:
         if self.shipyard_count == 0:
             # There is no shipyard, but we still need to mine.
@@ -452,6 +453,9 @@ class HaliteBot(object):
                         nb_in_farming_range += 1
                         if nb_in_farming_range == required_in_range:
                             self.farming_positions.append(position)
+                            point = Point.from_index(position, SIZE)
+                            if board.cells[point].halite > 0:
+                                self.real_farming_points.append(point)
                     if distance < min_distance:
                         min_distance = distance
                 self.shipyard_distances.append(min_distance)
@@ -657,6 +661,9 @@ class HaliteBot(object):
                 target = self.positions_in_reach[position_index]
                 if target != ship.position:
                     ship.next_action = get_direction_to_neighbour(TO_INDEX[ship.position], TO_INDEX[target])
+                if TO_INDEX[target] in self.farming_positions and 0 < board.cells[
+                    target].halite < self.harvest_threshold:
+                    print(self.ship_types[ship.id])
                 self.planned_moves.append(target)
 
     def assign_ship_targets(self, board: Board):
@@ -910,7 +917,7 @@ class HaliteBot(object):
 
         self.prefer_moves(ship, navigate(ship.position, destination, self.size),
                           self.farthest_directions[ship_pos][destination_pos],
-                          self.parameters['move_preference_return'])
+                          self.parameters['move_preference_return'], destination=destination)
 
     def handle_mining_ship(self, ship: Ship):
         if ship.id not in self.mining_targets.keys():
@@ -922,7 +929,8 @@ class HaliteBot(object):
         reduce_farming_penalty = target_pos not in self.farming_positions
         if target != ship.position:
             self.prefer_moves(ship, nav(ship_pos, target_pos), self.farthest_directions[ship_pos][target_pos],
-                              self.parameters['move_preference_base'], reduce_farming_penalty=reduce_farming_penalty)
+                              self.parameters['move_preference_base'], reduce_farming_penalty=reduce_farming_penalty,
+                              destination=target)
             if self.shipyard_distances[ship_pos] == 1:
                 for neighbour in get_neighbours(ship.cell):
                     if neighbour.shipyard is not None and neighbour.shipyard.player_id == self.player_id:
@@ -956,7 +964,8 @@ class HaliteBot(object):
                 target = enemy_shipyards[0]
                 self.prefer_moves(ship, navigate(ship_position, target.position, self.size),
                                   self.farthest_directions[ship_pos][TO_INDEX[target.position]],
-                                  self.parameters['move_preference_hunting'] * 2, penalize_farming)
+                                  self.parameters['move_preference_hunting'] * 2, penalize_farming,
+                                  destination=target.position)
         if len(self.enemies) > 0:
             if ship.id in self.hunting_targets.keys():
                 target = self.hunting_targets[ship.id]
@@ -967,7 +976,8 @@ class HaliteBot(object):
                 target_position = target.position
                 self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
                                   self.farthest_directions[ship_pos][TO_INDEX[target_position]],
-                                  self.parameters['move_preference_hunting'], penalize_farming)
+                                  self.parameters['move_preference_hunting'], penalize_farming,
+                                  destination=target.position)
 
     def handle_guarding_ship(self, ship: Ship):
         if ship.id not in self.guarding_shipyards.keys():
@@ -980,7 +990,8 @@ class HaliteBot(object):
             if ship_pos != shipyard_position:
                 self.prefer_moves(ship, nav(ship_pos, shipyard_position),
                                   self.farthest_directions[ship_pos][shipyard_position],
-                                  self.parameters['move_preference_guarding'] * 2, False)
+                                  self.parameters['move_preference_guarding'] * 2, False,
+                                  destination=Point.from_index(shipyard_position, SIZE))
             else:
                 self.change_position_score(ship, ship.position,
                                            self.parameters['move_preference_guarding'] - self.parameters[
@@ -1003,7 +1014,8 @@ class HaliteBot(object):
         else:
             self.prefer_moves(ship, nav(ship_pos, shipyard_position),
                               self.farthest_directions[ship_pos][shipyard_position],
-                              self.parameters['move_preference_guarding'])
+                              self.parameters['move_preference_guarding'],
+                              destination=Point.from_index(shipyard_position, SIZE))
 
     def guard_shipyards(self, board: Board):
         shipyard_guards = dict()
@@ -1311,13 +1323,25 @@ class HaliteBot(object):
     def calculate_player_map_presence(self, player):
         return len(player.ships) + len(player.shipyards)
 
-    def prefer_moves(self, ship, directions, longest_axis, weight, penalize_farming=True, reduce_farming_penalty=False):
+    def prefer_moves(self, ship, directions, longest_axis, weight, penalize_farming=True, reduce_farming_penalty=False,
+                     destination=None):
         for dir in directions:
             position = (ship.position + dir.to_point()) % self.size
             w = weight
             if dir in longest_axis:
                 w += self.parameters['move_preference_longest_axis']
             self.change_position_score(ship, position, weight)
+        if destination is not None and len(directions) >= 2 and len(self.real_farming_points) > 0:
+            axis1_farming_positions = self.get_farming_positions_count_in_between(ship.position, destination,
+                                                                                  get_axis(directions[0]))
+            axis2_farming_positions = self.get_farming_positions_count_in_between(ship.position, destination,
+                                                                                  get_axis(directions[1]))
+            if axis1_farming_positions > axis2_farming_positions:
+                position = (ship.position + directions[0].to_point()) % self.size
+                self.change_position_score(ship, position, int(-weight // 2))
+            elif axis1_farming_positions < axis2_farming_positions:
+                position = (ship.position + directions[1].to_point()) % self.size
+                self.change_position_score(ship, position, int(-weight // 2))
         for dir in get_inefficient_directions(directions):
             position = (ship.position + dir.to_point()) % self.size
             self.change_position_score(ship, position, int(-weight // 1.2))
@@ -1329,7 +1353,23 @@ class HaliteBot(object):
             for cell in (get_neighbours(ship.cell) + [ship.cell]):
                 if TO_INDEX[cell.position] in self.farming_positions and 0 < cell.halite < self.harvest_threshold:
                     self.change_position_score(ship, cell.position, int(-self.parameters[
-                        'cell_score_farming'] // 10))  # TODO: reduce the penalty further when we fix mining ships moving over these cells for too long
+                        'cell_score_farming'] // 1.5))
+
+    def get_farming_positions_count_in_between(self, source, destination, axis):
+        count = 0
+        source_coordinate1 = source.x if axis == 'x' else source.y
+        source_coordinate2 = source.y if axis == 'x' else source.x
+        destination_coordinate = destination.y if axis == 'x' else destination.x
+        distance = dist(source_coordinate2, destination_coordinate)
+        for farming_position in self.real_farming_points:
+            farming_coordinate1 = farming_position.x if axis == 'x' else farming_position.y
+            if source_coordinate1 != farming_coordinate1:
+                continue
+            farming_coordinate2 = farming_position.y if axis == 'x' else farming_position.x
+            if dist(source_coordinate2, farming_coordinate2) < distance and dist(destination_coordinate,
+                                                                                 farming_coordinate2) < distance:
+                count += 1
+        return count
 
     def change_position_score(self, ship: Ship, position: Point, delta: float):
         self.ship_position_preferences[self.ship_to_index[ship], self.position_to_index[position]] += delta
