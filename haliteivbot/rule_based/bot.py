@@ -29,7 +29,8 @@ PARAMETERS = {
     'farming_end': 360,
     'farming_start': 1,
     'guarding_aggression_radius': 6,
-    'guarding_distance_to_shipyard': 3,
+    'guarding_min_distance_to_shipyard': 2,
+    'guarding_max_distance_to_shipyard': 4,
     'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.65,
@@ -93,7 +94,7 @@ PARAMETERS = {
     'shipyard_start': 20,
     'shipyard_stop': 250,
     'spawn_min_dominance': -10,
-    'spawn_till': 280,
+    'spawn_till': 270,
     'hunting_max_group_size': 1,
     'hunting_max_group_distance': 5,
     'hunting_score_intercept': 1.25,
@@ -997,7 +998,7 @@ class HaliteBot(object):
                 self.change_position_score(ship, ship.position,
                                            self.parameters['move_preference_guarding'] - self.parameters[
                                                'move_preference_stay_on_shipyard'])
-        elif current_distance <= self.parameters['guarding_distance_to_shipyard']:
+        elif current_distance <= self.parameters['guarding_max_distance_to_shipyard']:
             # stay near the shipyard
             if ship.cell.shipyard is not None:
                 if self.halite < self.config.spawn_cost or self.step_count > self.parameters['spawn_till']:
@@ -1006,11 +1007,13 @@ class HaliteBot(object):
                                                    'move_preference_stay_on_shipyard'])
             elif ship.cell.halite > 0:
                 self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding_stay'])
-            else:
+            elif self.parameters['guarding_min_distance_to_shipyard'] <= current_distance:
                 self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding'])
             for position in get_neighbouring_positions(ship.position):
-                if get_distance(TO_INDEX[position], shipyard_position) <= self.parameters[
-                    'guarding_distance_to_shipyard']:
+                if self.parameters['guarding_min_distance_to_shipyard'] <= get_distance(TO_INDEX[position],
+                                                                                        shipyard_position) <= \
+                        self.parameters['guarding_max_distance_to_shipyard'] and (
+                        position not in self.real_farming_points):
                     self.change_position_score(ship, position, self.parameters['move_preference_guarding'])
         else:
             self.prefer_moves(ship, nav(ship_pos, shipyard_position),
@@ -1299,7 +1302,8 @@ class HaliteBot(object):
                 if cell.ship.halite < ship.halite:
                     score -= (500 + ship.halite - 0.5 * cell.ship.halite)
                 elif cell.ship.halite == ship.halite:
-                    if TO_INDEX[cell.position] not in self.farming_positions:
+                    if TO_INDEX[cell.position] not in self.farming_positions and self.shipyard_distances[
+                        TO_INDEX[cell.position]] >= self.parameters['guarding_radius']:
                         score -= 350
                 else:
                     score += cell.ship.halite * self.parameters['cell_score_enemy_halite']
@@ -1310,7 +1314,8 @@ class HaliteBot(object):
                         neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
                         break
                     elif neighbour.ship.halite == ship.halite:
-                        if TO_INDEX[neighbour.position] not in self.farming_positions:
+                        if TO_INDEX[neighbour.position] not in self.farming_positions and self.shipyard_distances[
+                            TO_INDEX[neighbour.position]] >= self.parameters['guarding_radius']:
                             neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
                     else:
                         neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
