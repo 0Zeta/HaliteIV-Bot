@@ -26,10 +26,10 @@ PARAMETERS = {
     'end_return_extra_moves': 6,
     'end_start': 378,
     'ending_halite_threshold': 10,
-    'farming_end': 345,
+    'farming_end': 360,
     'farming_start': 1,
     'guarding_aggression_radius': 6,
-    'guarding_distance_to_shipyard': 4,
+    'guarding_distance_to_shipyard': 3,
     'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.65,
@@ -52,6 +52,7 @@ PARAMETERS = {
     'hunting_score_ship_bonus': 174,
     'hunting_score_ypsilon': 1.9914928946625279,
     'hunting_score_zeta': 1.1452680492519223,
+    'hunting_score_farming_position_penalty': 0.8,
     'hunting_threshold': 3,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
@@ -82,13 +83,13 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -95,
     'return_halite': 989,
     'ship_spawn_threshold': 0.1,
-    'ships_shipyards_threshold': 0.15,
+    'ships_shipyards_threshold': 0.17,
     'shipyard_abandon_dominance': -36.82080985520312,
     'shipyard_conversion_threshold': 3,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
-    'shipyard_min_dominance': 2.2663304454187605,
-    'shipyard_min_population': 0.85,
+    'shipyard_min_dominance': 1,
+    'shipyard_min_population': 0.8,
     'shipyard_start': 20,
     'shipyard_stop': 250,
     'spawn_min_dominance': -10,
@@ -1259,9 +1260,14 @@ class HaliteBot(object):
                 target_dir = nav(enemy_pos, interception_pos)
                 if (len(target_dir) > 0 and target_dir[0] == safe_direction) and get_distance(enemy_pos,
                                                                                               interception_pos) >= get_distance(
-                        ship_pos, interception_pos):
+                    ship_pos, interception_pos):
                     # We can intercept the target
                     score *= self.parameters['hunting_score_intercept']
+        if len(self.real_farming_points) > 0 and enemy_pos not in self.farming_positions:
+            farming_positions_in_the_way = min(
+                [self.get_farming_positions_count_in_between(ship.position, enemy.position, dir) for dir in
+                 nav(ship_pos, enemy_pos)])
+            score *= self.parameters['hunting_score_farming_position_penalty'] ** farming_positions_in_the_way
         return score
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
