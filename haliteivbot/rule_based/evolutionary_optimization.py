@@ -69,6 +69,8 @@ hyperparameters = {
     'move_preference_longest_axis': ('int', (10, 30)),
     'move_preference_stay_on_shipyard': ('int', (-150, -20)),
     'move_preference_block_shipyard': ('int', (-200, -50)),
+    'move_preference_constructing': ('int', (120, 250)),
+    'move_preference_construction_guarding': ('int', (120, 200)),
     'farming_end': ('int', (340, 370)),
     'return_halite': ('int', (250, 3000)),
     'ship_spawn_threshold': ('float', (0.1, 4.0)),
