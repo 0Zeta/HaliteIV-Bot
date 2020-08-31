@@ -51,7 +51,7 @@ PARAMETERS = {
     'hunting_score_iota': 0.6344102425255267,
     'hunting_score_kappa': 0.39089297661963435,
     'hunting_score_ship_bonus': 174,
-    'hunting_score_ypsilon': 1.9914928946625279,
+    'hunting_score_ypsilon': 2,
     'hunting_score_zeta': 1.1452680492519223,
     'hunting_score_farming_position_penalty': 0.8,
     'hunting_threshold': 3,
@@ -93,7 +93,7 @@ PARAMETERS = {
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 1,
     'shipyard_min_population': 0.7,
-    'shipyard_start': 70,
+    'shipyard_start': 75,
     'shipyard_stop': 250,
     'spawn_min_dominance': -10,
     'spawn_till': 270,
@@ -101,7 +101,10 @@ PARAMETERS = {
     'hunting_max_group_distance': 5,
     'hunting_score_intercept': 1.25,
     'hunting_score_hunt': 2,
-    'third_shipyard_step': 55
+    'third_shipyard_step': 75,
+    'min_enemy_shipyard_distance': 6,
+    'shipyard_min_ship_advantage': -4,
+    'third_shipyard_min_ships': 19
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -596,7 +599,8 @@ class HaliteBot(object):
             for pos in range(SIZE ** 2):
                 if self.parameters['min_shipyard_distance'] <= get_distance(shipyard_pos, pos) <= self.parameters[
                     'max_shipyard_distance'] and min(
-                    [20] + [get_distance(pos, enemy_pos) for enemy_pos in enemy_shipyard_positions]) > 3:
+                    [20] + [get_distance(pos, enemy_pos) for enemy_pos in enemy_shipyard_positions]) >= self.parameters[
+                    'min_enemy_shipyard_distance']:
                     point = Point.from_index(pos, SIZE)
                     half = 0.5 * get_vector(shipyard.position, point)
                     half = Point(round(half.x), round(half.y))
@@ -625,10 +629,11 @@ class HaliteBot(object):
 
     def build_shipyards(self):
         if self.parameters[
-            'third_shipyard_step'] < self.step_count < 120 and self.shipyard_count <= 2 and self.ship_advantage > -9 and self.ship_count > 16:
+            'third_shipyard_step'] < self.step_count < 150 and self.max_shipyard_connections <= 1 and self.ship_advantage > -8 and self.ship_count >= \
+                self.parameters['third_shipyard_min_ships']:
             if self.next_shipyard_position is None:
                 self.plan_shipyard_position()
-            else:
+            elif self.small_dominance_map[self.next_shipyard_position] >= -2:
                 ships = [ship for ship in self.me.ships if
                          ship.halite <= self.hunting_halite_threshold and ship.id not in self.ship_types.keys()]
                 ships.sort(key=lambda ship: get_distance(TO_INDEX[ship.position], self.next_shipyard_position))
@@ -653,7 +658,7 @@ class HaliteBot(object):
 
         for shipyard in self.me.shipyards:
             if self.halite < (
-            2 * self.config.spawn_cost if self.step_count < 15 and self.shipyard_count == 1 else self.config.spawn_cost):  # save halite for an early second shipyard
+                    2 * self.config.spawn_cost if self.next_shipyard_position is not None else self.config.spawn_cost):  # save halite for the next shipyard
                 return
             if shipyard.position in self.planned_moves:
                 continue
@@ -1351,8 +1356,8 @@ class HaliteBot(object):
                                                                           self.parameters['hunting_score_cargo_clip']) /
                              self.parameters['hunting_score_cargo_clip'])
                 )
-        if self.max_shipyard_connections == 1 and self.creates_good_triangle(enemy.position):
-            # Clear space for a third shipyard
+        if self.next_shipyard_position is not None and get_distance(enemy_pos, self.next_shipyard_position) <= 3:
+            # Clear space for a shipyard
             score *= self.parameters['hunting_score_ypsilon']
 
         if enemy.id in self.vulnerable_ships.keys():
@@ -1399,7 +1404,8 @@ class HaliteBot(object):
                     score += 400  # Attack the enemy shipyard
                 else:
                     score -= 300
-            elif self.halite >= self.config.spawn_cost and self.shipyard_count == 1 and not self.spawn_limit_reached:
+            elif self.halite >= (
+            2 * self.config.spawn_cost if self.next_shipyard_position is not None else self.config.spawn_cost) and self.shipyard_count == 1 and not self.spawn_limit_reached:
                 if self.step_count <= 100 or self.medium_dominance_map[TO_INDEX[shipyard.position]] >= self.parameters[
                     'spawn_min_dominance']:
                     score += self.parameters['move_preference_block_shipyard']

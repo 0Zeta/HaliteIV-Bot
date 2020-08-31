@@ -109,7 +109,10 @@ hyperparameters = {
     'hunting_max_group_distance': ('int', (3, 9)),
     'cell_score_farming': ('int', (-500, -100)),
     'hunting_score_farming_position_penalty': ('float', (0.1, 0.9)),
-    'third_shipyard_step': ('int', (40, 80))
+    'third_shipyard_step': ('int', (40, 80)),
+    'min_enemy_shipyard_distance': ('int', (1, 9)),
+    'shipyard_min_ship_advantage': ('int', (-10, 0)),
+    'third_shipyard_min_ships': ('int', (15, 22))
 }
 
 first_genome = {
