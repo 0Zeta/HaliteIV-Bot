@@ -72,6 +72,7 @@ PARAMETERS = {
     'mining_score_farming_penalty': 0.01,
     'mining_score_gamma': 0.98,
     'mining_score_juicy': 0.35,
+    'mining_score_juicy_end': 0.15,
     'mining_score_start_returning': 56,
     'move_preference_base': 95,
     'move_preference_block_shipyard': -200,
@@ -101,10 +102,10 @@ PARAMETERS = {
     'hunting_max_group_distance': 5,
     'hunting_score_intercept': 1.25,
     'hunting_score_hunt': 2,
-    'third_shipyard_step': 75,
+    'third_shipyard_step': 70,
     'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
-    'third_shipyard_min_ships': 19
+    'third_shipyard_min_ships': 16
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -781,8 +782,8 @@ class HaliteBot(object):
             'mining_score_start_returning'] else self.parameters[
             'mining_score_juicy']  # Don't return too often early in the game
 
-        if self.step_count > self.parameters['farming_end']:
-            self.mining_score_beta = self.parameters['mining_score_juicy']
+        if self.parameters['farming_end'] < self.step_count < self.parameters['end_start']:
+            self.mining_score_beta = self.parameters['mining_score_juicy_end']
 
         mining_scores = np.zeros((len(self.mining_ships), len(mining_positions) + len(dropoff_positions)))
         for ship_index, ship in enumerate(self.mining_ships):
