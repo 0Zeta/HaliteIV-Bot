@@ -93,14 +93,15 @@ PARAMETERS = {
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 1,
     'shipyard_min_population': 0.7,
-    'shipyard_start': 20,
+    'shipyard_start': 70,
     'shipyard_stop': 250,
     'spawn_min_dominance': -10,
     'spawn_till': 270,
     'hunting_max_group_size': 1,
     'hunting_max_group_distance': 5,
     'hunting_score_intercept': 1.25,
-    'hunting_score_hunt': 2
+    'hunting_score_hunt': 2,
+    'third_shipyard_step': 55
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -586,22 +587,56 @@ class HaliteBot(object):
         return False
 
     def plan_shipyard_position(self):
+        possible_positions = []
         if self.max_shipyard_connections == 0:
             shipyard = self.me.shipyards[0]
             shipyard_pos = TO_INDEX[shipyard.position]
-            possible_positions = []
+            enemy_shipyard_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
+                                        enemy_shipyard in player.shipyards]
             for pos in range(SIZE ** 2):
                 if self.parameters['min_shipyard_distance'] <= get_distance(shipyard_pos, pos) <= self.parameters[
-                    'max_shipyard_distance']:
+                    'max_shipyard_distance'] and min(
+                    [20] + [get_distance(pos, enemy_pos) for enemy_pos in enemy_shipyard_positions]) > 3:
                     point = Point.from_index(pos, SIZE)
                     half = 0.5 * get_vector(shipyard.position, point)
                     half = Point(round(half.x), round(half.y))
                     midpoint = (shipyard.position + half) % SIZE
                     possible_positions.append((pos, self.get_populated_cells_in_radius_count(TO_INDEX[midpoint])))
+        else:
+            for pos in range(SIZE ** 2):
+                point = Point.from_index(pos, SIZE)
+                good_distance = [shipyard.position for shipyard in self.me.shipyards if
+                                 self.parameters['min_shipyard_distance'] <= get_distance(pos, TO_INDEX[
+                                     shipyard.position]) <= self.parameters['max_shipyard_distance']]
+                if len(good_distance) >= 2:
+
+                    for i in range(len(good_distance)):
+                        for j in range(i + 1, len(good_distance)):
+                            pos1, pos2 = good_distance[i], good_distance[j]
+                            if (pos1.x == pos2.x == point.x) or (
+                                    pos1.y == pos2.y == point.y):  # rays don't intersect
+                                possible_positions.append((pos, self.get_populated_cells_in_radius_count(pos)))
+                            else:
+                                midpoint = TO_INDEX[get_excircle_midpoint(pos1, pos2, point)]
+                                possible_positions.append((pos, self.get_populated_cells_in_radius_count(midpoint)))
+        if len(possible_positions) > 0:
             possible_positions.sort(key=lambda data: data[1], reverse=True)
             self.next_shipyard_position = possible_positions[0][0]
 
     def build_shipyards(self):
+        if self.parameters[
+            'third_shipyard_step'] < self.step_count < 120 and self.shipyard_count <= 2 and self.ship_advantage > -9 and self.ship_count > 16:
+            if self.next_shipyard_position is None:
+                self.plan_shipyard_position()
+            else:
+                ships = [ship for ship in self.me.ships if
+                         ship.halite <= self.hunting_halite_threshold and ship.id not in self.ship_types.keys()]
+                ships.sort(key=lambda ship: get_distance(TO_INDEX[ship.position], self.next_shipyard_position))
+                if len(ships) > 0:
+                    self.ship_types[ships[0].id] = ShipType.CONSTRUCTING
+                if len(ships) > 1:
+                    self.ship_types[ships[1].id] = ShipType.CONSTRUCTION_GUARDING
+            return
         if self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters['shipyard_stop']:
             return
         for ship in sorted(self.me.ships, key=lambda s: s.halite, reverse=True):

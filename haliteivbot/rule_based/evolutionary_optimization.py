@@ -108,7 +108,8 @@ hyperparameters = {
     'hunting_max_group_size': ('int', (2, 5)),
     'hunting_max_group_distance': ('int', (3, 9)),
     'cell_score_farming': ('int', (-500, -100)),
-    'hunting_score_farming_position_penalty': ('float', (0.1, 0.9))
+    'hunting_score_farming_position_penalty': ('float', (0.1, 0.9)),
+    'third_shipyard_step': ('int', (40, 80))
 }
 
 first_genome = {
