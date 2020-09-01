@@ -613,6 +613,10 @@ class HaliteBot(object):
             for pos in range(SIZE ** 2):
                 if require_dominance and self.small_dominance_map[pos] < self.parameters['shipyard_min_dominance']:
                     continue
+                shipyard_distance = self.shipyard_distances[pos]
+                if shipyard_distance < self.parameters['min_shipyard_distance'] or self.parameters[
+                    'max_shipyard_distance'] < shipyard_distance:
+                    continue
                 point = Point.from_index(pos, SIZE)
                 good_distance = [shipyard.position for shipyard in self.me.shipyards if
                                  self.parameters['min_shipyard_distance'] <= get_distance(pos, TO_INDEX[
