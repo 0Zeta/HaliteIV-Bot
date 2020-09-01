@@ -102,8 +102,8 @@ PARAMETERS = {
     'hunting_max_group_distance': 5,
     'hunting_score_intercept': 1.25,
     'hunting_score_hunt': 2,
-    'second_shipyard_step': 25,
-    'third_shipyard_step': 70,
+    'second_shipyard_step': 50,
+    'third_shipyard_step': 65,
     'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
     'third_shipyard_min_ships': 18
@@ -443,6 +443,7 @@ class HaliteBot(object):
         self.enemy_distances = dict()
         self.guarded_shipyards = list()
         self.max_shipyard_connections = 0
+        self.nb_connected_shipyards = 0
         for shipyard_position in self.shipyard_positions:
             min_distance = 20
             connections = 0
@@ -458,6 +459,8 @@ class HaliteBot(object):
                     connections += 1
                     if self.max_shipyard_connections < connections:
                         self.max_shipyard_connections = connections
+            if connections > 0:
+                self.nb_connected_shipyards += 1
 
         self.farming_positions = []
         self.real_farming_points = []
@@ -628,7 +631,7 @@ class HaliteBot(object):
         converting_disabled = self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']
         if (self.parameters[
-                'third_shipyard_step'] <= self.step_count < 150 and self.max_shipyard_connections <= 1 and self.ship_advantage > -8 and self.ship_count >= \
+                'third_shipyard_step'] <= self.step_count < 200 and self.max_shipyard_connections <= 1 and self.ship_advantage > -8 and self.ship_count >= \
             self.parameters['third_shipyard_min_ships']) or (
                 self.parameters[
                     'second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0 and self.ship_advantage > -5):
@@ -937,7 +940,7 @@ class HaliteBot(object):
                     for shipyard_index, shipyard_position in enumerate(shipyards_to_protect):
                         guarding_scores[ship_index,
                         guarding_ships_per_shipyard * shipyard_index:guarding_ships_per_shipyard * shipyard_index + guarding_ships_per_shipyard] = get_distance(
-                            ship_pos, shipyard_position)
+                            ship_pos, shipyard_position) + self.medium_dominance_map[shipyard_position]
                 row, col = scipy.optimize.linear_sum_assignment(guarding_scores, maximize=False)
                 for r, c in zip(row, col):
                     self.guarding_shipyards[available_guarding_ships[r].id] = shipyards_to_protect[
@@ -1241,10 +1244,10 @@ class HaliteBot(object):
         if self.shipyard_count == 0 and (self.step_count <= self.parameters[
             'end_start'] or ship.halite >= self.config.convert_cost or self.cargo >= 1200):
             return True  # TODO: choose best ship
-        if self.shipyard_count >= self.parameters['max_shipyards']:
+        if self.nb_connected_shipyards >= self.parameters['max_shipyards']:
             return False
         if self.average_halite_per_cell / self.shipyard_count < self.parameters[
-            'shipyard_conversion_threshold'] or (self.max_shipyard_connections + 1) / self.ship_count >= \
+            'shipyard_conversion_threshold'] or (max(self.nb_connected_shipyards, 1) + 1) / self.ship_count >= \
                 self.parameters[
                     'ships_shipyards_threshold']:
             return False
