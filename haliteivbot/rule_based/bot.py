@@ -54,7 +54,7 @@ PARAMETERS = {
     'hunting_score_ypsilon': 2,
     'hunting_score_zeta': 1.1452680492519223,
     'hunting_score_farming_position_penalty': 0.8,
-    'hunting_threshold': 3,
+    'hunting_threshold': 6,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
     'max_halite_attack_shipyard': 0,
@@ -66,12 +66,12 @@ PARAMETERS = {
     'min_ships': 20,
     'min_shipyard_distance': 6,
     'mining_score_alpha': 1,
-    'mining_score_beta': 1,
+    'mining_score_beta': 0.96,
     'mining_score_dominance_clip': 2.7914078388504846,
     'mining_score_dominance_norm': 0.35,
     'mining_score_farming_penalty': 0.01,
     'mining_score_gamma': 0.98,
-    'mining_score_juicy': 0.5,
+    'mining_score_juicy': 0.35,
     'mining_score_juicy_end': 0.1,
     'mining_score_start_returning': 56,
     'move_preference_base': 95,
@@ -87,14 +87,14 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -95,
     'return_halite': 989,
     'ship_spawn_threshold': 0.12,
-    'ships_shipyards_threshold': 0.15,
+    'ships_shipyards_threshold': 0.17,
     'shipyard_abandon_dominance': -36.82080985520312,
     'shipyard_conversion_threshold': 3,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
     'shipyard_min_dominance': 1,
     'shipyard_min_population': 0.7,
-    'shipyard_start': 75,
+    'shipyard_start': 90,
     'shipyard_stop': 250,
     'spawn_min_dominance': -10,
     'spawn_till': 270,
@@ -102,11 +102,11 @@ PARAMETERS = {
     'hunting_max_group_distance': 5,
     'hunting_score_intercept': 1.25,
     'hunting_score_hunt': 2,
-    'second_shipyard_step': 28,
-    'third_shipyard_step': 60,
-    'min_enemy_shipyard_distance': 5,
+    'second_shipyard_step': 25,
+    'third_shipyard_step': 70,
+    'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
-    'third_shipyard_min_ships': 16
+    'third_shipyard_min_ships': 18
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -630,7 +630,8 @@ class HaliteBot(object):
         if (self.parameters[
                 'third_shipyard_step'] <= self.step_count < 150 and self.max_shipyard_connections <= 1 and self.ship_advantage > -8 and self.ship_count >= \
             self.parameters['third_shipyard_min_ships']) or (
-                self.parameters['second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0):
+                self.parameters[
+                    'second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0 and self.ship_advantage > -5):
             if self.next_shipyard_position is None:
                 self.plan_shipyard_position()
             elif self.small_dominance_map[self.next_shipyard_position] >= -8:
@@ -640,7 +641,7 @@ class HaliteBot(object):
                 cell = board.cells[Point.from_index(self.next_shipyard_position, SIZE)]
                 if len(ships) > 0 and (cell.ship is None or cell.ship.player_id != self.player_id):
                     self.ship_types[ships[0].id] = ShipType.CONSTRUCTING
-                if len(ships) > 1 and self.halite > 300:
+                if len(ships) > 1 and self.halite > 300 and self.small_dominance_map[self.next_shipyard_position] < 0.5:
                     self.ship_types[ships[1].id] = ShipType.CONSTRUCTION_GUARDING
             else:
                 logging.debug("Dominance of " + str(self.small_dominance_map[
@@ -1410,9 +1411,9 @@ class HaliteBot(object):
                     score += 300
                 elif ship.halite > self.parameters['max_halite_attack_shipyard']:
                     score -= (400 + ship.halite)
-                elif ship.halite == 0 and (self.rank == 0 or self.step_count >= self.parameters[
-                    'end_start'] or TO_INDEX[
-                                               cell.position] in self.farming_positions):  # only crash into enemy shipyards if we're in a good position
+                elif ship.halite == 0 and (
+                        (self.rank == 0 and self.ship_advantage > 0) or self.step_count >= self.parameters[
+                    'end_start'] or TO_INDEX[cell.position] in self.farming_positions):
                     score += 400  # Attack the enemy shipyard
                 else:
                     score -= 300
