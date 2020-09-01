@@ -7,7 +7,7 @@ from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, Shipy
 
 from haliteivbot.rule_based.utils import *
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 PARAMETERS = {
     'cargo_map_halite_norm': 276,
