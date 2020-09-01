@@ -42,6 +42,11 @@ class Tournament(object):
             results = evaluate("halite", [wrap_bot(HaliteBot(bot)) if isinstance(bot, dict) else bot for bot in bots],
                                env.configuration)[0]
             results[:] = [results[i] for i in shuffled_indices]
+            for i in range(len(results)):
+                if results[i] is None:
+                    results[i] = -1
+                    logging.critical("An error occurred with bot " + str(self.bots[self.bot_to_index(bots[i])]) + ".")
+                    logging.critical(results)
             standings = 3 - np.argsort(results)
             queue.put((bots, standings))
         except Exception as exception:

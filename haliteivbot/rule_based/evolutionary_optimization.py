@@ -14,7 +14,7 @@ NB_BASELINE_BOTS = 8
 IGNORE_SELECTION_PROBABILITY = 0.03  # the probability to let another genome survive
 NB_PARENTS = 2
 
-POOL_NAME = ""
+POOL_NAME = "2020-09-01 18-28"
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (50, 500)),
