@@ -27,7 +27,7 @@ PARAMETERS = {
     'end_start': 382,
     'ending_halite_threshold': 10,
     'farming_end': 355,
-    'farming_start': 1,
+    'farming_start': 40,
     'guarding_aggression_radius': 6,
     'guarding_min_distance_to_shipyard': 2,
     'guarding_max_distance_to_shipyard': 4,
@@ -87,14 +87,14 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -95,
     'return_halite': 989,
     'ship_spawn_threshold': 0.12,
-    'ships_shipyards_threshold': 0.17,
+    'ships_shipyards_threshold': 0.15,
     'shipyard_abandon_dominance': -36.82080985520312,
     'shipyard_conversion_threshold': 3,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15.702344974762006,
-    'shipyard_min_dominance': 1,
-    'shipyard_min_population': 0.7,
-    'shipyard_start': 90,
+    'shipyard_min_dominance': -3,
+    'shipyard_min_population': 1.5,
+    'shipyard_start': 180,
     'shipyard_stop': 250,
     'spawn_min_dominance': -10,
     'spawn_till': 270,
@@ -102,10 +102,11 @@ PARAMETERS = {
     'hunting_max_group_distance': 5,
     'hunting_score_intercept': 1.25,
     'hunting_score_hunt': 2,
-    'second_shipyard_step': 50,
-    'third_shipyard_step': 65,
+    'second_shipyard_step': 30,
+    'third_shipyard_step': 50,
     'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
+    'second_shipyard_min_ships': 15,
     'third_shipyard_min_ships': 18
 }
 
@@ -560,11 +561,13 @@ class HaliteBot(object):
         self.guard_shipyards(board)
         self.build_shipyards(board)
 
-        self.spawn_cost = 2 * self.config.spawn_cost if need_halite or (self.next_shipyard_position is not None and (
+        self.spawn_cost = 2 * self.config.spawn_cost if need_halite or ((self.next_shipyard_position is not None and (
                 ShipType.CONSTRUCTING in self.ship_types.values() or (
                 board.cells[Point.from_index(self.next_shipyard_position, SIZE)].ship is not None and
                 board.cells[Point.from_index(self.next_shipyard_position,
-                                             SIZE)].ship.player_id == self.player_id))) else self.config.spawn_cost
+                                             SIZE)].ship.player_id == self.player_id))) and self.step_count <
+                                                                        self.parameters[
+                                                                            'shipyard_stop']) else self.config.spawn_cost
 
         self.move_ships(board)
         self.spawn_ships(board)
@@ -606,7 +609,10 @@ class HaliteBot(object):
                     midpoint = (shipyard.position + half) % SIZE
                     possible_positions.append((pos, self.get_populated_cells_in_radius_count(TO_INDEX[midpoint])))
         else:
+            require_dominance = self.nb_connected_shipyards > 2 and (self.map_presence_rank != 0 or self.rank != 0)
             for pos in range(SIZE ** 2):
+                if require_dominance and self.small_dominance_map[pos] < self.parameters['shipyard_min_dominance']:
+                    continue
                 point = Point.from_index(pos, SIZE)
                 good_distance = [shipyard.position for shipyard in self.me.shipyards if
                                  self.parameters['min_shipyard_distance'] <= get_distance(pos, TO_INDEX[
@@ -630,11 +636,15 @@ class HaliteBot(object):
     def build_shipyards(self, board: Board):
         converting_disabled = self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']
-        if (self.parameters[
-                'third_shipyard_step'] <= self.step_count < 200 and self.max_shipyard_connections <= 1 and self.ship_advantage > -8 and self.ship_count >= \
-            self.parameters['third_shipyard_min_ships']) or (
-                self.parameters[
-                    'second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0 and self.ship_advantage > -5):
+        if self.step_count < self.parameters['shipyard_stop'] and ((self.parameters[
+                                                                        'third_shipyard_step'] <= self.step_count < 200 and self.max_shipyard_connections <= 1 and self.ship_advantage > -8 and self.ship_count >= \
+                                                                    self.parameters['third_shipyard_min_ships']) or (
+                                                                           self.parameters[
+                                                                               'second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0 and self.ship_advantage > -5 and self.ship_count >=
+                                                                           self.parameters['second_shipyard_min_ships']) \
+                                                                   or ((max(self.nb_connected_shipyards, 1) + 1) / len(
+                    self.me.ships) <= self.parameters[
+                                                                           'ships_shipyards_threshold'] and self.ship_advantage > -8 and self.max_shipyard_connections > 1)):
             if self.next_shipyard_position is None:
                 self.plan_shipyard_position()
             elif self.small_dominance_map[self.next_shipyard_position] >= -8:
@@ -1239,7 +1249,7 @@ class HaliteBot(object):
         if self.halite + ship.halite < self.config.convert_cost:
             return False
         ship_pos = TO_INDEX[ship.position]
-        if ship_pos == self.next_shipyard_position:
+        if ship_pos == self.next_shipyard_position and self.step_count <= self.parameters['shipyard_stop']:
             return True
         if self.shipyard_count == 0 and (self.step_count <= self.parameters[
             'end_start'] or ship.halite >= self.config.convert_cost or self.cargo >= 1200):

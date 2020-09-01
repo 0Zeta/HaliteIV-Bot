@@ -115,6 +115,7 @@ hyperparameters = {
     'third_shipyard_min_ships': ('int', (15, 22)),
     'mining_score_juicy_end': ('float', (0.01, 0.4)),
     'second_shipyard_step': ('int', (20, 60)),
+    'second_shipyard_min_ships': ('int', (7, 20)),
 }
 
 first_genome = {
