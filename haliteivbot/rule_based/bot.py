@@ -28,18 +28,19 @@ PARAMETERS = {
     'ending_halite_threshold': 10,
     'farming_end': 355,
     'farming_start': 40,
-    'guarding_aggression_radius': 6,
+    'guarding_aggression_radius': 7,
     'guarding_min_distance_to_shipyard': 2,
     'guarding_max_distance_to_shipyard': 4,
-    'guarding_max_ships_per_shipyard': 2,
+    'guarding_max_ships_per_shipyard': 4,
     'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.65,
     'guarding_radius': 3,
+    'guarding_radius2': 0,
     'guarding_end': 370,
     'guarding_stop': 342,
     'harvest_threshold_alpha': 0.2,
     'harvest_threshold_hunting_norm': 0.65,
-    'harvest_threshold_base': 190,  # 185
+    'harvest_threshold_base': 250,  # 185
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.4,
@@ -480,7 +481,8 @@ class HaliteBot(object):
             # Compute distances to the next shipyard, farming and guarding positions:
             self.shipyard_distances = []
             guarding_radius = ((self.parameters['max_shipyard_distance'] + 1) if self.max_shipyard_connections >= 2 else \
-                                   self.parameters['max_shipyard_distance'] - 1) - 1
+                                   self.parameters['max_shipyard_distance'] - 1) - 1 + self.parameters[
+                                  'guarding_radius2']
             farming_radius = (self.parameters['max_shipyard_distance'] if self.max_shipyard_connections >= 2 else \
                                   self.parameters['max_shipyard_distance'] - 2) - 1
             required_in_range = min(3,

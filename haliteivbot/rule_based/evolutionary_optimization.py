@@ -97,7 +97,7 @@ hyperparameters = {
     'farming_start': ('int', (1, 50)),
     'harvest_threshold_alpha': ('float', (0.01, 0.3)),
     'harvest_threshold_hunting_norm': ('float', (0.3, 0.9)),
-    'harvest_threshold_base': ('int', (180, 255)),
+    'harvest_threshold_base': ('int', (180, 350)),
     'hunting_score_ypsilon': ('float', (1.1, 3)),
     'mining_score_juicy': ('float', (0.1, 0.6)),
     'mining_score_start_returning': ('int', (30, 65)),
@@ -119,7 +119,8 @@ hyperparameters = {
     'second_shipyard_min_ships': ('int', (8, 18)),
     'farming_start_shipyards': ('int', (2, 3)),
     'map_ultra_blur': ('float', (1, 2)),
-    'early_second_shipyard': ('int', (25, 45))
+    'early_second_shipyard': ('int', (25, 45)),
+    'guarding_radius2': ('int', (0, 1)),
 }
 
 frozen_parameters = ['dominance_map_medium_radius', 'dominance_map_small_radius', 'guarding_min_distance_to_shipyard',
@@ -232,7 +233,8 @@ first_genome = {
     'third_shipyard_min_ships': 18,
     'farming_start_shipyards': 2,
     'map_ultra_blur': 1.5,
-    'early_second_shipyard': 30
+    'early_second_shipyard': 30,
+    'guarding_radius2': 0
 }
 
 second_genome = {
@@ -338,7 +340,8 @@ second_genome = {
     'third_shipyard_min_ships': 19,
     'farming_start_shipyards': 2,
     'map_ultra_blur': 1.25,
-    'early_second_shipyard': 35
+    'early_second_shipyard': 35,
+    'guarding_radius2': 1
 }
 
 if __name__ == "__main__":
