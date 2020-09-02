@@ -7,7 +7,7 @@ from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, Shipy
 
 from haliteivbot.rule_based.utils import *
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 
 PARAMETERS = {
     'cargo_map_halite_norm': 276,
@@ -16,7 +16,7 @@ PARAMETERS = {
     'cell_score_neighbour_discount': 0.676200480431318,
     'cell_score_ship_halite': 0.0006229108666303259,
     'cell_score_farming': -130,
-    'convert_when_attacked_threshold': 469,
+    'convert_when_attacked_threshold': 400,
     'disable_hunting_till': 75,
     'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
@@ -31,9 +31,9 @@ PARAMETERS = {
     'guarding_aggression_radius': 6,
     'guarding_min_distance_to_shipyard': 2,
     'guarding_max_distance_to_shipyard': 4,
-    'guarding_max_ships_per_shipyard': 2,
+    'guarding_max_ships_per_shipyard': 3,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 0.65,
+    'guarding_norm': 0.45,
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
@@ -525,13 +525,10 @@ class HaliteBot(object):
             shape=(self.ship_count, nb_positions_in_reach + nb_shipyard_conversions),
             fill_value=-999999)  # positions + convert "positions"
         for ship_index, ship in enumerate(self.me.ships):
-            if ship.halite >= self.parameters['convert_when_attacked_threshold']:
+            if ship.halite >= self.parameters[
+                'convert_when_attacked_threshold'] and ship.halite + self.halite >= self.config.convert_cost:
                 self.ship_position_preferences[ship_index,
-                nb_positions_in_reach:nb_positions_in_reach + self.available_shipyard_conversions] = -self.parameters[
-                    'convert_when_attacked_threshold']
-            if (ship.halite + self.halite) // self.config.convert_cost > self.available_shipyard_conversions:
-                self.ship_position_preferences[
-                    ship_index, nb_positions_in_reach + self.available_shipyard_conversions] = -self.parameters[
+                nb_positions_in_reach:] = -self.parameters[
                     'convert_when_attacked_threshold']
             for position in self.positions_in_reach_list[ship.position]:
                 self.ship_position_preferences[
@@ -1348,8 +1345,8 @@ class HaliteBot(object):
             1.5 * self.parameters['mining_score_dominance_clip']) / (
                                 1.5 * self.parameters['mining_score_dominance_clip'])
         if self.step_count < self.parameters['mining_score_start_returning']:
-            dominance /= 2
-            dominance += self.parameters['mining_score_dominance_norm'] / 2
+            dominance /= 1.5
+            dominance += self.parameters['mining_score_dominance_norm'] / 3
         dominance += 1 - self.parameters['mining_score_dominance_norm'] / 2
         score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
                 self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * halite_val) * dominance / max(
