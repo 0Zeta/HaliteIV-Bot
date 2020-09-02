@@ -37,7 +37,8 @@ PARAMETERS = {
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
-    'harvest_threshold': 360,
+    'harvest_threshold_alpha': 0.2,
+    'harvest_threshold_hunting_norm': 0.65,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.4,
@@ -1328,9 +1329,7 @@ class HaliteBot(object):
             mining_steps = 0
             if distance_from_ship == 0:
                 return 0  # We are on the shipyard
-        elif cell_position in self.farming_positions and halite >= self.parameters[
-            # halite not halite_val because we cannot be sure the cell halite regenerates
-            'harvest_threshold'] and farming_activated:
+        elif cell_position in self.farming_positions and halite >= self.harvest_threshold and farming_activated:  # halite not halite_val because we cannot be sure the cell halite regenerates
             mining_steps = ceil(math.log(self.harvest_threshold / halite_val, 0.75))
         else:
             mining_steps = self.optimal_mining_steps[max(distance_from_shipyard - 1, 0)][
@@ -1353,8 +1352,7 @@ class HaliteBot(object):
             distance_from_ship + mining_steps + self.parameters['mining_score_alpha'] * distance_from_shipyard, 1)
         if distance_from_shipyard == 0 and self.step_count <= 11:
             score *= 0.1  # We don't want to block the shipyard.
-        if halite < self.parameters[  # halite not halite_val because we cannot be sure the cell halite regenerates
-            'harvest_threshold'] and cell_position in self.farming_positions and farming_activated:
+        if halite < self.harvest_threshold and cell_position in self.farming_positions and farming_activated:  # halite not halite_val because we cannot be sure the cell halite regenerates
             score *= self.parameters['mining_score_farming_penalty']
         return score
 
@@ -1569,13 +1567,22 @@ class HaliteBot(object):
 
     def calculate_harvest_threshold(self):
         if self.step_count <= 100:
-            return 190
+            threshold = 190
         elif self.step_count <= 250:
-            return 245
+            threshold = 245
         elif self.step_count <= 320:
-            return 300
+            threshold = 300
         else:
-            return 340
+            threshold = 340
+        if self.map_presence_rank == 0 and self.ship_advantage >= 4:
+            threshold += 15
+        elif self.map_presence_rank == 3 and self.ship_advantage <= -7:
+            threshold -= 10
+        threshold *= (1 - (self.parameters['harvest_threshold_alpha'] / 2) + (
+                    self.parameters['harvest_threshold_alpha'] * (
+                        1 - clip(self.enemy_hunting_proportion, 0, self.parameters['harvest_threshold_hunting_norm']) /
+                        self.parameters['harvest_threshold_hunting_norm'])))
+        return int(clip(threshold, 150, 470))
 
 
 def agent(obs, config):

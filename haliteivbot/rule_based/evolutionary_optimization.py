@@ -14,7 +14,7 @@ NB_BASELINE_BOTS = 4
 IGNORE_SELECTION_PROBABILITY = 0.03  # the probability to let another genome survive
 NB_PARENTS = 2
 
-POOL_NAME = "2020-09-01 18-28"
+POOL_NAME = ""
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (50, 500)),
@@ -95,7 +95,8 @@ hyperparameters = {
     'move_preference_guarding': ('int', (60, 100)),
     'guarding_max_ships_per_shipyard': ('int', (1, 4)),
     'farming_start': ('int', (1, 50)),
-    'harvest_threshold': ('int', (440, 499)),
+    'harvest_threshold_alpha': ('float', (0.01, 0.3)),
+    'harvest_threshold_hunting_norm': ('float', (0.3, 0.9)),
     'hunting_score_ypsilon': ('float', (1.1, 3)),
     'mining_score_juicy': ('float', (0.1, 0.6)),
     'mining_score_start_returning': ('int', (30, 70)),
@@ -152,7 +153,8 @@ first_genome = {
     'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
-    'harvest_threshold': 360,
+    'harvest_threshold_alpha': 0.15,
+    'harvest_threshold_hunting_norm': 0.5,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.4,
@@ -253,7 +255,8 @@ second_genome = {
     'guarding_radius': 3,
     'guarding_end': 375,
     'guarding_stop': 341,
-    'harvest_threshold': 360,
+    'harvest_threshold_alpha': 0.1,
+    'harvest_threshold_hunting_norm': 0.4,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.45,
