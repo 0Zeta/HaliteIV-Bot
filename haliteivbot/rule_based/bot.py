@@ -39,6 +39,7 @@ PARAMETERS = {
     'guarding_stop': 342,
     'harvest_threshold_alpha': 0.2,
     'harvest_threshold_hunting_norm': 0.65,
+    'harvest_threshold_base': 185,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.4,
@@ -53,7 +54,7 @@ PARAMETERS = {
     'hunting_score_kappa': 0.39089297661963435,
     'hunting_score_ship_bonus': 174,
     'hunting_score_ypsilon': 2,
-    'hunting_score_zeta': 1.1452680492519223,
+    'hunting_score_zeta': 2.5,
     'hunting_score_farming_position_penalty': 0.8,
     'hunting_threshold': 6,
     'map_blur_gamma': 0.95,
@@ -1566,22 +1567,15 @@ class HaliteBot(object):
             self.ship_position_preferences[:, self.position_to_index[position]] > -50] += 900
 
     def calculate_harvest_threshold(self):
-        if self.step_count <= 100:
-            threshold = 190
-        elif self.step_count <= 250:
-            threshold = 245
-        elif self.step_count <= 320:
-            threshold = 300
-        else:
-            threshold = 340
-        if self.map_presence_rank == 0 and self.ship_advantage >= 4:
+        threshold = clip(0.5 * self.step_count * self.parameters['harvest_threshold_base'], 190, 345)
+        if self.map_presence_rank == 0 and self.ship_advantage >= 3:
             threshold += 15
         elif self.map_presence_rank == 3 and self.ship_advantage <= -7:
             threshold -= 10
         threshold *= (1 - (self.parameters['harvest_threshold_alpha'] / 2) + (
-                    self.parameters['harvest_threshold_alpha'] * (
-                        1 - clip(self.enemy_hunting_proportion, 0, self.parameters['harvest_threshold_hunting_norm']) /
-                        self.parameters['harvest_threshold_hunting_norm'])))
+                self.parameters['harvest_threshold_alpha'] * (
+                1 - clip(self.enemy_hunting_proportion, 0, self.parameters['harvest_threshold_hunting_norm']) /
+                self.parameters['harvest_threshold_hunting_norm'])))
         return int(clip(threshold, 150, 470))
 
 
