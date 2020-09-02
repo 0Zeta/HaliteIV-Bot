@@ -5,7 +5,6 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO)
@@ -88,9 +87,9 @@ PARAMETERS = {
     'move_preference_constructing': 150,
     'move_preference_construction_guarding': 130,
     'move_preference_stay_on_shipyard': -95,
-    'return_halite': 989,
+    'return_halite': 1000,
     'ship_spawn_threshold': 0.12,
-    'ships_shipyards_threshold': 0.15,
+    'ships_shipyards_threshold': 0.16,
     'shipyard_abandon_dominance': -36.82080985520312,
     'shipyard_conversion_threshold': 3,
     'shipyard_guarding_attack_probability': 0.35,
@@ -109,7 +108,7 @@ PARAMETERS = {
     'third_shipyard_step': 50,
     'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
-    'second_shipyard_min_ships': 16,
+    'second_shipyard_min_ships': 12,
     'third_shipyard_min_ships': 18
 }
 
@@ -601,7 +600,6 @@ class HaliteBot(object):
                         map[pos] += 1
                     if pos in self.shipyard_positions:
                         map[pos] += 5
-                display_matrix(map.reshape((SIZE, SIZE)))
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
@@ -663,6 +661,10 @@ class HaliteBot(object):
                 "Planning to place the next shipyard at " + str(Point.from_index(self.next_shipyard_position, SIZE)))
 
     def build_shipyards(self, board: Board):
+        if self.next_shipyard_position is not None and not (
+                self.parameters['min_shipyard_distance'] <= self.shipyard_distances[self.next_shipyard_position] <=
+                self.parameters['max_shipyard_distance']):
+            self.plan_shipyard_position()
         converting_disabled = self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']
         if self.step_count < self.parameters['shipyard_stop'] and ((self.parameters[
