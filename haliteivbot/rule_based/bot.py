@@ -16,7 +16,7 @@ PARAMETERS = {
     'cell_score_neighbour_discount': 0.676200480431318,
     'cell_score_ship_halite': 0.0006229108666303259,
     'cell_score_farming': -130,
-    'convert_when_attacked_threshold': 400,
+    'convert_when_attacked_threshold': 469,
     'disable_hunting_till': 75,
     'dominance_map_halite_clip': 340,
     'dominance_map_medium_radius': 5,
@@ -30,16 +30,16 @@ PARAMETERS = {
     'farming_start': 40,
     'guarding_aggression_radius': 6,
     'guarding_min_distance_to_shipyard': 2,
-    'guarding_max_distance_to_shipyard': 3,
+    'guarding_max_distance_to_shipyard': 4,
     'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
-    'guarding_norm': 0.45,
-    'guarding_radius': 2,
+    'guarding_norm': 0.65,
+    'guarding_radius': 3,
     'guarding_end': 370,
     'guarding_stop': 342,
     'harvest_threshold_alpha': 0.2,
     'harvest_threshold_hunting_norm': 0.65,
-    'harvest_threshold_base': 185,  # 185
+    'harvest_threshold_base': 190,  # 185
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.4,
@@ -90,7 +90,7 @@ PARAMETERS = {
     'move_preference_stay_on_shipyard': -95,
     'return_halite': 1000,
     'ship_spawn_threshold': 0.12,
-    'ships_shipyards_threshold': 0.16,
+    'ships_shipyards_threshold': 0.15,
     'shipyard_abandon_dominance': -36.82080985520312,
     'shipyard_conversion_threshold': 3,
     'shipyard_guarding_attack_probability': 0.35,
@@ -111,7 +111,8 @@ PARAMETERS = {
     'shipyard_min_ship_advantage': -4,
     'second_shipyard_min_ships': 15,
     'third_shipyard_min_ships': 18,
-    'farming_start_shipyards': 2
+    'farming_start_shipyards': 2,
+    'early_second_shipyard': 1
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -628,16 +629,20 @@ class HaliteBot(object):
             shipyard_pos = TO_INDEX[shipyard.position]
             enemy_shipyard_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
                                         enemy_shipyard in player.shipyards]
+            early_second_shipyard = self.step_count <= self.parameters['early_second_shipyard']
             for pos in range(SIZE ** 2):
                 if self.parameters['min_shipyard_distance'] <= get_distance(shipyard_pos, pos) <= self.parameters[
                     'max_shipyard_distance'] and min(
                     [20] + [get_distance(pos, enemy_pos) for enemy_pos in enemy_shipyard_positions]) >= self.parameters[
                     'min_enemy_shipyard_distance']:
-                    point = Point.from_index(pos, SIZE)
-                    half = 0.5 * get_vector(shipyard.position, point)
-                    half = Point(round(half.x), round(half.y))
-                    midpoint = (shipyard.position + half) % SIZE
-                    possible_positions.append((pos, self.get_populated_cells_in_radius_count(TO_INDEX[midpoint])))
+                    if early_second_shipyard:
+                        possible_positions.append((pos, self.ultra_blurred_halite_map[pos]))
+                    else:
+                        point = Point.from_index(pos, SIZE)
+                        half = 0.5 * get_vector(shipyard.position, point)
+                        half = Point(round(half.x), round(half.y))
+                        midpoint = (shipyard.position + half) % SIZE
+                        possible_positions.append((pos, self.get_populated_cells_in_radius_count(TO_INDEX[midpoint])))
         else:
             require_dominance = self.nb_connected_shipyards > 2 and (self.map_presence_rank != 0 or self.rank != 0)
             for pos in range(SIZE ** 2):
