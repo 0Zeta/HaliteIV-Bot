@@ -31,10 +31,10 @@ PARAMETERS = {
     'guarding_aggression_radius': 6,
     'guarding_min_distance_to_shipyard': 2,
     'guarding_max_distance_to_shipyard': 4,
-    'guarding_max_ships_per_shipyard': 3,
+    'guarding_max_ships_per_shipyard': 2,
     'guarding_ship_advantage_norm': 20,
     'guarding_norm': 0.45,
-    'guarding_radius': 3,
+    'guarding_radius': 2,
     'guarding_end': 370,
     'guarding_stop': 342,
     'harvest_threshold_alpha': 0.2,
@@ -467,6 +467,47 @@ class HaliteBot(object):
 
         self.farming_positions = []
         self.real_farming_points = []
+        self.guarding_positions = []
+        if self.shipyard_count == 0:
+            # There is no shipyard, but we still need to mine.
+            self.shipyard_distances = [3] * self.size ** 2
+        else:
+            # Compute distances to the next shipyard, farming and guarding positions:
+            self.shipyard_distances = []
+            guarding_radius = (self.parameters['max_shipyard_distance'] + 1) if self.max_shipyard_connections >= 2 else \
+                self.parameters['max_shipyard_distance']
+            farming_radius = self.parameters['max_shipyard_distance'] if self.max_shipyard_connections >= 2 else \
+                self.parameters['max_shipyard_distance'] - 1
+            required_in_range = min(3, max(2, self.max_shipyard_connections + 1))
+            for pos in range(0, SIZE ** 2):
+                min_distance = float('inf')
+                in_guarding_range = 0
+                in_farming_range = 0
+                guard = False
+                for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
+                    distance = get_distance(pos, shipyard_position)
+                    if distance < min_distance:
+                        min_distance = distance
+                    if distance <= self.parameters['guarding_radius']:
+                        guard = True
+                    if self.parameters['farming_start'] <= self.step_count:
+                        if distance <= farming_radius:
+                            in_guarding_range += 1
+                            in_farming_range += 1
+                        elif distance <= guarding_radius:
+                            in_guarding_range += 1
+                self.shipyard_distances.append(min_distance)
+
+                if guard or (
+                        self.parameters['farming_start'] <= self.step_count and in_guarding_range >= required_in_range):
+                    self.guarding_positions.append(pos)
+                if self.parameters['farming_start'] <= self.step_count <= self.parameters[
+                    'farming_end'] and pos not in self.shipyard_positions and in_farming_range >= required_in_range:
+                    self.farming_positions.append(pos)
+                    point = Point.from_index(pos, SIZE)
+                    if board.cells[point].halite > 0:
+                        self.real_farming_points.append(point)
+
         # Compute distances to the next shipyard:
         if self.shipyard_count == 0:
             # There is no shipyard, but we still need to mine.
@@ -647,7 +688,9 @@ class HaliteBot(object):
                                                                            self.parameters['second_shipyard_min_ships']) \
                                                                    or ((max(self.nb_connected_shipyards, 1) + 1) / len(
                     self.me.ships) <= self.parameters[
-                                                                           'ships_shipyards_threshold'] and self.ship_advantage > -20 and self.max_shipyard_connections > 1)):
+                                                                           'ships_shipyards_threshold'] and self.ship_advantage >
+                                                                       self.parameters[
+                                                                           'shipyard_min_ship_advantage'] and self.max_shipyard_connections > 1)):
             if self.next_shipyard_position is None:
                 self.plan_shipyard_position()
             elif self.small_dominance_map[self.next_shipyard_position] >= -8:
@@ -777,7 +820,7 @@ class HaliteBot(object):
                 self.planned_moves.append(target)
 
     def assign_ship_targets(self, board: Board):
-        # Adapted from https://www.kaggle.com/manavtrivedi/optimus-mine-agent
+        # Mining assignment adapted from https://www.kaggle.com/solverworld/optimus-mine-agent
         if self.ship_count == 0:
             return
 
@@ -873,11 +916,6 @@ class HaliteBot(object):
         encoded_dirs = [1, 2, 4, 8]
         possible_enemy_targets = [(dir, ship) for ship in self.enemies for dir in encoded_dirs for _ in
                                   range(self.parameters['max_hunting_ships_per_direction'])]
-        guarding_targets = [ship for ship in self.enemies if
-                            self.shipyard_distances[TO_INDEX[ship.position]] <= self.parameters['guarding_radius'] or
-                            TO_INDEX[ship.position] in self.farming_positions] + \
-                           [shipyard for player in self.opponents for shipyard in player.shipyards if
-                            self.shipyard_distances[TO_INDEX[shipyard.position]] <= self.parameters['guarding_radius']]
         hunting_scores = np.zeros(
             (len(self.hunting_ships), len(self.enemies) * 4 * self.parameters['max_hunting_ships_per_direction']))
         hunting_ship_to_idx = {ship.id: idx for idx, ship in enumerate(self.hunting_ships)}
@@ -897,6 +935,10 @@ class HaliteBot(object):
             assigned_hunting_scores.append(hunting_scores[r, c])
 
         if len(self.me.shipyards) > 0:
+            guarding_targets = [ship for ship in self.enemies if TO_INDEX[ship.position] in self.guarding_positions] + \
+                               [shipyard for player in self.opponents for shipyard in player.shipyards if
+                                TO_INDEX[shipyard.position] in self.guarding_positions]
+
             # Guarding ships
             assigned_hunting_scores.sort()
             guarding_threshold_index = max(
@@ -913,9 +955,8 @@ class HaliteBot(object):
                     target_pos = TO_INDEX[possible_enemy_targets[c][1].position]
                     ship_pos = TO_INDEX[self.hunting_ships[r].position]
                     if hunting_scores[r, c] < guarding_threshold:
-                        if (self.shipyard_distances[target_pos] > self.parameters[
-                            'guarding_radius'] and target_pos not in self.farming_positions) or get_distance(
-                            ship_pos, target_pos) > self.parameters[
+                        if target_pos not in self.guarding_positions or get_distance(
+                                ship_pos, target_pos) > self.parameters[
                             'guarding_aggression_radius'] or ship_pos in self.shipyard_positions:
                             self.guarding_ships.append(self.hunting_ships[r])
                         else:
@@ -1439,8 +1480,7 @@ class HaliteBot(object):
                 if cell.ship.halite < ship.halite:
                     score -= (500 + ship.halite - 0.5 * cell.ship.halite)
                 elif cell.ship.halite == ship.halite:
-                    if TO_INDEX[cell.position] not in self.farming_positions and self.shipyard_distances[
-                        TO_INDEX[cell.position]] >= self.parameters['guarding_radius'] and (
+                    if TO_INDEX[cell.position] not in self.guarding_positions and (
                             self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
                                                                                 self.next_shipyard_position) > 2):
                         score -= 350
@@ -1453,8 +1493,7 @@ class HaliteBot(object):
                         neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
                         break
                     elif neighbour.ship.halite == ship.halite:
-                        if TO_INDEX[neighbour.position] not in self.farming_positions and self.shipyard_distances[
-                            TO_INDEX[neighbour.position]] >= self.parameters['guarding_radius'] and (
+                        if TO_INDEX[neighbour.position] not in self.guarding_positions and (
                                 self.next_shipyard_position is None or get_distance(TO_INDEX[neighbour.position],
                                                                                     self.next_shipyard_position) > 2):
                             neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
