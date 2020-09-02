@@ -10,7 +10,7 @@ CROSSOVER_PROBABILITY = 0.2
 POOL_SIZE = 16
 SELECTION_CAP = 4  # take the fittest four genomes of a generation
 NB_OLD_GENOMES = 2
-NB_BASELINE_BOTS = 8
+NB_BASELINE_BOTS = 4
 IGNORE_SELECTION_PROBABILITY = 0.03  # the probability to let another genome survive
 NB_PARENTS = 2
 

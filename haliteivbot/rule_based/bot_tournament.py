@@ -35,7 +35,8 @@ class Tournament(object):
 
     def play_game(self, bots, queue):
         try:
-            env = make("halite", configuration={"size": 21, 'randomSeed': randrange((1 << 32) - 1)}, debug=True)
+            env = make("halite", configuration={"size": 21, 'randomSeed': randrange((1 << 32) - 1), "agentTimeout": 60,
+                                                "actTimeout": 12, "runTimeout": 19200}, debug=True)
             env.reset(4)
             shuffled_indices = np.random.permutation(4)
             bots[:] = [bots[i] for i in shuffled_indices]
