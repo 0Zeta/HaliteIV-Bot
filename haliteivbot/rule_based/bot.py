@@ -641,14 +641,14 @@ class HaliteBot(object):
         converting_disabled = self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']
         if self.step_count < self.parameters['shipyard_stop'] and ((self.parameters[
-                                                                        'third_shipyard_step'] <= self.step_count < 200 and self.max_shipyard_connections <= 1 and self.ship_advantage > -8 and self.ship_count >= \
+                                                                        'third_shipyard_step'] <= self.step_count < 200 and self.max_shipyard_connections <= 1 and self.ship_advantage > -10 and self.ship_count >= \
                                                                     self.parameters['third_shipyard_min_ships']) or (
                                                                            self.parameters[
-                                                                               'second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0 and self.ship_advantage > -5 and self.ship_count >=
+                                                                               'second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0 and self.ship_advantage > -15 and self.ship_count >=
                                                                            self.parameters['second_shipyard_min_ships']) \
                                                                    or ((max(self.nb_connected_shipyards, 1) + 1) / len(
                     self.me.ships) <= self.parameters[
-                                                                           'ships_shipyards_threshold'] and self.ship_advantage > -8 and self.max_shipyard_connections > 1)):
+                                                                           'ships_shipyards_threshold'] and self.ship_advantage > -20 and self.max_shipyard_connections > 1)):
             if self.next_shipyard_position is None:
                 self.plan_shipyard_position()
             elif self.small_dominance_map[self.next_shipyard_position] >= -8:
