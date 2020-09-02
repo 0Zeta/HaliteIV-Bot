@@ -117,6 +117,8 @@ hyperparameters = {
     'mining_score_juicy_end': ('float', (0.01, 0.4)),
     'second_shipyard_step': ('int', (15, 60)),
     'second_shipyard_min_ships': ('int', (8, 18)),
+    'farming_start_shipyards': ('int', (2, 3)),
+    'map_ultra_blur': ('float', (1, 2))
 }
 
 frozen_parameters = ['dominance_map_medium_radius', 'dominance_map_small_radius', 'guarding_min_distance_to_shipyard',
@@ -226,7 +228,9 @@ first_genome = {
     'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
     'second_shipyard_min_ships': 15,
-    'third_shipyard_min_ships': 18
+    'third_shipyard_min_ships': 18,
+    'farming_start_shipyards': 2,
+    'map_ultra_blur': 1.5
 }
 
 second_genome = {
@@ -329,7 +333,9 @@ second_genome = {
     'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
     'second_shipyard_min_ships': 14,
-    'third_shipyard_min_ships': 19
+    'third_shipyard_min_ships': 19,
+    'farming_start_shipyards': 2,
+    'map_ultra_blur': 1.25
 }
 
 if __name__ == "__main__":

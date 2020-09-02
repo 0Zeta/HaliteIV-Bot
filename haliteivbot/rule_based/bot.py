@@ -39,7 +39,7 @@ PARAMETERS = {
     'guarding_stop': 342,
     'harvest_threshold_alpha': 0.2,
     'harvest_threshold_hunting_norm': 0.65,
-    'harvest_threshold_base': 185,
+    'harvest_threshold_base': 185,  # 185
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_min_ships': 10,
     'hunting_proportion': 0.4,
@@ -59,6 +59,7 @@ PARAMETERS = {
     'hunting_threshold': 6,
     'map_blur_gamma': 0.95,
     'map_blur_sigma': 0.32460420355548203,
+    'map_ultra_blur': 1.5,
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 2,
     'max_ship_advantage': 27,
@@ -109,7 +110,8 @@ PARAMETERS = {
     'min_enemy_shipyard_distance': 6,
     'shipyard_min_ship_advantage': -4,
     'second_shipyard_min_ships': 15,
-    'third_shipyard_min_ships': 18
+    'third_shipyard_min_ships': 18,
+    'farming_start_shipyards': 2
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -408,6 +410,8 @@ class HaliteBot(object):
         self.nb_cells_in_farming_radius = len(self.farming_radius_list[0])
 
         self.blurred_halite_map = get_blurred_halite_map(self.observation['halite'], self.parameters['map_blur_sigma'])
+        self.ultra_blurred_halite_map = get_blurred_halite_map(self.observation['halite'],
+                                                               self.parameters['map_ultra_blur'])
 
         self.shipyard_positions = []
         for shipyard in self.me.shipyards:
@@ -475,10 +479,11 @@ class HaliteBot(object):
             # Compute distances to the next shipyard, farming and guarding positions:
             self.shipyard_distances = []
             guarding_radius = ((self.parameters['max_shipyard_distance'] + 1) if self.max_shipyard_connections >= 2 else \
-                                   self.parameters['max_shipyard_distance']) - 1
+                                   self.parameters['max_shipyard_distance'] - 1) - 1
             farming_radius = (self.parameters['max_shipyard_distance'] if self.max_shipyard_connections >= 2 else \
-                                  self.parameters['max_shipyard_distance'] - 1) - 1
-            required_in_range = min(3, max(2, self.max_shipyard_connections + 1))
+                                  self.parameters['max_shipyard_distance'] - 2) - 1
+            required_in_range = min(3,
+                                    max(self.parameters['farming_start_shipyards'], self.max_shipyard_connections + 1))
             for pos in range(0, SIZE ** 2):
                 min_distance = float('inf')
                 in_guarding_range = 0
@@ -615,6 +620,8 @@ class HaliteBot(object):
         return False
 
     def plan_shipyard_position(self):
+        if len(self.me.shipyards) == 0:
+            return
         possible_positions = []
         if self.max_shipyard_connections == 0:
             shipyard = self.me.shipyards[0]
@@ -707,8 +714,9 @@ class HaliteBot(object):
         if len(self.me.ships) == 0 and self.halite >= self.config.spawn_cost:
             if len(self.me.shipyards) > 0:
                 self.spawn_ship(self.me.shipyards[0])
-
-        for shipyard in self.me.shipyards:
+        shipyards = self.me.shipyards
+        shipyards.sort(key=lambda shipyard: self.calculate_spawning_score(TO_INDEX[shipyard.position]), reverse=True)
+        for shipyard in shipyards:
             if self.halite < self.spawn_cost:  # save halite for the next shipyard
                 return
             if shipyard.position in self.planned_moves:
@@ -1496,8 +1504,16 @@ class HaliteBot(object):
 
     def calculate_player_score(self, player):
         return player.halite + len(player.ships) * 500 * (1 - self.step_count / 398) + len(player.shipyards) * 750 * (
-                    1 - self.step_count / 398) + sum(
+                1 - self.step_count / 398) + sum(
             [ship.halite / 4 for ship in player.ships] if len(player.ships) > 0 else [0])
+
+    def calculate_spawning_score(self, shipyard_position: int):
+        if self.step_count <= self.parameters['farming_start']:
+            return self.ultra_blurred_halite_map[shipyard_position]
+        dominance = self.medium_dominance_map[shipyard_position]
+        if dominance < self.parameters['shipyard_abandon_dominance']:
+            return -999
+        return -dominance
 
     def calculate_player_map_presence(self, player):
         return len(player.ships) + len(player.shipyards)
