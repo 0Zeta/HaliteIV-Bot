@@ -148,6 +148,25 @@ def get_dominance_map(me, opponents, sigma, factor, halite_clip, size=21):
     return factor * blurred_dominance_map.reshape((-1,))
 
 
+def get_new_dominance_map(players, sigma, factor, halite_clip, size=21):
+    dominance_regions = np.zeros((4, size ** 2), dtype=np.float)
+    for player in players:
+        player_id = player.id
+        dominance_map = np.zeros((size ** 2,), dtype=np.float)
+        for ship in player.ships:
+            dominance_map[TO_INDEX[ship.position]] = clip(halite_clip - ship.halite, 0, halite_clip) / halite_clip
+        for shipyard in player.shipyards:
+            dominance_map[TO_INDEX[shipyard.position]] += 1.5
+        dominance_regions[player_id] = factor * gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma,
+                                                                mode='wrap').reshape((-1,))
+
+    maxima = np.zeros((4, size ** 2))
+    for i in range(4):
+        maxima[i] = np.max(dominance_regions[[j for j in range(4) if j != i], :], axis=0)
+    dominance_regions -= maxima
+    return dominance_regions
+
+
 def create_navigation_lists(size):
     """distance list taken from https://www.kaggle.com/jpmiller/fast-distance-calcs by JohnM"""
     base = np.arange(size ** 2)

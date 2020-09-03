@@ -5,7 +5,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
+# from haliteivbot.display_utils import display_matrix, display_dominance_map
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO)
@@ -603,7 +603,7 @@ class HaliteBot(object):
         if len(self.me.ships) > 0:
             logging.debug("avg cargo at step " + str(self.step_count) + ": " + str(
                 sum([ship.halite for ship in self.me.ships]) / len(self.me.ships)))
-            if self.step_count % 25 == 0 and False:
+            if self.step_count % 25 == 0:
                 map = np.zeros((SIZE ** 2,), dtype=np.int)
                 for pos in range(SIZE ** 2):
                     if pos in self.guarding_positions:
@@ -612,10 +612,9 @@ class HaliteBot(object):
                         map[pos] += 1
                     if pos in self.shipyard_positions:
                         map[pos] += 5
-                small = np.array(self.small_dominance_map.reshape((21, 21)), dtype=np.int)
-                medium = np.array(self.medium_dominance_map.reshape((21, 21)), dtype=np.int)
-                display_matrix(small)
-                display_matrix(medium)
+                # small = np.array(self.small_dominance_map.reshape((21, 21)), dtype=np.int)
+                # medium = np.array(self.medium_dominance_map.reshape((21, 21)), dtype=np.int)
+                # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
@@ -1160,7 +1159,7 @@ class HaliteBot(object):
             else:
                 target = max(self.enemies, key=lambda enemy: self.calculate_hunting_score(ship, enemy))
             if (isinstance(target, Shipyard) and ship.halite <= self.parameters[
-                'max_halite_attack_shipyard']) or target.halite > ship.halite:
+                'max_halite_attack_shipyard']) or (isinstance(target, Ship) and target.halite > ship.halite):
                 target_position = target.position
                 self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
                                   self.farthest_directions[ship_pos][TO_INDEX[target_position]],
