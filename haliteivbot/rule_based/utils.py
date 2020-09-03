@@ -131,28 +131,21 @@ def get_hunting_matrix(ships):
     return hunting_matrix
 
 
-def get_dominance_map(me, opponents, sigma, radius, halite_clip, size=21):
-    dominance_map = np.zeros((size ** 2,), dtype=np.float)
-    if radius == 'small':
-        radius_map = POSITIONS_IN_SMALL_RADIUS
-    elif radius == 'medium':
-        radius_map = POSITIONS_IN_MEDIUM_RADIUS
-    else:
-        raise Exception('Invalid radius type: ', radius)
-
+def get_dominance_map(me, opponents, sigma, factor, halite_clip, size=21):
+    dominance_map = np.zeros((SIZE ** 2), dtype=np.float)
     for ship in me.ships:
-        dominance_map[radius_map[TO_INDEX[ship.position]]] += clip(halite_clip - ship.halite, 0,
-                                                                   halite_clip) / halite_clip
+        dominance_map[TO_INDEX[ship.position]] += clip(halite_clip - ship.halite, 0,
+                                                       halite_clip) / halite_clip
     for shipyard in me.shipyards:
-        dominance_map[radius_map[TO_INDEX[shipyard.position]]] += 1.5
+        dominance_map[TO_INDEX[shipyard.position]] += 1.5
     for player in opponents:
         for ship in player.ships:
-            dominance_map[radius_map[TO_INDEX[ship.position]]] -= 1.5
+            dominance_map[TO_INDEX[ship.position]] -= clip(halite_clip - ship.halite, 0,
+                                                           halite_clip) / halite_clip
         for shipyard in player.shipyards:
-            dominance_map[radius_map[TO_INDEX[shipyard.position]]] -= 1.5
-
+            dominance_map[TO_INDEX[shipyard.position]] -= 1.5
     blurred_dominance_map = gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma, mode='wrap')
-    return blurred_dominance_map.reshape((-1,))
+    return factor * blurred_dominance_map.reshape((-1,))
 
 
 def create_navigation_lists(size):
