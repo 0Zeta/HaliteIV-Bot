@@ -35,8 +35,8 @@ class Tournament(object):
 
     def play_game(self, bots, queue):
         try:
-            env = make("halite", configuration={"size": 21, 'randomSeed': randrange((1 << 32) - 1), "agentTimeout": 60,
-                                                "actTimeout": 12, "runTimeout": 19200}, debug=True)
+            env = make("halite", configuration={"size": 21, 'randomSeed': randrange((1 << 32) - 1), "agentTimeout": 90,
+                                                "actTimeout": 18, "runTimeout": 36000}, debug=True)
             env.reset(4)
             shuffled_indices = np.random.permutation(4)
             bots[:] = [bots[i] for i in shuffled_indices]
@@ -45,7 +45,7 @@ class Tournament(object):
             results[:] = [results[i] for i in shuffled_indices]
             for i in range(len(results)):
                 if results[i] is None:
-                    results[i] = -1
+                    results[i] = -1000
                     logging.critical("An error occurred with bot " + str(self.bots[self.bot_to_index(bots[i])]) + ".")
                     logging.critical(results)
             standings = 3 - np.argsort(results)
