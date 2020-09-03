@@ -97,7 +97,6 @@ hyperparameters = {
     'farming_start': ('int', (1, 50)),
     'harvest_threshold_alpha': ('float', (0.01, 0.3)),
     'harvest_threshold_hunting_norm': ('float', (0.3, 0.9)),
-    'harvest_threshold_base': ('int', (180, 350)),
     'hunting_score_ypsilon': ('float', (1.1, 3)),
     'mining_score_juicy': ('float', (0.1, 0.6)),
     'mining_score_start_returning': ('int', (30, 65)),
@@ -121,7 +120,8 @@ hyperparameters = {
     'map_ultra_blur': ('float', (1, 2)),
     'early_second_shipyard': ('int', (25, 45)),
     'guarding_radius2': ('int', (0, 1)),
-    'max_guarding_ships_per_target': ('int', (2, 4))
+    'max_guarding_ships_per_target': ('int', (2, 4)),
+    'harvest_threshold_slope': ('float', (0.8, 1.4))
 }
 
 frozen_parameters = ['dominance_map_medium_radius', 'dominance_map_small_radius', 'guarding_min_distance_to_shipyard',
