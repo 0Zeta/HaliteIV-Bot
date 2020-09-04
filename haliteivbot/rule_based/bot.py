@@ -1535,35 +1535,34 @@ class HaliteBot(object):
                 if self.step_count <= 100 or self.medium_dominance_map[TO_INDEX[shipyard.position]] >= self.parameters[
                     'spawn_min_dominance']:
                     score += self.parameters['move_preference_block_shipyard']
-        if cell.shipyard is None:  # don't distract guarding ships
-            if cell.ship is not None and cell.ship.player_id != self.player_id:
-                if cell.ship.halite < ship.halite:
-                    score -= (500 + ship.halite - 0.5 * cell.ship.halite)
-                elif cell.ship.halite == ship.halite:
-                    if TO_INDEX[cell.position] not in self.guarding_positions and (
-                            self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
+        if cell.ship is not None and cell.ship.player_id != self.player_id:
+            if cell.ship.halite < ship.halite:
+                score -= (500 + ship.halite - 0.5 * cell.ship.halite)
+            elif cell.ship.halite == ship.halite:
+                if TO_INDEX[cell.position] not in self.guarding_positions and (
+                        self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
+                                                                            self.next_shipyard_position) > 2):
+                    score -= 350
+            else:
+                score += cell.ship.halite * self.parameters['cell_score_enemy_halite']
+        neighbour_value = 0
+        for neighbour in get_neighbours(cell):
+            if neighbour.ship is not None and neighbour.ship.player_id != self.player_id:
+                if neighbour.ship.halite < ship.halite:  # We really don't want to go to that cell unless it's necessary.
+                    neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
+                    break
+                elif neighbour.ship.halite == ship.halite:
+                    if TO_INDEX[neighbour.position] not in self.guarding_positions and (
+                            self.next_shipyard_position is None or get_distance(TO_INDEX[neighbour.position],
                                                                                 self.next_shipyard_position) > 2):
-                        score -= 350
+                        neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
                 else:
-                    score += cell.ship.halite * self.parameters['cell_score_enemy_halite']
-            neighbour_value = 0
-            for neighbour in get_neighbours(cell):
-                if neighbour.ship is not None and neighbour.ship.player_id != self.player_id:
-                    if neighbour.ship.halite < ship.halite:  # We really don't want to go to that cell unless it's necessary.
-                        neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
-                        break
-                    elif neighbour.ship.halite == ship.halite:
-                        if TO_INDEX[neighbour.position] not in self.guarding_positions and (
-                                self.next_shipyard_position is None or get_distance(TO_INDEX[neighbour.position],
-                                                                                    self.next_shipyard_position) > 2):
-                            neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
-                    else:
-                        neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
-                                           self.parameters['cell_score_neighbour_discount']
-            score += neighbour_value
-            score += self.parameters['cell_score_dominance'] * self.small_dominance_map[TO_INDEX[cell.position]]
-            if TO_INDEX[cell.position] in self.farming_positions and 0 < cell.halite < self.harvest_threshold:
-                score += self.parameters['cell_score_farming']
+                    neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
+                                       self.parameters['cell_score_neighbour_discount']
+        score += neighbour_value
+        score += self.parameters['cell_score_dominance'] * self.small_dominance_map[TO_INDEX[cell.position]]
+        if TO_INDEX[cell.position] in self.farming_positions and 0 < cell.halite < self.harvest_threshold:
+            score += self.parameters['cell_score_farming']
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
     def calculate_player_score(self, player):
