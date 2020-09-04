@@ -386,8 +386,9 @@ class HaliteBot(object):
         self.positions_in_reach_list, self.positions_in_reach_indices = compute_positions_in_reach()
         self.farthest_directions_indices = get_farthest_directions_matrix()
         self.farthest_directions = get_farthest_directions_list()
-        create_radius_lists(self.parameters['dominance_map_small_radius'],
-                            self.parameters['dominance_map_medium_radius'])
+        self.small_radius_list, self.medium_radius_list = create_radius_lists(
+            self.parameters['dominance_map_small_radius'],
+            self.parameters['dominance_map_medium_radius'])
         self.farming_radius_list = create_radius_list(ceil(self.parameters['max_shipyard_distance'] / 2))
 
     def step(self, board: Board, obs):
@@ -638,22 +639,35 @@ class HaliteBot(object):
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
+        if False:  # currently testing a feature
+            if step == 0:
+                # Immediately spawn a shipyard
+                self.me.ships[0].next_action = ShipAction.CONVERT
+                logging.debug("Ship " + str(self.me.ships[0].id) + " converts to a shipyard at the start of the game.")
+                return True
+            elif step == 1:
+                # Immediately spawn a ship
+                self.me.shipyards[0].next_action = ShipyardAction.SPAWN
+                return True
         if step == 0:
-            # Immediately spawn a shipyard
-            self.me.ships[0].next_action = ShipAction.CONVERT
-            logging.debug("Ship " + str(self.me.ships[0].id) + " converts to a shipyard at the start of the game.")
-            return True
-        elif step == 1:
-            # Immediately spawn a ship
-            self.me.shipyards[0].next_action = ShipyardAction.SPAWN
-            return True
+            self.plan_shipyard_position()
+        if step <= 10 and len(self.me.shipyards) == 0 and len(self.me.ships) == 1:
+            ship = self.me.ships[0]
+            if TO_INDEX[ship.position] != self.next_shipyard_position:
+                self.ship_types[ship.id] = ShipType.CONSTRUCTING
         return False
 
     def plan_shipyard_position(self):
-        if len(self.me.shipyards) == 0:
-            return
         possible_positions = []
-        if self.max_shipyard_connections == 0:
+        if len(self.me.shipyards) == 0:
+            if len(self.me.ships) == 0:
+                return
+            ships = self.me.ships
+            ships.sort(key=lambda ship: self.ultra_blurred_halite_map[TO_INDEX[ship.position]], reverse=True)
+            ship_pos = TO_INDEX[ships[0].position]
+            for pos in self.small_radius_list[ship_pos]:
+                possible_positions.append((pos, self.ultra_blurred_halite_map[pos] / (5 + get_distance(ship_pos, pos))))
+        elif self.max_shipyard_connections == 0:
             shipyard = self.me.shipyards[0]
             shipyard_pos = TO_INDEX[shipyard.position]
             enemy_shipyard_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
@@ -713,6 +727,8 @@ class HaliteBot(object):
                 "Planning to place the next shipyard at " + str(Point.from_index(self.next_shipyard_position, SIZE)))
 
     def build_shipyards(self, board: Board):
+        if len(self.me.ships) == 0:
+            return
         avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
                            enemy_shipyard in player.shipyards if
                            self.map_presence_diff[player.id] < (5 if self.step_count > 130 else 3)]
@@ -725,10 +741,10 @@ class HaliteBot(object):
                     break
         if self.next_shipyard_position is not None and not (
                 self.parameters['min_shipyard_distance'] <= self.shipyard_distances[self.next_shipyard_position] <=
-                self.parameters['max_shipyard_distance'] and not in_avoidance_radius):
+                self.parameters['max_shipyard_distance'] and not in_avoidance_radius) and len(self.me.shipyards) > 0:
             self.plan_shipyard_position()
-        converting_disabled = self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
-            'shipyard_stop']
+        converting_disabled = (self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
+            'shipyard_stop']) and (self.step_count > 10 or len(self.me.shipyards) > 0)
         if self.step_count < self.parameters['shipyard_stop'] and ((self.parameters[
                                                                         'third_shipyard_step'] <= self.step_count < 200 and self.max_shipyard_connections <= 1 and self.ship_advantage > -10 and self.ship_count >= \
                                                                     self.parameters['third_shipyard_min_ships']) or (
@@ -801,7 +817,7 @@ class HaliteBot(object):
         self.hunting_ships.clear()
         self.guarding_ships.clear()
 
-        if self.shipyard_count == 0:
+        if self.shipyard_count == 0 and self.step_count > 10:
             ship = max(self.me.ships, key=lambda ship: ship.halite)  # TODO: choose the ship with the safest position
             if ship.halite + self.halite >= self.config.convert_cost:
                 self.convert_to_shipyard(ship)
@@ -1366,6 +1382,8 @@ class HaliteBot(object):
         ship_pos = TO_INDEX[ship.position]
         if ship_pos == self.next_shipyard_position and self.step_count <= self.parameters['shipyard_stop']:
             return True
+        if self.shipyard_count == 0 and self.step_count <= 10:
+            return False
         if self.shipyard_count == 0 and (self.step_count <= self.parameters[
             'end_start'] or ship.halite >= self.config.convert_cost or self.cargo >= 1200):
             return True  # TODO: choose best ship
