@@ -6,7 +6,6 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -584,7 +583,7 @@ class HaliteBot(object):
                                 ship.halite <= self.hunting_halite_threshold and TO_INDEX[
                                     ship.position] in self.farming_positions])
         logging.info("Total intrusions at step " + str(self.step_count) + ": " + str(self.intrusions) + " (" + str(
-            round(self.intrusions / max(len(self.me.shipyards), 1), 2)) + " per shipyard)")
+            round(self.intrusions / max(len(self.farming_positions), 1), 2)) + " per position)")
 
         self.debug()
 
@@ -626,9 +625,9 @@ class HaliteBot(object):
                 # display_matrix(small)
                 # display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
-                display_matrix(
-                    get_borders(get_regions([self.me] + self.opponents, 2.5, 150, 21), self.player_id).reshape(
-                        (21, 21)))
+                # display_matrix(
+                #     get_borders(get_regions([self.me] + self.opponents, 2.5, 150, 21), self.player_id).reshape(
+                #        (21, 21)))
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
@@ -975,12 +974,17 @@ class HaliteBot(object):
 
             # Guarding ships
             assigned_hunting_scores.sort()
+            endangered_shipyards = [shipyard for shipyard in self.me.shipyards if len([1 for enemy in self.enemies if
+                                                                                       get_distance(
+                                                                                           TO_INDEX[enemy.position],
+                                                                                           TO_INDEX[
+                                                                                               shipyard.position]) <= 4])]
             guarding_threshold_index = max(
                 min(ceil(((1 - clip(self.ship_advantage, 0, self.parameters['guarding_ship_advantage_norm']) /
                            self.parameters['guarding_ship_advantage_norm']) * (
                                   clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
                                   self.parameters['guarding_norm'])) * len(assigned_hunting_scores)) - 1,
-                    self.parameters['guarding_max_ships_per_shipyard'] * len(self.me.shipyards) - 1,
+                    self.parameters['guarding_max_ships_per_shipyard'] * len(endangered_shipyards) - 1,
                     0 if self.step_count >= self.parameters['guarding_end'] else 500),
                 min(len(assigned_hunting_scores) - 1, len(self.me.shipyards))) - len(self.guarding_ships)
             if guarding_threshold_index > 0:
@@ -1031,8 +1035,8 @@ class HaliteBot(object):
             self.guarding_ships = [ship for ship in self.guarding_ships if ship not in self.hunting_ships]
             available_guarding_ships = [ship for ship in self.guarding_ships if ship.id not in self.shipyard_guards]
             if len(available_guarding_ships) > 0:
-                shipyards_to_protect = [shipyard_position for shipyard_position in self.shipyard_positions if
-                                        self.medium_dominance_map[shipyard_position] > self.parameters[
+                shipyards_to_protect = [TO_INDEX[shipyard.position] for shipyard in endangered_shipyards if
+                                        self.medium_dominance_map[TO_INDEX[shipyard.position]] > self.parameters[
                                             'shipyard_abandon_dominance']]
                 if len(shipyards_to_protect) == 0:
                     shipyards_to_protect.append(self.shipyard_positions[0])  # guard at least one shipyard
