@@ -628,6 +628,7 @@ class HaliteBot(object):
                 # display_matrix(
                 #     get_borders(get_regions([self.me] + self.opponents, 2.5, 150, 21), self.player_id).reshape(
                 #        (21, 21)))
+                # display_matrix(self.cargo_map.reshape((21, 21)))
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
