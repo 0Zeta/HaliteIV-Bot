@@ -1,14 +1,15 @@
 import logging
+import sys
 from enum import Enum
 from math import floor, ceil
 from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
+# from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 PARAMETERS = {
     'cargo_map_halite_norm': 270,
@@ -368,6 +369,7 @@ class HaliteBot(object):
         self.spawn_cost = 500
 
         self.enemies = list()
+        self.intrusions = 0
 
         self.returning_ships = list()
         self.mining_ships = list()
@@ -578,6 +580,11 @@ class HaliteBot(object):
         enemy_cargo = sorted([ship.halite for ship in self.enemies])
         self.hunting_halite_threshold = enemy_cargo[
             floor(len(enemy_cargo) * self.parameters['hunting_halite_threshold'])] if len(enemy_cargo) > 0 else 0
+        self.intrusions += len([1 for opponent in self.opponents for ship in opponent.ships if
+                                ship.halite <= self.hunting_halite_threshold and TO_INDEX[
+                                    ship.position] in self.farming_positions])
+        logging.info("Total intrusions at step " + str(self.step_count) + ": " + str(self.intrusions) + " (" + str(
+            round(self.intrusions / max(len(self.me.shipyards), 1), 2)) + " per shipyard)")
 
         self.debug()
 
@@ -614,10 +621,10 @@ class HaliteBot(object):
                         map[pos] += 1
                     if pos in self.shipyard_positions:
                         map[pos] += 5
-                small = np.array(self.small_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
-                medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
-                display_matrix(small)
-                display_matrix(medium)
+                # small = np.array(self.small_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
+                # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
+                # display_matrix(small)
+                # display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
 
     def handle_special_steps(self, board: Board) -> bool:
@@ -659,7 +666,7 @@ class HaliteBot(object):
         else:
             require_dominance = self.nb_connected_shipyards > 2 and (self.map_presence_rank != 0 or self.rank != 0)
             avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
-                               enemy_shipyard in player.shipyards if self.map_presence_diff[player.id] < 2]
+                               enemy_shipyard in player.shipyards if self.map_presence_diff[player.id] < 5]
             for pos in range(SIZE ** 2):
                 if require_dominance and self.small_dominance_map[pos] < self.parameters[
                     'shipyard_min_dominance'] * 1.8:
@@ -695,7 +702,7 @@ class HaliteBot(object):
     def build_shipyards(self, board: Board):
         avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
                            enemy_shipyard in player.shipyards if
-                           self.map_presence_diff[player.id] < (2 if self.step_count > 130 else 1)]
+                           self.map_presence_diff[player.id] < (5 if self.step_count > 130 else 3)]
         if self.next_shipyard_position is not None and not (
                 self.parameters['min_shipyard_distance'] <= self.shipyard_distances[self.next_shipyard_position] <=
                 self.parameters['max_shipyard_distance'] and (
