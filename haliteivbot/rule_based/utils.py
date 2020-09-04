@@ -167,6 +167,25 @@ def get_new_dominance_map(players, sigma, factor, halite_clip, size=21):
     return dominance_regions
 
 
+def get_regions(players, sigma, halite_clip, size=21):
+    dominance_map = get_new_dominance_map(players, sigma, 50, halite_clip, size)
+    regions = np.full((SIZE ** 2,), fill_value=-1, dtype=np.int)
+    for i in range(4):
+        regions[dominance_map[i] > 0] = i
+    return regions
+
+
+def get_borders(regions, player_index):
+    borders = np.zeros((SIZE ** 2,), dtype=np.int)
+    for pos in range(SIZE ** 2):
+        if regions[pos] == player_index:
+            for pos2 in get_neighbouring_positions(Point.from_index(pos, SIZE)):
+                if regions[TO_INDEX[pos2]] != player_index:
+                    borders[pos] = 1
+                    break
+    return borders
+
+
 def create_navigation_lists(size):
     """distance list taken from https://www.kaggle.com/jpmiller/fast-distance-calcs by JohnM"""
     base = np.arange(size ** 2)

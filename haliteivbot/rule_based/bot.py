@@ -6,7 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-# from haliteivbot.display_utils import display_matrix
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -626,6 +626,9 @@ class HaliteBot(object):
                 # display_matrix(small)
                 # display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
+                display_matrix(
+                    get_borders(get_regions([self.me] + self.opponents, 2.5, 150, 21), self.player_id).reshape(
+                        (21, 21)))
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
@@ -668,7 +671,7 @@ class HaliteBot(object):
             avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
                                enemy_shipyard in player.shipyards if self.map_presence_diff[player.id] < 5]
             for pos in range(SIZE ** 2):
-                if require_dominance and self.small_dominance_map[pos] < self.parameters[
+                if require_dominance and self.medium_dominance_map[pos] < self.parameters[
                     'shipyard_min_dominance'] * 1.8:
                     continue
                 if len(avoid_positions) > 0:
