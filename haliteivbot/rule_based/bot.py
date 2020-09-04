@@ -5,16 +5,16 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-# from haliteivbot.display_utils import display_matrix, display_dominance_map
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO)
 
 PARAMETERS = {
-    'cargo_map_halite_norm': 100,
-    'cell_score_dominance': 1.986880839809644,
-    'cell_score_enemy_halite': 0.4,
-    'cell_score_farming': -100,
+    'cargo_map_halite_norm': 270,
+    'cell_score_dominance': 1.5,
+    'cell_score_enemy_halite': 0.45,
+    'cell_score_farming': -130,
     'cell_score_neighbour_discount': 0.6691096641934141,
     'cell_score_ship_halite': 0.0006229108666303259,
     'convert_when_attacked_threshold': 489,
@@ -24,12 +24,12 @@ PARAMETERS = {
     'dominance_map_medium_sigma': 2.8,
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 1.5,
-    'early_second_shipyard': 25,
-    'end_return_extra_moves': 7,
+    'early_second_shipyard': 15,
+    'end_return_extra_moves': 5,
     'end_start': 382,
     'ending_halite_threshold': 10,
     'farming_end': 355,
-    'farming_start': 1,
+    'farming_start': 40,
     'farming_start_shipyards': 2,
     'guarding_aggression_radius': 6,
     'guarding_end': 375,
@@ -42,7 +42,7 @@ PARAMETERS = {
     'guarding_ship_advantage_norm': 20,
     'guarding_stop': 342,
     'max_guarding_ships_per_target': 2,
-    'harvest_threshold_alpha': 0.13268007586429212,
+    'harvest_threshold_alpha': 0.2,
     'harvest_threshold_hunting_norm': 0.670907810006537,
     'hunting_halite_threshold': 0.04077647561190107,
     'hunting_max_group_distance': 5,
@@ -52,19 +52,19 @@ PARAMETERS = {
     'hunting_proportion_after_farming': 0.26923397840562785,
     'hunting_score_alpha': 1.0700236651908992,
     'hunting_score_beta': 2.391546761028965,
-    'hunting_score_cargo_clip': 2.7903622542244086,
+    'hunting_score_cargo_clip': 1.5,
     'hunting_score_delta': 0.7152003820018653,
-    'hunting_score_farming_position_penalty': 0.6589914665212904,
-    'hunting_score_gamma': 0.9272782335536588,
+    'hunting_score_farming_position_penalty': 0.7,
+    'hunting_score_gamma': 0.93,
     'hunting_score_halite_norm': 203,
     'hunting_score_hunt': 2,
     'hunting_score_intercept': 1.25,
-    'hunting_score_iota': 0.5535210187640481,
-    'hunting_score_kappa': 0.36442395827098567,
-    'hunting_score_ship_bonus': 190,
+    'hunting_score_iota': 0.55,
+    'hunting_score_kappa': 0.36,
+    'hunting_score_ship_bonus': 180,
     'hunting_score_ypsilon': 2,
     'hunting_score_zeta': 1.1452680492519223,
-    'hunting_threshold': 7,
+    'hunting_threshold': 6,
     'map_blur_gamma': 0.94,
     'map_blur_sigma': 0.3579575706817798,
     'map_ultra_blur': 1.25,
@@ -79,11 +79,11 @@ PARAMETERS = {
     'min_shipyard_distance': 6,
     'mining_score_alpha': 1,
     'mining_score_beta': 0.9964875995375948,
-    'mining_score_dominance_clip': 4,
-    'mining_score_dominance_norm': 0.3,
+    'mining_score_dominance_clip': 3,
+    'mining_score_dominance_norm': 0.4,
     'mining_score_farming_penalty': 0.01,
-    'mining_score_gamma': 0.9766714280531774,
-    'mining_score_juicy': 0.33770148976371134,
+    'mining_score_gamma': 0.98,
+    'mining_score_juicy': 0.34,
     'mining_score_juicy_end': 0.1,
     'mining_score_start_returning': 53,
     'move_preference_base': 94,
@@ -96,22 +96,22 @@ PARAMETERS = {
     'move_preference_longest_axis': 10,
     'move_preference_mining': 125,
     'move_preference_return': 119,
-    'move_preference_stay_on_shipyard': -61,
-    'return_halite': 862,
+    'move_preference_stay_on_shipyard': -70,
+    'return_halite': 1000,
     'second_shipyard_min_ships': 15,
     'second_shipyard_step': 30,
-    'ship_spawn_threshold': 0.05,
+    'ship_spawn_threshold': 0.1,
     'ships_shipyards_threshold': 0.16,
-    'shipyard_abandon_dominance': -25,
+    'shipyard_abandon_dominance': -20,
     'shipyard_conversion_threshold': 2.5,
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15,
-    'shipyard_min_dominance': -2,
+    'shipyard_min_dominance': -1,
     'shipyard_min_population': 1.5,
     'shipyard_min_ship_advantage': -12,
     'shipyard_start': 180,
     'shipyard_stop': 250,
-    'spawn_min_dominance': -2.0,
+    'spawn_min_dominance': -8.0,
     'spawn_till': 270,
     'third_shipyard_min_ships': 18,
     'third_shipyard_step': 56
@@ -521,12 +521,14 @@ class HaliteBot(object):
                         self.real_farming_points.append(point)
 
         if len(self.me.ships) > 0:
-            self.small_dominance_map = get_dominance_map(self.me, self.opponents,
-                                                         self.parameters['dominance_map_small_sigma'], 20,
-                                                         self.parameters['dominance_map_halite_clip'])
-            self.medium_dominance_map = get_dominance_map(self.me, self.opponents,
-                                                          self.parameters['dominance_map_medium_sigma'], 80,
-                                                          self.parameters['dominance_map_halite_clip'])
+            self.small_dominance_map = get_new_dominance_map(players,
+                                                             self.parameters['dominance_map_small_sigma'], 20,
+                                                             self.parameters['dominance_map_halite_clip'])[
+                self.player_id]
+            self.medium_dominance_map = get_new_dominance_map(players,
+                                                              self.parameters['dominance_map_medium_sigma'], 80,
+                                                              self.parameters['dominance_map_halite_clip'])[
+                self.player_id]
             self.cargo_map = get_cargo_map(self.me.ships, self.me.shipyards, self.parameters['cargo_map_halite_norm'])
 
         self.planned_moves.clear()
@@ -612,8 +614,10 @@ class HaliteBot(object):
                         map[pos] += 1
                     if pos in self.shipyard_positions:
                         map[pos] += 5
-                # small = np.array(self.small_dominance_map.reshape((21, 21)), dtype=np.int)
-                # medium = np.array(self.medium_dominance_map.reshape((21, 21)), dtype=np.int)
+                small = np.array(self.small_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
+                medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
+                display_matrix(small)
+                display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
 
     def handle_special_steps(self, board: Board) -> bool:
