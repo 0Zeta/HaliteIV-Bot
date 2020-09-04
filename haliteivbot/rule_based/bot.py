@@ -678,10 +678,14 @@ class HaliteBot(object):
                 if require_dominance and self.medium_dominance_map[pos] < self.parameters[
                     'shipyard_min_dominance'] * 1.8:
                     continue
+                in_avoidance_radius = False
                 if len(avoid_positions) > 0:
                     for ap in avoid_positions:
                         if get_distance(pos, ap) < self.parameters['min_enemy_shipyard_distance']:
-                            continue
+                            in_avoidance_radius = True
+                            break
+                if in_avoidance_radius:
+                    continue
                 shipyard_distance = self.shipyard_distances[pos]
                 if shipyard_distance < self.parameters['min_shipyard_distance'] or self.parameters[
                     'max_shipyard_distance'] < shipyard_distance:
@@ -710,10 +714,16 @@ class HaliteBot(object):
         avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
                            enemy_shipyard in player.shipyards if
                            self.map_presence_diff[player.id] < (5 if self.step_count > 130 else 3)]
+        in_avoidance_radius = False
+        if self.next_shipyard_position is not None:
+            for avoid_pos in avoid_positions:
+                if get_distance(avoid_pos, self.next_shipyard_position) < self.parameters[
+                    'min_enemy_shipyard_distance']:
+                    in_avoidance_radius = True
+                    break
         if self.next_shipyard_position is not None and not (
                 self.parameters['min_shipyard_distance'] <= self.shipyard_distances[self.next_shipyard_position] <=
-                self.parameters['max_shipyard_distance'] and (
-                        len(avoid_positions) == 0 or self.next_shipyard_position not in avoid_positions)):
+                self.parameters['max_shipyard_distance'] and not in_avoidance_radius):
             self.plan_shipyard_position()
         converting_disabled = self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']
