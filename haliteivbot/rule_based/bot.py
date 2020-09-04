@@ -526,6 +526,9 @@ class HaliteBot(object):
                                                              self.parameters['dominance_map_small_sigma'], 20,
                                                              self.parameters['dominance_map_halite_clip'])[
                 self.player_id]
+            self.small_safety_map = get_dominance_map(self.me, self.opponents,
+                                                      self.parameters['dominance_map_small_sigma'], 20,
+                                                      self.parameters['dominance_map_halite_clip'])
             self.medium_dominance_map = get_new_dominance_map(players,
                                                               self.parameters['dominance_map_medium_sigma'], 80,
                                                               self.parameters['dominance_map_halite_clip'])[
@@ -620,9 +623,10 @@ class HaliteBot(object):
                         map[pos] += 1
                     if pos in self.shipyard_positions:
                         map[pos] += 5
-                # small = np.array(self.small_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
+                small = self.small_dominance_map.reshape((21, 21)).round(2)
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
+                # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
                 # display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
                 # display_matrix(
@@ -979,7 +983,7 @@ class HaliteBot(object):
                                                                                        get_distance(
                                                                                            TO_INDEX[enemy.position],
                                                                                            TO_INDEX[
-                                                                                               shipyard.position]) <= 4])]
+                                                                                               shipyard.position]) <= 6])]
             guarding_threshold_index = max(
                 min(ceil(((1 - clip(self.ship_advantage, 0, self.parameters['guarding_ship_advantage_norm']) /
                            self.parameters['guarding_ship_advantage_norm']) * (
@@ -1436,16 +1440,16 @@ class HaliteBot(object):
                            self.parameters['end_return_extra_moves'] // 2 - 398
             if ending_steps > 0:
                 mining_steps = max(mining_steps - ending_steps, 0)
-        dominance = self.parameters['mining_score_dominance_norm'] * clip(
-            self.small_dominance_map[cell_position] + self.parameters['mining_score_dominance_clip'], 0,
+        safety = self.parameters['mining_score_dominance_norm'] * clip(
+            self.small_safety_map[cell_position] + self.parameters['mining_score_dominance_clip'], 0,
             1.5 * self.parameters['mining_score_dominance_clip']) / (
-                                1.5 * self.parameters['mining_score_dominance_clip'])
+                         1.5 * self.parameters['mining_score_dominance_clip'])
         if self.step_count < self.parameters['mining_score_start_returning']:
-            dominance /= 1.5
-            dominance += self.parameters['mining_score_dominance_norm'] / 3
-        dominance += 1 - self.parameters['mining_score_dominance_norm'] / 2
+            safety /= 1.5
+            safety += self.parameters['mining_score_dominance_norm'] / 3
+        safety += 1 - self.parameters['mining_score_dominance_norm'] / 2
         score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
-                self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * halite_val) * dominance / max(
+                self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * halite_val) * safety / max(
             distance_from_ship + mining_steps + self.parameters['mining_score_alpha'] * distance_from_shipyard, 1)
         if distance_from_shipyard == 0 and self.step_count <= 11:
             score *= 0.1  # We don't want to block the shipyard.
