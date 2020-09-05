@@ -344,6 +344,7 @@ second_genome = {
     'third_shipyard_step': 56,
     'harvest_threshold_beta': ('float', (0.2, 0.5)),
     'harvest_threshold_ship_advantage_norm': ('int', (8, 20)),
+    'trading_start': ('int', (60, 150))
 }
 
 if __name__ == "__main__":

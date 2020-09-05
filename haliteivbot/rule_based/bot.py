@@ -36,7 +36,7 @@ PARAMETERS = {
     'guarding_max_distance_to_shipyard': 4,
     'guarding_max_ships_per_shipyard': 4,
     'guarding_min_distance_to_shipyard': 2,
-    'guarding_norm': 0.65,
+    'guarding_norm': 0.45,
     'guarding_radius': 3,
     'guarding_radius2': 1,
     'guarding_ship_advantage_norm': 20,
@@ -117,7 +117,8 @@ PARAMETERS = {
     'spawn_min_dominance': -8.0,
     'spawn_till': 270,
     'third_shipyard_min_ships': 18,
-    'third_shipyard_step': 56
+    'third_shipyard_step': 56,
+    'trading_start': 90
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -668,7 +669,7 @@ class HaliteBot(object):
             ships.sort(key=lambda ship: self.ultra_blurred_halite_map[TO_INDEX[ship.position]], reverse=True)
             ship_pos = TO_INDEX[ships[0].position]
             for pos in self.small_radius_list[ship_pos]:
-                possible_positions.append((pos, self.ultra_blurred_halite_map[pos] / (5 + get_distance(ship_pos, pos))))
+                possible_positions.append((pos, self.ultra_blurred_halite_map[pos] / (3 + get_distance(ship_pos, pos))))
         elif self.max_shipyard_connections == 0:
             shipyard = self.me.shipyards[0]
             shipyard_pos = TO_INDEX[shipyard.position]
@@ -1545,6 +1546,7 @@ class HaliteBot(object):
         return score
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
+        trade = self.step_count >= self.parameters['trading_start']
         score = 0
         if cell.position in self.planned_moves:
             score -= 1500
@@ -1574,7 +1576,8 @@ class HaliteBot(object):
             if cell.ship.halite < ship.halite:
                 score -= (500 + ship.halite - 0.5 * cell.ship.halite)
             elif cell.ship.halite == ship.halite:
-                if TO_INDEX[cell.position] not in self.guarding_positions and (
+                if (TO_INDEX[cell.position] not in self.farming_positions or not trade) and self.shipyard_distances[
+                    TO_INDEX[cell.position]] > 2 and (
                         self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
                                                                             self.next_shipyard_position) > 2):
                     score -= 350
@@ -1587,8 +1590,9 @@ class HaliteBot(object):
                     neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
                     break
                 elif neighbour.ship.halite == ship.halite:
-                    if TO_INDEX[neighbour.position] not in self.guarding_positions and (
-                            self.next_shipyard_position is None or get_distance(TO_INDEX[neighbour.position],
+                    if (TO_INDEX[cell.position] not in self.farming_positions or not trade) and self.shipyard_distances[
+                        TO_INDEX[cell.position]] > 2 and (
+                            self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
                                                                                 self.next_shipyard_position) > 2):
                         neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
                 else:
@@ -1708,7 +1712,7 @@ class HaliteBot(object):
             self.ship_position_preferences[:, self.position_to_index[position]] > -50] += 900
 
     def calculate_harvest_threshold(self):
-        threshold = clip(0.001298 * self.step_count ** 2 + 1.3769 * self.step_count + 35, 80, 480)
+        threshold = clip(0.001 * self.step_count ** 2 + 0.75 * self.step_count + 35, 80, 480)
         ship_advantage = self.parameters['harvest_threshold_beta'] * clip(
             self.ship_advantage + self.parameters['harvest_threshold_ship_advantage_norm'], 0,
             1.5 * self.parameters['harvest_threshold_ship_advantage_norm']) / self.parameters[
