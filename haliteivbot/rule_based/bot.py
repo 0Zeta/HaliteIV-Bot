@@ -51,9 +51,9 @@ PARAMETERS = {
     'hunting_proportion': 0.42990710071649985,
     'hunting_proportion_after_farming': 0.26923397840562785,
     'hunting_score_alpha': 1.0700236651908992,
-    'hunting_score_beta': 2.391546761028965,
+    'hunting_score_beta': 0.4,
     'hunting_score_cargo_clip': 1.5,
-    'hunting_score_delta': 0.7152003820018653,
+    'hunting_score_delta': 0.9,
     'hunting_score_farming_position_penalty': 0.7,
     'hunting_score_gamma': 0.93,
     'hunting_score_halite_norm': 203,
@@ -65,7 +65,7 @@ PARAMETERS = {
     'hunting_score_ypsilon': 2,
     'hunting_score_zeta': 1.1452680492519223,
     'hunting_threshold': 6,
-    'hunting_score_region': 2,
+    'hunting_score_region': 1.3,
     'map_blur_gamma': 0.94,
     'map_blur_sigma': 0.3579575706817798,
     'map_ultra_blur': 1.25,
@@ -1502,12 +1502,12 @@ class HaliteBot(object):
             halite_score = (ship_bonus + d_halite) / self.parameters['hunting_score_halite_norm']
         dominance_influence = (
                 self.parameters['hunting_score_delta'] + self.parameters['hunting_score_beta'] * clip(
-            self.medium_dominance_map[enemy_pos] + 15, 0, 30) / 30)
+            self.medium_dominance_map[enemy_pos] + 10, 0, 20) / 20)
         player_score = 1 + self.parameters['hunting_score_kappa'] * (
             3 - self.player_ranking[ship.player_id] if self.rank <= 1 else self.player_ranking[ship.player_id])
         score = self.parameters['hunting_score_gamma'] ** distance * halite_score * (
             self.parameters['hunting_score_region'] if self.region_map[
-                                                           enemy_pos] == self.player_id else 1) * player_score * (
+                                                           enemy_pos] == self.player_id else 1) * dominance_influence * player_score * (
                         1 + (self.parameters['hunting_score_iota'] * clip(self.blurred_halite_map[enemy_pos], 0,
                                                                           500) / 500)) * (
                         1 + (self.parameters['hunting_score_zeta'] * clip(self.cargo_map[enemy_pos], 0,

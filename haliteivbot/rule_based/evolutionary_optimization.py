@@ -33,8 +33,8 @@ hyperparameters = {
     'hunting_min_ships': ('int', (10, 20)),
     'hunting_halite_threshold': ('float', (0.01, 0.3)),
     'hunting_score_alpha': ('float', (-1, 2.5)),
-    'hunting_score_beta': ('float', (1.2, 4)),
-    'hunting_score_delta': ('float', (0.5, 1.5)),
+    'hunting_score_beta': ('float', (0.1, 1)),
+    'hunting_score_delta': ('float', (0.8, 1.2)),
     'hunting_score_gamma': ('float', (0.85, 0.999)),
     'hunting_score_zeta': ('float', (0.2, 3)),
     'hunting_score_iota': ('float', (0.1, 0.8)),
@@ -119,7 +119,8 @@ hyperparameters = {
     'early_second_shipyard': ('int', (25, 45)),
     'guarding_radius2': ('int', (0, 1)),
     'max_guarding_ships_per_target': ('int', (2, 4)),
-    'harvest_threshold_slope': ('float', (0.8, 1.4))
+    'harvest_threshold_slope': ('float', (0.8, 1.4)),
+    'hunting_score_region': ('float', (1.1, 2))
 }
 
 frozen_parameters = ['dominance_map_medium_radius', 'dominance_map_small_radius', 'guarding_min_distance_to_shipyard',
