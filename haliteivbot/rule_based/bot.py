@@ -6,7 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
+# from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 PARAMETERS = {
     'cargo_map_halite_norm': 200,
     'cell_score_dominance': 0.5,
-    'cell_score_enemy_halite': 0.45,
+    'cell_score_enemy_halite': 0.25,
     'cell_score_farming': -130,
     'cell_score_neighbour_discount': 0.65,
     'cell_score_ship_halite': 0.0005,
@@ -35,7 +35,7 @@ PARAMETERS = {
     'guarding_aggression_radius': 10,
     'guarding_end': 375,
     'guarding_max_distance_to_shipyard': 3,
-    'guarding_max_ships_per_shipyard': 3,
+    'guarding_max_ships_per_shipyard': 4,
     'guarding_min_distance_to_shipyard': 2,
     'guarding_norm': 0.45,
     'guarding_radius': 3,
@@ -119,7 +119,8 @@ PARAMETERS = {
     'spawn_till': 270,
     'third_shipyard_min_ships': 19,
     'third_shipyard_step': 56,
-    'trading_start': 100
+    'trading_start': 100,
+    'max_intrusion_count': 3
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -371,6 +372,7 @@ class HaliteBot(object):
         self.friendly_neighbour_count = dict()
         self.shipyard_guards = list()
         self.spawn_cost = 500
+        self.intrusion_positions = {pos: dict() for pos in range(SIZE ** 2)}
 
         self.enemies = list()
         self.intrusions = 0
@@ -596,6 +598,14 @@ class HaliteBot(object):
         logging.info("Total intrusions at step " + str(self.step_count) + ": " + str(self.intrusions) + " (" + str(
             round(self.intrusions / max(len(self.farming_positions), 1), 2)) + " per position)")
 
+        for enemy in self.enemies:
+            position = TO_INDEX[enemy.position]
+            if position in self.farming_positions:
+                if enemy.id not in self.intrusion_positions[position].keys():
+                    self.intrusion_positions[position][enemy.id] = 1
+                else:
+                    self.intrusion_positions[position][enemy.id] += 1
+
         self.debug()
 
         self.determine_vulnerable_enemies()
@@ -634,7 +644,7 @@ class HaliteBot(object):
                 small = self.small_dominance_map.reshape((21, 21)).round(2)
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
-                display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
+                # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
                 # display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
                 # display_matrix(
@@ -1550,6 +1560,7 @@ class HaliteBot(object):
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         # trade = self.step_count >= self.parameters['trading_start']
+        cell_pos = TO_INDEX[cell.position]
         trade = False
         score = 0
         if cell.position in self.planned_moves:
@@ -1567,8 +1578,8 @@ class HaliteBot(object):
                     score -= (400 + ship.halite)
                 elif ship.halite == 0 and (
                         (self.rank == 0 and self.ship_advantage > 0) or self.step_count >= self.parameters[
-                    'end_start'] or TO_INDEX[cell.position] in self.farming_positions) or self.shipyard_distances[
-                    TO_INDEX[cell.position]] <= 2:
+                    'end_start'] or cell_pos in self.farming_positions) or self.shipyard_distances[
+                    cell_pos] <= 2:
                     score += 400  # Attack the enemy shipyard
                 else:
                     score -= 300
@@ -1580,9 +1591,11 @@ class HaliteBot(object):
             if cell.ship.halite < ship.halite:
                 score -= (500 + ship.halite - 0.5 * cell.ship.halite)
             elif cell.ship.halite == ship.halite:
-                if (TO_INDEX[cell.position] not in self.farming_positions or not trade) and self.shipyard_distances[
-                    TO_INDEX[cell.position]] > 1 and (
-                        self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
+                if (cell_pos not in self.farming_positions or (not trade and cell.shipyard is None and (
+                        cell.ship.id not in self.intrusion_positions[cell_pos] or self.intrusion_positions[cell_pos][
+                    cell.ship.id] <= self.parameters['max_intrusion_count']))) and self.shipyard_distances[
+                    cell_pos] > 1 and (
+                        self.next_shipyard_position is None or get_distance(cell_pos,
                                                                             self.next_shipyard_position) > 2):
                     score -= 350
             else:
@@ -1594,17 +1607,21 @@ class HaliteBot(object):
                     neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
                     break
                 elif neighbour.ship.halite == ship.halite:
-                    if (TO_INDEX[cell.position] not in self.farming_positions and self.shipyard_distances[
-                        TO_INDEX[cell.position]] > 1 and (
-                                self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
-                                                                                    self.next_shipyard_position) > 2)) or not trade:
+                    if (cell_pos not in self.farming_positions and self.shipyard_distances[
+                        cell_pos] > 1 and (
+                                self.next_shipyard_position is None or get_distance(cell_pos,
+                                                                                    self.next_shipyard_position) > 2)) or (
+                            not trade and neighbour.shipyard is None and (
+                            neighbour.ship.id not in self.intrusion_positions[TO_INDEX[neighbour.position]] or
+                            self.intrusion_positions[TO_INDEX[neighbour.position]][neighbour.ship.id] <=
+                            self.parameters['max_intrusion_count'])):
                         neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
                 else:
                     neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
                                        self.parameters['cell_score_neighbour_discount']
         score += neighbour_value
-        score += self.parameters['cell_score_dominance'] * self.small_dominance_map[TO_INDEX[cell.position]]
-        if TO_INDEX[cell.position] in self.farming_positions and 0 < cell.halite < self.harvest_threshold:
+        score += self.parameters['cell_score_dominance'] * self.small_dominance_map[cell_pos]
+        if cell_pos in self.farming_positions and 0 < cell.halite < self.harvest_threshold:
             score += self.parameters['cell_score_farming']
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
