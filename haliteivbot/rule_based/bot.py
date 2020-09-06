@@ -117,8 +117,8 @@ PARAMETERS = {
     'shipyard_stop': 250,
     'spawn_min_dominance': -8.0,
     'spawn_till': 270,
-    'third_shipyard_min_ships': 19,
-    'third_shipyard_step': 56,
+    'third_shipyard_min_ships': 16,
+    'third_shipyard_step': 40,
     'trading_start': 100,
     'max_intrusion_count': 3
 }
@@ -373,6 +373,7 @@ class HaliteBot(object):
         self.shipyard_guards = list()
         self.spawn_cost = 500
         self.intrusion_positions = {pos: dict() for pos in range(SIZE ** 2)}
+        self.last_shipyard_count = 0
 
         self.enemies = list()
         self.intrusions = 0
@@ -626,6 +627,7 @@ class HaliteBot(object):
 
         self.move_ships(board)
         self.spawn_ships(board)
+        self.last_shipyard_count = len(self.me.shipyards)
         return self.me.next_actions
 
     def debug(self):
@@ -756,7 +758,8 @@ class HaliteBot(object):
                     break
         if self.next_shipyard_position is not None and not (
                 self.parameters['min_shipyard_distance'] <= self.shipyard_distances[self.next_shipyard_position] <=
-                self.parameters['max_shipyard_distance'] and not in_avoidance_radius) and len(self.me.shipyards) > 0:
+                self.parameters['max_shipyard_distance'] and not in_avoidance_radius and len(
+            self.me.shipyards) >= self.last_shipyard_count) and len(self.me.shipyards) > 0:
             self.plan_shipyard_position()
         converting_disabled = (self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']) and (self.step_count > 10 or len(self.me.shipyards) > 0)
