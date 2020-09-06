@@ -783,7 +783,7 @@ class HaliteBot(object):
                 cell = board.cells[Point.from_index(self.next_shipyard_position, SIZE)]
                 if len(ships) > 0 and (cell.ship is None or cell.ship.player_id != self.player_id):
                     self.ship_types[ships[0].id] = ShipType.CONSTRUCTING
-                if len(ships) > 1 and self.halite > 300 and self.small_dominance_map[self.next_shipyard_position] < 3:
+                if len(ships) > 1 and self.halite > 250 and self.small_dominance_map[self.next_shipyard_position] < 3:
                     self.ship_types[ships[1].id] = ShipType.CONSTRUCTION_GUARDING
             else:
                 logging.debug("Dominance of " + str(self.small_dominance_map[
@@ -1399,6 +1399,15 @@ class HaliteBot(object):
         if self.halite + ship.halite < self.config.convert_cost:
             return False
         ship_pos = TO_INDEX[ship.position]
+        min_distance = 20
+        for enemy_pos in self.enemy_positions:
+            if get_distance(ship_pos, enemy_pos) < min_distance:
+                min_distance = get_distance(ship_pos, enemy_pos)
+        guards = [1 for guard in self.me.ships if get_distance(TO_INDEX[guard.position], ship_pos) < min_distance or (
+                    get_distance(TO_INDEX[guard.position], ship_pos) == 1 and guard.id in self.ship_types.keys() and
+                    self.ship_types[guard.id] == ShipType.CONSTRUCTION_GUARDING)]
+        if len(guards) == 0:
+            return False
         if ship_pos == self.next_shipyard_position and self.step_count <= self.parameters['shipyard_stop']:
             return True
         if self.shipyard_count == 0 and self.step_count <= 10:
