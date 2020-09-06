@@ -1618,7 +1618,7 @@ class HaliteBot(object):
                 if neighbour.ship.halite < ship.halite:  # We really don't want to go to that cell unless it's necessary.
                     neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
                     break
-                elif neighbour.ship.halite == ship.halite:
+                elif neighbour.ship.halite == ship.halite and cell_pos not in self.shipyard_positions:
                     if (cell_pos not in self.farming_positions and self.shipyard_distances[
                         cell_pos] > 1 and (
                                 self.next_shipyard_position is None or get_distance(cell_pos,
