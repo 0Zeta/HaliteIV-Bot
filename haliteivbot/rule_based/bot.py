@@ -1758,6 +1758,9 @@ class HaliteBot(object):
         self.planned_moves.append(shipyard.position)
         self.halite -= self.config.spawn_cost
         self.ship_count += 1
+        for cell in ([shipyard.cell] + get_neighbours(shipyard.cell)):
+            if cell.ship is not None and cell.ship.player_id == self.player_id:
+                self.change_position_score(cell.ship, shipyard.position, -1500)
         logging.debug("Spawning ship on position " + str(shipyard.position) + " (shipyard " + str(shipyard.id) + ")")
 
     def attack_position(self, position: Point):
