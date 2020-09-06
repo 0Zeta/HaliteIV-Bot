@@ -167,11 +167,11 @@ def get_new_dominance_map(players, sigma, factor, halite_clip, size=21):
     return dominance_regions
 
 
-def get_regions(players, sigma, halite_clip, size=21):
+def get_regions(players, sigma, halite_clip, threshold=0.1, size=21):
     dominance_map = get_new_dominance_map(players, sigma, 50, halite_clip, size)
     regions = np.full((SIZE ** 2,), fill_value=-1, dtype=np.int)
     for i in range(4):
-        regions[dominance_map[i] > 0] = i
+        regions[dominance_map[i] >= threshold] = i
     return regions
 
 
@@ -184,6 +184,11 @@ def get_borders(regions, player_index):
                     borders[pos] = 1
                     break
     return borders
+
+
+def get_border_regions(regions, player_index, sigma):
+    borders = get_borders(regions, player_index)
+    return gaussian_filter(borders.reshape((21, 21)).astype(np.float), sigma=sigma, mode='wrap').reshape((-1,))
 
 
 def create_navigation_lists(size):

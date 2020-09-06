@@ -6,6 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
+# from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -51,7 +52,7 @@ PARAMETERS = {
     'hunting_max_group_size': 1,
     'hunting_min_ships': 8,
     'hunting_proportion': 0.5,
-    'hunting_proportion_after_farming': 0.25,
+    'hunting_proportion_after_farming': 0.35,
     'hunting_score_alpha': 0.8,
     'hunting_score_beta': 0.25,
     'hunting_score_cargo_clip': 1.5,
@@ -540,6 +541,7 @@ class HaliteBot(object):
                 self.player_id]
             self.cargo_map = get_cargo_map(self.me.ships, self.me.shipyards, self.parameters['cargo_map_halite_norm'])
             self.region_map = get_regions(players, 2.5, self.parameters['dominance_map_halite_clip'])
+            self.border_regions = get_border_regions(self.region_map, self.player_id, sigma=1.5)
 
         self.planned_moves.clear()
         self.spawn_limit_reached = self.reached_spawn_limit(board)
@@ -636,7 +638,7 @@ class HaliteBot(object):
                 # display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
                 # display_matrix(
-                #     get_borders(get_regions([self.me] + self.opponents, 2.5, 150, 21), self.player_id).reshape(
+                #     get_border_regions(get_regions([self.me] + self.opponents, 2.5, 150), self.player_id, sigma=1.5).reshape(
                 #        (21, 21)))
                 # display_matrix(self.cargo_map.reshape((21, 21)))
 
@@ -901,7 +903,8 @@ class HaliteBot(object):
 
         halite_map = self.observation['halite']
         for position, halite in enumerate(halite_map):
-            if halite >= self.parameters['min_mining_halite']:
+            if halite >= self.parameters['min_mining_halite'] and self.small_safety_map[position] >= -self.parameters[
+                'mining_score_dominance_clip']:
                 mining_positions.append(position)
 
         for shipyard in self.me.shipyards:
