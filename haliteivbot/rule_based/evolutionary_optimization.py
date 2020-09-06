@@ -345,7 +345,9 @@ second_genome = {
     'harvest_threshold_beta': ('float', (0.2, 0.5)),
     'harvest_threshold_ship_advantage_norm': ('int', (8, 20)),
     'trading_start': ('int', (60, 150)),
-    'max_intrusion_count': ('int', (3, 4))
+    'max_intrusion_count': ('int', (3, 4)),
+    'minor_harvest_threshold': ('float', (0.2, 1)),
+    'mining_score_minor_farming_penalty': ('float', (0.1, 0.4))
 }
 
 if __name__ == "__main__":
