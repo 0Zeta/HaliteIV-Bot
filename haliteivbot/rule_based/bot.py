@@ -6,7 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-# from haliteivbot.display_utils import display_matrix
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -16,7 +16,7 @@ PARAMETERS = {
     'cell_score_dominance': 0.5,
     'cell_score_enemy_halite': 0.45,
     'cell_score_farming': -130,
-    'cell_score_neighbour_discount': 0.6,
+    'cell_score_neighbour_discount': 0.65,
     'cell_score_ship_halite': 0.0005,
     'convert_when_attacked_threshold': 500,
     'disable_hunting_till': 65,
@@ -39,7 +39,7 @@ PARAMETERS = {
     'guarding_min_distance_to_shipyard': 2,
     'guarding_norm': 0.45,
     'guarding_radius': 3,
-    'guarding_radius2': 1,
+    'guarding_radius2': 0,
     'guarding_ship_advantage_norm': 17,
     'guarding_stop': 342,
     'max_guarding_ships_per_target': 2,
@@ -75,12 +75,12 @@ PARAMETERS = {
     'max_halite_attack_shipyard': 0,
     'max_hunting_ships_per_direction': 1,
     'max_ship_advantage': 25,
-    'max_shipyard_distance': 7,
+    'max_shipyard_distance': 8,
     'max_shipyards': 10,
     'min_enemy_shipyard_distance': 5,
     'min_mining_halite': 15,
     'min_ships': 20,
-    'min_shipyard_distance': 6,
+    'min_shipyard_distance': 7,
     'mining_score_alpha': 1,
     'mining_score_beta': 0.95,
     'mining_score_dominance_clip': 3,
@@ -634,7 +634,7 @@ class HaliteBot(object):
                 small = self.small_dominance_map.reshape((21, 21)).round(2)
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
-                # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
+                display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
                 # display_matrix(medium)
                 # display_dominance_map(get_new_dominance_map([self.me] + self.opponents, 1.2, 15, 50).reshape((4, 21, 21)))
                 # display_matrix(
@@ -1549,7 +1549,8 @@ class HaliteBot(object):
         return score
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
-        trade = self.step_count >= self.parameters['trading_start']
+        # trade = self.step_count >= self.parameters['trading_start']
+        trade = False
         score = 0
         if cell.position in self.planned_moves:
             score -= 1500
@@ -1580,7 +1581,7 @@ class HaliteBot(object):
                 score -= (500 + ship.halite - 0.5 * cell.ship.halite)
             elif cell.ship.halite == ship.halite:
                 if (TO_INDEX[cell.position] not in self.farming_positions or not trade) and self.shipyard_distances[
-                    TO_INDEX[cell.position]] > 2 and (
+                    TO_INDEX[cell.position]] > 1 and (
                         self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
                                                                             self.next_shipyard_position) > 2):
                     score -= 350
@@ -1593,10 +1594,10 @@ class HaliteBot(object):
                     neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
                     break
                 elif neighbour.ship.halite == ship.halite:
-                    if (TO_INDEX[cell.position] not in self.farming_positions or not trade) and self.shipyard_distances[
-                        TO_INDEX[cell.position]] > 2 and (
-                            self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
-                                                                                self.next_shipyard_position) > 2):
+                    if (TO_INDEX[cell.position] not in self.farming_positions and self.shipyard_distances[
+                        TO_INDEX[cell.position]] > 1 and (
+                                self.next_shipyard_position is None or get_distance(TO_INDEX[cell.position],
+                                                                                    self.next_shipyard_position) > 2)) or not trade:
                         neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
                 else:
                     neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
