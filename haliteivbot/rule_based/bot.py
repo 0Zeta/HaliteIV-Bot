@@ -6,7 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
+# from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -117,12 +117,12 @@ PARAMETERS = {
     'shipyard_stop': 250,
     'spawn_min_dominance': -8.0,
     'spawn_till': 270,
-    'third_shipyard_min_ships': 17,
+    'third_shipyard_min_ships': 18,
     'third_shipyard_step': 40,
     'trading_start': 100,
     'max_intrusion_count': 3,
-    'minor_harvest_threshold': 0.7,
-    'mining_score_minor_farming_penalty': 0.05
+    'minor_harvest_threshold': 0.5,
+    'mining_score_minor_farming_penalty': 0.15
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -535,7 +535,8 @@ class HaliteBot(object):
                         point = Point.from_index(pos, SIZE)
                         if board.cells[point].halite > 0:
                             self.real_farming_points.append(point)
-                    elif pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range:
+                    elif pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
+                            self.region_map[pos] == self.player_id:
                         self.minor_farming_positions.append(pos)
 
         if len(self.me.ships) > 0:
@@ -659,7 +660,7 @@ class HaliteBot(object):
                     spiegelei[pos] = 1
                 for pos in self.shipyard_positions:
                     spiegelei[pos] = 5
-                display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
