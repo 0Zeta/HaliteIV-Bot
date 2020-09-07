@@ -102,7 +102,7 @@ PARAMETERS = {
     'move_preference_return': 120,
     'move_preference_stay_on_shipyard': -70,
     'return_halite': 1000,
-    'second_shipyard_min_ships': 16,
+    'second_shipyard_min_ships': 14,
     'second_shipyard_step': 30,
     'ship_spawn_threshold': 0.15,
     'ships_shipyards_threshold': 0.18,
@@ -117,7 +117,7 @@ PARAMETERS = {
     'shipyard_stop': 285,
     'spawn_min_dominance': -8.0,
     'spawn_till': 285,
-    'third_shipyard_min_ships': 18,
+    'third_shipyard_min_ships': 16,
     'third_shipyard_step': 40,
     'trading_start': 100,
     'max_intrusion_count': 3,
@@ -512,6 +512,7 @@ class HaliteBot(object):
                 in_minor_farming_range = 0
                 in_guarding_border = 0
                 guard = False
+                shipyards_in_range = []
                 for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
                     distance = get_distance(pos, shipyard_position)
                     if distance < min_distance:
@@ -526,6 +527,7 @@ class HaliteBot(object):
                             in_guarding_range += 1
                         if distance <= farming_radius + 2:
                             in_minor_farming_range += 1
+                            shipyards_in_range.append(shipyard_position)
                         if distance == farming_radius + 1:
                             in_guarding_border += 1
                 self.shipyard_distances.append(min_distance)
@@ -539,13 +541,33 @@ class HaliteBot(object):
                         point = Point.from_index(pos, SIZE)
                         if board.cells[point].halite > 0:
                             self.real_farming_points.append(point)
-                    elif pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
-                            self.region_map[pos] == self.player_id:
-                        self.minor_farming_positions.append(pos)
-                    if (
-                            pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions) or (
-                            len(self.shipyard_positions) == 1 and min_distance == 2):
-                        self.guarding_border.append(pos)
+                    else:
+                        connections = 0
+                        for i in range(len(shipyards_in_range)):
+                            for j in range(i + 1, len(shipyards_in_range)):
+                                if get_distance(shipyards_in_range[i], shipyards_in_range[j]) <= self.parameters[
+                                    'max_shipyard_distance']:
+                                    connections += 1
+                        if connections >= required_in_range - 1:
+                            if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
+                                    self.region_map[pos] == self.player_id:
+                                self.minor_farming_positions.append(pos)
+                            if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
+                                self.guarding_border.append(pos)
+                if len(self.farming_positions) == 0 and min_distance == 2:
+                    self.guarding_border.append(pos)
+
+            changed = True
+            while changed:
+                changed = False
+                for i in range(len(self.guarding_border)):
+                    position = self.guarding_border[i]
+                    neighbours = get_adjacent_positions(Point.from_index(position, SIZE))
+                    if sum([1 for pos in neighbours if
+                            pos in self.guarding_border or pos in self.shipyard_positions]) < 2:
+                        self.guarding_border.remove(position)
+                        changed = True
+                        break
 
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_new_dominance_map(players,

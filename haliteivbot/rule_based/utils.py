@@ -7,6 +7,8 @@ from scipy.ndimage import gaussian_filter
 
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
+NEIGHBOURS2 = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0), Point(-1, -1), Point(1, 1), Point(-1, 1),
+               Point(1, -1)]
 DISTANCES = None
 NAVIGATION = None
 FARTHEST_DIRECTIONS_IDX = None
@@ -378,6 +380,10 @@ def get_neighbours(cell: Cell):
 
 def get_neighbouring_positions(point):
     return [(point + neighbour) % SIZE for neighbour in NEIGHBOURS]
+
+
+def get_adjacent_positions(point):
+    return [TO_INDEX[(point + neighbour) % SIZE] for neighbour in NEIGHBOURS2]
 
 
 def get_hunting_proportion(players, halite_threshold=0):
