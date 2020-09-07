@@ -6,7 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-# from haliteivbot.display_utils import display_matrix
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -35,9 +35,9 @@ PARAMETERS = {
     'guarding_aggression_radius': 10,
     'guarding_end': 375,
     'guarding_max_distance_to_shipyard': 3,
-    'guarding_max_ships_per_shipyard': 4,
-    'guarding_min_distance_to_shipyard': 2,
-    'guarding_norm': 0.45,
+    'guarding_max_ships_per_shipyard': 5,
+    'guarding_min_distance_to_shipyard': 1,
+    'guarding_norm': 0.25,
     'guarding_radius': 3,
     'guarding_radius2': 0,
     'guarding_ship_advantage_norm': 17,
@@ -68,7 +68,7 @@ PARAMETERS = {
     'hunting_score_ypsilon': 2,
     'hunting_score_zeta': 0.2,
     'hunting_threshold': 8,
-    'hunting_score_region': 1.3,
+    'hunting_score_region': 2,
     'map_blur_gamma': 0.9,
     'map_blur_sigma': 0.3579575706817798,
     'map_ultra_blur': 1.75,
@@ -105,7 +105,7 @@ PARAMETERS = {
     'second_shipyard_min_ships': 16,
     'second_shipyard_step': 30,
     'ship_spawn_threshold': 0.15,
-    'ships_shipyards_threshold': 0.16,
+    'ships_shipyards_threshold': 0.18,
     'shipyard_abandon_dominance': -20,
     'shipyard_conversion_threshold': 2.5,
     'shipyard_guarding_attack_probability': 0.35,
@@ -114,9 +114,9 @@ PARAMETERS = {
     'shipyard_min_population': 1.5,
     'shipyard_min_ship_advantage': -12,
     'shipyard_start': 180,
-    'shipyard_stop': 250,
+    'shipyard_stop': 285,
     'spawn_min_dominance': -8.0,
-    'spawn_till': 270,
+    'spawn_till': 285,
     'third_shipyard_min_ships': 18,
     'third_shipyard_step': 40,
     'trading_start': 100,
@@ -491,6 +491,7 @@ class HaliteBot(object):
         self.minor_farming_positions = []  # Das Weiße vom Ei
         self.real_farming_points = []
         self.guarding_positions = []
+        self.guarding_border = []
         if self.shipyard_count == 0:
             # There is no shipyard, but we still need to mine.
             self.shipyard_distances = [3] * self.size ** 2
@@ -509,6 +510,7 @@ class HaliteBot(object):
                 in_guarding_range = 0
                 in_farming_range = 0
                 in_minor_farming_range = 0
+                in_guarding_border = 0
                 guard = False
                 for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
                     distance = get_distance(pos, shipyard_position)
@@ -524,6 +526,8 @@ class HaliteBot(object):
                             in_guarding_range += 1
                         if distance <= farming_radius + 2:
                             in_minor_farming_range += 1
+                        if distance == farming_radius + 1:
+                            in_guarding_border += 1
                 self.shipyard_distances.append(min_distance)
 
                 if guard or (
@@ -538,6 +542,8 @@ class HaliteBot(object):
                     elif pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
                             self.region_map[pos] == self.player_id:
                         self.minor_farming_positions.append(pos)
+                    if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
+                        self.guarding_border.append(pos)
 
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_new_dominance_map(players,
@@ -660,7 +666,9 @@ class HaliteBot(object):
                     spiegelei[pos] = 1
                 for pos in self.shipyard_positions:
                     spiegelei[pos] = 5
-                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                for pos in self.guarding_border:
+                    spiegelei[pos] = 10
+                display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
@@ -1555,8 +1563,8 @@ class HaliteBot(object):
         player_score = 1 + self.parameters['hunting_score_kappa'] * (
             3 - self.player_ranking[ship.player_id] if self.rank <= 1 else self.player_ranking[ship.player_id])
         score = self.parameters['hunting_score_gamma'] ** distance * halite_score * (
-            self.parameters['hunting_score_region'] if self.region_map[
-                                                           enemy_pos] == self.player_id else 1) * dominance_influence * player_score * (
+            self.parameters[
+                'hunting_score_region'] if enemy_pos in self.guarding_positions else 1) * dominance_influence * player_score * (
                         1 + (self.parameters['hunting_score_iota'] * clip(self.ultra_blurred_halite_map[enemy_pos], 0,
                                                                           200) / 200)) * (
                         1 + (self.parameters['hunting_score_zeta'] * clip(self.cargo_map[enemy_pos], 0,
