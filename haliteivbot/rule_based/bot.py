@@ -6,7 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
+# from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -77,7 +77,7 @@ PARAMETERS = {
     'max_ship_advantage': 25,
     'max_shipyard_distance': 8,
     'max_shipyards': 10,
-    'min_enemy_shipyard_distance': 5,
+    'min_enemy_shipyard_distance': 4,
     'min_mining_halite': 15,
     'min_ships': 20,
     'min_shipyard_distance': 7,
@@ -692,7 +692,7 @@ class HaliteBot(object):
                     spiegelei[pos] = 5
                 for pos in self.guarding_border:
                     spiegelei[pos] = 10
-                display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
@@ -755,7 +755,7 @@ class HaliteBot(object):
         else:
             require_dominance = self.nb_connected_shipyards > 2 and (self.map_presence_rank != 0 or self.rank != 0)
             avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
-                               enemy_shipyard in player.shipyards if self.map_presence_diff[player.id] < 5]
+                               enemy_shipyard in player.shipyards if self.map_presence_diff[player.id] < 12]
             for pos in range(SIZE ** 2):
                 if require_dominance and self.medium_dominance_map[pos] < self.parameters[
                     'shipyard_min_dominance'] * 1.8:
@@ -797,7 +797,7 @@ class HaliteBot(object):
             return
         avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
                            enemy_shipyard in player.shipyards if
-                           self.map_presence_diff[player.id] < (5 if self.step_count > 130 else 3)]
+                           self.map_presence_diff[player.id] < (14 if self.step_count > 130 else 10)]
         in_avoidance_radius = False
         if self.next_shipyard_position is not None:
             for avoid_pos in avoid_positions:
