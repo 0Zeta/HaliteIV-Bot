@@ -6,7 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-# from haliteivbot.display_utils import display_matrix
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -692,7 +692,7 @@ class HaliteBot(object):
                     spiegelei[pos] = 5
                 for pos in self.guarding_border:
                     spiegelei[pos] = 10
-                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
@@ -731,8 +731,10 @@ class HaliteBot(object):
             ships = self.me.ships
             ships.sort(key=lambda ship: self.ultra_blurred_halite_map[TO_INDEX[ship.position]], reverse=True)
             ship_pos = TO_INDEX[ships[0].position]
-            for pos in self.small_radius_list[ship_pos]:
-                possible_positions.append((pos, self.ultra_blurred_halite_map[pos] / (1 + get_distance(ship_pos, pos))))
+            for pos in self.medium_radius_list[ship_pos]:
+                if self.observation['halite'][pos] <= 40:  # Don't destroy halite cells
+                    possible_positions.append(
+                        (pos, self.ultra_blurred_halite_map[pos] / (15 + get_distance(ship_pos, pos))))
         elif self.max_shipyard_connections == 0:
             shipyard = self.me.shipyards[0]
             shipyard_pos = TO_INDEX[shipyard.position]
