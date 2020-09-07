@@ -45,13 +45,13 @@ PARAMETERS = {
     'max_guarding_ships_per_target': 2,
     'harvest_threshold_alpha': 0.25,
     'harvest_threshold_hunting_norm': 0.65,
-    'harvest_threshold_beta': 0.5,
+    'harvest_threshold_beta': 0.35,
     'harvest_threshold_ship_advantage_norm': 15,
     'hunting_halite_threshold': 0.05,
     'hunting_max_group_distance': 5,
     'hunting_max_group_size': 1,
     'hunting_min_ships': 8,
-    'hunting_proportion': 0.5,
+    'hunting_proportion': 0.45,
     'hunting_proportion_after_farming': 0.35,
     'hunting_score_alpha': 0.8,
     'hunting_score_beta': 0.25,
@@ -121,7 +121,7 @@ PARAMETERS = {
     'third_shipyard_step': 40,
     'trading_start': 100,
     'max_intrusion_count': 3,
-    'minor_harvest_threshold': 0.5,
+    'minor_harvest_threshold': 0.55,
     'mining_score_minor_farming_penalty': 0.15
 }
 
@@ -1769,7 +1769,7 @@ class HaliteBot(object):
             self.ship_position_preferences[:, self.position_to_index[position]] > -50] += 900
 
     def calculate_harvest_threshold(self):
-        threshold = clip(0.001 * self.step_count ** 2 + 0.75 * self.step_count + 35, 80, 480)
+        threshold = clip(1.09 * self.step_count + 77, 80, 480)
         ship_advantage = self.parameters['harvest_threshold_beta'] * clip(
             self.ship_advantage + self.parameters['harvest_threshold_ship_advantage_norm'], 0,
             1.5 * self.parameters['harvest_threshold_ship_advantage_norm']) / self.parameters[
