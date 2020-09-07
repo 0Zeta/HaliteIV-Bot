@@ -1,4 +1,3 @@
-import logging
 import sys
 from enum import Enum
 from math import floor, ceil
@@ -6,7 +5,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
+# from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -111,9 +110,9 @@ PARAMETERS = {
     'shipyard_guarding_attack_probability': 0.35,
     'shipyard_guarding_min_dominance': -15,
     'shipyard_min_dominance': -1,
-    'shipyard_min_population': 1.5,
+    'shipyard_min_population': 5,  # deactivate normal shipyard placement
     'shipyard_min_ship_advantage': -12,
-    'shipyard_start': 180,
+    'shipyard_start': 30,
     'shipyard_stop': 285,
     'spawn_min_dominance': -8.0,
     'spawn_till': 285,
@@ -496,78 +495,16 @@ class HaliteBot(object):
             # There is no shipyard, but we still need to mine.
             self.shipyard_distances = [3] * self.size ** 2
         else:
-            # Compute distances to the next shipyard, farming and guarding positions:
+            # Compute distances to the next shipyard:
             self.shipyard_distances = []
-            guarding_radius = ((self.parameters['max_shipyard_distance'] + 1) if self.max_shipyard_connections >= 2 else \
-                                   self.parameters['max_shipyard_distance'] - 1) - 1 + self.parameters[
-                                  'guarding_radius2']
-            farming_radius = (self.parameters['max_shipyard_distance'] if self.max_shipyard_connections >= 2 else \
-                                  self.parameters['max_shipyard_distance'] - 2) - 1
-            required_in_range = min(3,
-                                    max(self.parameters['farming_start_shipyards'], self.max_shipyard_connections + 1))
             for pos in range(0, SIZE ** 2):
                 min_distance = float('inf')
-                in_guarding_range = 0
-                in_farming_range = 0
-                in_minor_farming_range = 0
-                in_guarding_border = 0
-                guard = False
-                shipyards_in_range = []
                 for shipyard_position in self.shipyard_positions:  # TODO: consider planned shipyards
                     distance = get_distance(pos, shipyard_position)
                     if distance < min_distance:
                         min_distance = distance
-                    if distance <= self.parameters['guarding_radius']:
-                        guard = True
-                    if self.parameters['farming_start'] <= self.step_count:
-                        if distance <= farming_radius:
-                            in_guarding_range += 1
-                            in_farming_range += 1
-                        elif distance <= guarding_radius:
-                            in_guarding_range += 1
-                        if distance <= farming_radius + 2:
-                            in_minor_farming_range += 1
-                            shipyards_in_range.append(shipyard_position)
-                        if distance == farming_radius + 1:
-                            in_guarding_border += 1
                 self.shipyard_distances.append(min_distance)
-
-                if guard or (
-                        self.parameters['farming_start'] <= self.step_count and in_guarding_range >= required_in_range):
-                    self.guarding_positions.append(pos)
-                if self.parameters['farming_start'] <= self.step_count <= self.parameters['farming_end']:
-                    if pos not in self.shipyard_positions and in_farming_range >= required_in_range:
-                        self.farming_positions.append(pos)
-                        point = Point.from_index(pos, SIZE)
-                        if board.cells[point].halite > 0:
-                            self.real_farming_points.append(point)
-                    else:
-                        connections = 0
-                        for i in range(len(shipyards_in_range)):
-                            for j in range(i + 1, len(shipyards_in_range)):
-                                if get_distance(shipyards_in_range[i], shipyards_in_range[j]) <= self.parameters[
-                                    'max_shipyard_distance']:
-                                    connections += 1
-                        if connections >= required_in_range - 1:
-                            if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
-                                    self.region_map[pos] == self.player_id:
-                                self.minor_farming_positions.append(pos)
-                            if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
-                                self.guarding_border.append(pos)
-                if len(self.farming_positions) == 0 and min_distance == 2:
-                    self.guarding_border.append(pos)
-
-            changed = True
-            while changed:
-                changed = False
-                for i in range(len(self.guarding_border)):
-                    position = self.guarding_border[i]
-                    neighbours = get_adjacent_positions(Point.from_index(position, SIZE))
-                    if sum([1 for pos in neighbours if
-                            pos in self.guarding_border or pos in self.shipyard_positions]) < 2:
-                        self.guarding_border.remove(position)
-                        changed = True
-                        break
+            self.compute_regions(board)
 
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_new_dominance_map(players,
@@ -669,6 +606,88 @@ class HaliteBot(object):
         self.last_shipyard_count = len(self.me.shipyards)
         return self.me.next_actions
 
+    def compute_regions(self, board: Board):
+        guarding_radius = ((self.parameters['max_shipyard_distance'] + 1) if self.max_shipyard_connections >= 2 else
+                           self.parameters['max_shipyard_distance'] - 1) - 1 + self.parameters[
+                              'guarding_radius2']
+        farming_radius = (self.parameters['max_shipyard_distance'] if self.max_shipyard_connections >= 2 else
+                          self.parameters['max_shipyard_distance'] - 2) - 1
+        border_radius = farming_radius + 1 if self.max_shipyard_connections >= 2 else farming_radius + 2
+        required_in_range = min(3, max(self.parameters['farming_start_shipyards'], self.max_shipyard_connections + 1))
+
+        if self.max_shipyard_connections > 0:
+            if self.max_shipyard_connections > 1:
+                points = get_triangles([shipyard.position for shipyard in self.me.shipyards],
+                                       self.parameters['min_shipyard_distance'],
+                                       self.parameters['max_shipyard_distance'])
+            else:
+                points = []
+                for i in range(len(self.shipyard_positions)):
+                    pos1 = self.shipyard_positions[i]
+                    for j in range(i + 1, len(self.shipyard_positions)):
+                        pos2 = self.shipyard_positions[j]
+                        if self.parameters['min_shipyard_distance'] <= get_distance(pos1, pos2) <= self.parameters[
+                            'max_shipyard_distance']:
+                            points.append((Point.from_index(pos1, SIZE), Point.from_index(pos2, SIZE)))
+        else:
+            points = []
+
+        for pos in range(SIZE ** 2):
+            if self.shipyard_distances[pos] > guarding_radius + 2:
+                continue
+            if len(points) > 0:
+                for shipyard_points in points:
+                    in_guarding_range = 0
+                    in_farming_range = 0
+                    in_minor_farming_range = 0
+                    in_guarding_border = 0
+                    guard = False
+                    for shipyard_point in shipyard_points:
+                        shipyard_pos = TO_INDEX[shipyard_point]
+                        distance = get_distance(pos, shipyard_pos)
+                        if distance <= self.parameters['guarding_radius']:
+                            guard = True
+                        if self.parameters['farming_start'] <= self.step_count:
+                            if distance <= farming_radius:
+                                in_guarding_range += 1
+                                in_farming_range += 1
+                            elif distance <= guarding_radius:
+                                in_guarding_range += 1
+                            if distance <= farming_radius + 2:
+                                in_minor_farming_range += 1
+                            if distance == border_radius:
+                                in_guarding_border += 1
+
+                    if guard or (
+                            self.parameters[
+                                'farming_start'] <= self.step_count and in_guarding_range >= required_in_range):
+                        self.guarding_positions.append(pos)
+                    if self.parameters['farming_start'] <= self.step_count <= self.parameters['farming_end']:
+                        if pos not in self.shipyard_positions and in_farming_range >= required_in_range:
+                            self.farming_positions.append(pos)
+                            break
+                        else:
+                            if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
+                                    self.region_map[pos] == self.player_id:
+                                self.minor_farming_positions.append(pos)
+                            if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
+                                self.guarding_border.append(pos)
+            else:
+                if self.shipyard_distances[pos] <= self.parameters[
+                    'guarding_radius'] and pos not in self.guarding_positions:
+                    self.guarding_positions.append(pos)
+                if self.shipyard_distances[pos] == 2:
+                    self.guarding_border.append(pos)
+
+        for pos in self.farming_positions:
+            point = Point.from_index(pos, SIZE)
+            if board.cells[point].halite > 0:
+                self.real_farming_points.append(point)
+        self.guarding_positions = set(self.guarding_positions)
+        self.minor_farming_positions = [pos for pos in set(self.minor_farming_positions) if
+                                        pos not in self.farming_positions]
+        self.guarding_border = [pos for pos in set(self.guarding_border) if pos not in self.farming_positions]
+
     def debug(self):
         if len(self.me.ships) > 0:
             logging.debug("avg cargo at step " + str(self.step_count) + ": " + str(
@@ -690,9 +709,11 @@ class HaliteBot(object):
                     spiegelei[pos] = 1
                 for pos in self.shipyard_positions:
                     spiegelei[pos] = 5
+                for pos in self.guarding_positions:
+                    spiegelei[pos] += 1
                 for pos in self.guarding_border:
                     spiegelei[pos] = 10
-                display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
@@ -759,6 +780,7 @@ class HaliteBot(object):
             avoid_positions = [TO_INDEX[enemy_shipyard.position] for player in self.opponents for
                                enemy_shipyard in player.shipyards if self.map_presence_diff[player.id] < 12]
             for pos in range(SIZE ** 2):
+                point = Point.from_index(pos, SIZE)
                 if require_dominance and self.medium_dominance_map[pos] < self.parameters[
                     'shipyard_min_dominance'] * 1.8:
                     continue
@@ -780,12 +802,11 @@ class HaliteBot(object):
                                      shipyard.position]) <= self.parameters['max_shipyard_distance']]
                 if len(good_distance) >= 2:
                     for i in range(len(good_distance)):
+                        pos1 = good_distance[i]
                         for j in range(i + 1, len(good_distance)):
-                            pos1, pos2 = good_distance[i], good_distance[j]
-                            if (pos1.x == pos2.x == point.x) or (
-                                    pos1.y == pos2.y == point.y):  # rays don't intersect
-                                possible_positions.append((pos, self.get_populated_cells_in_radius_count(pos)))
-                            else:
+                            pos2 = good_distance[j]
+                            if is_triangle(point, pos1, pos2, self.parameters['min_shipyard_distance'],
+                                           self.parameters['max_shipyard_distance']):
                                 midpoint = TO_INDEX[get_excircle_midpoint(pos1, pos2, point)]
                                 possible_positions.append((pos, self.get_populated_cells_in_radius_count(midpoint)))
         if len(possible_positions) > 0:
@@ -810,7 +831,8 @@ class HaliteBot(object):
         if self.next_shipyard_position is not None and not (
                 self.parameters['min_shipyard_distance'] <= self.shipyard_distances[self.next_shipyard_position] <=
                 self.parameters['max_shipyard_distance'] and not in_avoidance_radius and len(
-            self.me.shipyards) >= self.last_shipyard_count) and len(self.me.shipyards) > 0:
+            self.me.shipyards) >= self.last_shipyard_count) and len(
+            self.me.shipyards) > 0:  # TODO: check if the position still creates a good triangle
             self.plan_shipyard_position()
         converting_disabled = (self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']) and (self.step_count > 10 or len(self.me.shipyards) > 0)

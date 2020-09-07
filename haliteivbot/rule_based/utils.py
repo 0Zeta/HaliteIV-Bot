@@ -1,3 +1,4 @@
+import logging
 import math
 
 import numpy as np
@@ -268,6 +269,36 @@ def get_axis(direction):
         return 'y'
     else:
         return 'x'
+
+
+def get_triangles(positions, min_distance, max_distance):
+    triangles = []
+    if len(positions) < 3:
+        logging.error("Trying to compute triangles with less than three positions")
+        return triangles
+    for p1 in range(len(positions)):
+        A = positions[p1]
+        for p2 in range(p1 + 1, len(positions)):
+            B = positions[p2]
+            for p3 in range(p2 + 1, len(positions)):
+                C = positions[p3]
+                if is_triangle(A, B, C, min_distance, max_distance):
+                    triangles.append((A, B, C))
+    return triangles
+
+
+def is_triangle(A, B, C, min_distance, max_distance):
+    if (A.x == B.x == C.x) or (
+            A.y == B.y == C.y):
+        return False
+    distances = [calculate_distance(A, B), calculate_distance(A, C), calculate_distance(B, C)]
+    if any([distance < min_distance or distance > max_distance for distance in distances]):
+        return False
+    if max(dist(A.x, B.x), dist(A.x, C.x), dist(B.x, C.x)) < 3:
+        return False
+    if max(dist(A.y, B.y), dist(A.y, C.y), dist(B.y, C.y)) < 3:
+        return False
+    return True
 
 
 def create_radius_lists(small_radius, medium_radius):
