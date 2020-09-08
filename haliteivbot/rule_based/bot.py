@@ -5,7 +5,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-# from haliteivbot.display_utils import display_matrix
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -670,8 +670,8 @@ class HaliteBot(object):
                             if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
                                     self.region_map[pos] == self.player_id:
                                 self.minor_farming_positions.append(pos)
-                            if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
-                                self.guarding_border.append(pos)
+                    if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
+                        self.guarding_border.append(pos)
             else:
                 if self.shipyard_distances[pos] <= self.parameters[
                     'guarding_radius'] and pos not in self.guarding_positions:
@@ -713,7 +713,7 @@ class HaliteBot(object):
                     spiegelei[pos] += 1
                 for pos in self.guarding_border:
                     spiegelei[pos] = 10
-                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
