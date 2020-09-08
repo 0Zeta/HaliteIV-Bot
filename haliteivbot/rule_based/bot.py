@@ -29,12 +29,12 @@ PARAMETERS = {
     'end_start': 382,
     'ending_halite_threshold': 10,
     'farming_end': 355,
-    'farming_start': 50,
+    'farming_start': 40,
     'farming_start_shipyards': 2,
     'guarding_aggression_radius': 3,
     'guarding_end': 375,
     'guarding_max_distance_to_shipyard': 3,
-    'guarding_max_ships_per_shipyard': 5,
+    'guarding_max_ships_per_shipyard': 4,
     'guarding_min_distance_to_shipyard': 1,
     'guarding_norm': 0.4,
     'guarding_radius': 3,
@@ -79,7 +79,7 @@ PARAMETERS = {
     'min_enemy_shipyard_distance': 4,
     'min_mining_halite': 15,
     'min_ships': 20,
-    'min_shipyard_distance': 7,
+    'min_shipyard_distance': 6,
     'mining_score_alpha': 1,
     'mining_score_beta': 0.95,
     'mining_score_dominance_clip': 3,
@@ -101,7 +101,7 @@ PARAMETERS = {
     'move_preference_return': 120,
     'move_preference_stay_on_shipyard': -70,
     'return_halite': 1000,
-    'second_shipyard_min_ships': 14,
+    'second_shipyard_min_ships': 16,
     'second_shipyard_step': 30,
     'ship_spawn_threshold': 0.15,
     'ships_shipyards_threshold': 0.18,
@@ -116,7 +116,7 @@ PARAMETERS = {
     'shipyard_stop': 285,
     'spawn_min_dominance': -8.0,
     'spawn_till': 285,
-    'third_shipyard_min_ships': 16,
+    'third_shipyard_min_ships': 18,
     'third_shipyard_step': 40,
     'trading_start': 100,
     'max_intrusion_count': 3,
@@ -551,7 +551,7 @@ class HaliteBot(object):
                 'convert_when_attacked_threshold'] and ship.halite + self.halite >= self.config.convert_cost:
                 self.ship_position_preferences[ship_index,
                 nb_positions_in_reach:] = -self.parameters[
-                    'convert_when_attacked_threshold']
+                    'convert_when_attacked_threshold']  # TODO: check whether the ship really needs to convert
             for position in self.positions_in_reach_list[ship.position]:
                 self.ship_position_preferences[
                     ship_index, self.position_to_index[position]] = self.calculate_cell_score(ship,
@@ -607,14 +607,6 @@ class HaliteBot(object):
         return self.me.next_actions
 
     def compute_regions(self, board: Board):
-        guarding_radius = ((self.parameters['max_shipyard_distance'] + 1) if self.max_shipyard_connections >= 2 else
-                           self.parameters['max_shipyard_distance'] - 1) - 1 + self.parameters[
-                              'guarding_radius2']
-        farming_radius = (self.parameters['max_shipyard_distance'] if self.max_shipyard_connections >= 2 else
-                          self.parameters['max_shipyard_distance'] - 2) - 1
-        border_radius = farming_radius + 1 if self.max_shipyard_connections >= 2 else farming_radius + 2
-        required_in_range = min(3, max(self.parameters['farming_start_shipyards'], self.max_shipyard_connections + 1))
-
         if self.max_shipyard_connections > 0:
             if self.max_shipyard_connections > 1:
                 points = get_triangles([shipyard.position for shipyard in self.me.shipyards],
@@ -633,10 +625,18 @@ class HaliteBot(object):
             points = []
 
         for pos in range(SIZE ** 2):
-            if self.shipyard_distances[pos] > guarding_radius + 2:
+            if self.shipyard_distances[pos] > self.parameters['max_shipyard_distance'] + 3:
                 continue
             if len(points) > 0:
                 for shipyard_points in points:
+                    max_distance = get_max_distance(shipyard_points)
+                    guarding_radius = ((max_distance + 1) if self.max_shipyard_connections >= 2 else
+                                       max_distance - 1) + self.parameters['guarding_radius2']
+                    farming_radius = (max_distance if self.max_shipyard_connections >= 2 else
+                                      max_distance - 1) - 1
+                    border_radius = farming_radius + 1 if self.max_shipyard_connections >= 2 else farming_radius + 2
+                    required_in_range = min(3, max(self.parameters['farming_start_shipyards'],
+                                                   self.max_shipyard_connections + 1))
                     in_guarding_range = 0
                     in_farming_range = 0
                     in_minor_farming_range = 0
@@ -662,14 +662,13 @@ class HaliteBot(object):
                             self.parameters[
                                 'farming_start'] <= self.step_count and in_guarding_range >= required_in_range):
                         self.guarding_positions.append(pos)
-                    if self.parameters['farming_start'] <= self.step_count <= self.parameters['farming_end']:
-                        if pos not in self.shipyard_positions and in_farming_range >= required_in_range:
-                            self.farming_positions.append(pos)
-                            break
-                        else:
-                            if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
-                                    self.region_map[pos] == self.player_id:
-                                self.minor_farming_positions.append(pos)
+                    if pos not in self.shipyard_positions and in_farming_range >= required_in_range:
+                        self.farming_positions.append(pos)
+                        break
+                    else:
+                        if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
+                                self.region_map[pos] == self.player_id:
+                            self.minor_farming_positions.append(pos)
                     if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
                         self.guarding_border.append(pos)
             else:
@@ -683,6 +682,9 @@ class HaliteBot(object):
             point = Point.from_index(pos, SIZE)
             if board.cells[point].halite > 0:
                 self.real_farming_points.append(point)
+        if self.step_count < self.parameters['farming_start'] or self.step_count > self.parameters['farming_end']:
+            self.farming_positions = []
+            self.minor_farming_positions = []
         self.guarding_positions = set(self.guarding_positions)
         self.minor_farming_positions = [pos for pos in set(self.minor_farming_positions) if
                                         pos not in self.farming_positions]
@@ -1224,7 +1226,7 @@ class HaliteBot(object):
                     destination = destination.position
         if destination is None:
             if self.halite + ship.halite >= self.config.convert_cost:
-                if self.shipyard_count == 0:
+                if self.shipyard_count == 0:  # TODO: remove this
                     self.convert_to_shipyard(ship)
                     logging.debug("Returning ship " + str(
                         ship.id) + " has no shipyard and converts to one at position " + str(ship.position) + ".")

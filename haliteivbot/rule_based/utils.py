@@ -80,6 +80,18 @@ def compute_positions_in_reach():
     return POSITIONS_IN_REACH, POSITIONS_IN_REACH_INDICES
 
 
+def get_max_distance(points):
+    max_distance = 0
+    for i in range(len(points)):
+        pos1 = TO_INDEX[points[i]]
+        for j in range(i + 1, len(points)):
+            pos2 = TO_INDEX[points[j]]
+            distance = get_distance(pos1, pos2)
+            if distance > max_distance:
+                max_distance = distance
+    return max_distance
+
+
 def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
     halite_map = np.array(halite).reshape((size, -1))
     blurred_halite_map = gaussian_filter(halite_map, sigma, mode='wrap')
