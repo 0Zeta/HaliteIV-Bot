@@ -639,6 +639,11 @@ class HaliteBot(object):
                     border_radius = farming_radius + 1
                     required_in_range = min(3, max(self.parameters['farming_start_shipyards'],
                                                    self.max_shipyard_connections + 1))
+                    if required_in_range == 2 and get_max_distance(shipyard_points) == self.parameters[
+                        'max_shipyard_distance']:
+                        guarding_radius += 1
+                        farming_radius += 1
+                        border_radius += 1
                     in_guarding_range = 0
                     in_farming_range = 0
                     in_minor_farming_range = 0
