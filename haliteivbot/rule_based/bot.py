@@ -460,11 +460,6 @@ class HaliteBot(object):
             [sum([1 for ship in player.ships if ship.halite <= 1]) for player in self.opponents if
              len(player.ships) > 0]) / max(1, sum([len(player.ships) for player in self.opponents]))
 
-        need_halite = ((self.parameters['second_shipyard_step'] - 4) <= self.step_count <= self.parameters[
-            'second_shipyard_step']) or (
-                (self.parameters['third_shipyard_step'] - 4) <= self.step_count <= self.parameters[
-            'third_shipyard_step'])
-
         # Distances to enemy ships and shipyard connections
         self.enemy_distances = dict()
         self.guarded_shipyards = list()
@@ -574,7 +569,7 @@ class HaliteBot(object):
         self.intrusions += len([1 for opponent in self.opponents for ship in opponent.ships if
                                 ship.halite <= self.hunting_halite_threshold and TO_INDEX[
                                     ship.position] in self.farming_positions])
-        logging.info("Total intrusions at step " + str(self.step_count) + ": " + str(self.intrusions) + " (" + str(
+        logging.debug("Total intrusions at step " + str(self.step_count) + ": " + str(self.intrusions) + " (" + str(
             round(self.intrusions / max(len(self.farming_positions), 1), 2)) + " per position)")
 
         for enemy in self.enemies:
@@ -595,13 +590,13 @@ class HaliteBot(object):
         self.guard_shipyards(board)
         self.build_shipyards(board)
 
-        self.spawn_cost = 2 * self.config.spawn_cost if need_halite or ((self.next_shipyard_position is not None and (
+        self.spawn_cost = 2 * self.config.spawn_cost if ((self.next_shipyard_position is not None and (
                 ShipType.CONSTRUCTING in self.ship_types.values() or (
                 board.cells[Point.from_index(self.next_shipyard_position, SIZE)].ship is not None and
                 board.cells[Point.from_index(self.next_shipyard_position,
                                              SIZE)].ship.player_id == self.player_id))) and self.step_count <
-                                                                        self.parameters[
-                                                                            'shipyard_stop']) else self.config.spawn_cost
+                                                         self.parameters[
+                                                             'shipyard_stop']) else self.config.spawn_cost
 
         self.move_ships(board)
         self.spawn_ships(board)
@@ -943,7 +938,8 @@ class HaliteBot(object):
 
         logging.info(
             "*** Ship type breakdown for step " + str(self.step_count) + " (" + str(
-                self.me.halite) + " halite) (ship advantage: " + str(self.ship_advantage) + ") ***")
+                self.me.halite) + " halite) (spawn cost: " + str(self.spawn_cost) + ") (ship advantage: " + str(
+                self.ship_advantage) + " ***")
         ship_types_values = list(self.ship_types.values())
         for ship_type in set(ship_types_values):
             type_count = ship_types_values.count(ship_type)
