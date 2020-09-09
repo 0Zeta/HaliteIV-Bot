@@ -460,19 +460,14 @@ class HaliteBot(object):
             [sum([1 for ship in player.ships if ship.halite <= 1]) for player in self.opponents if
              len(player.ships) > 0]) / max(1, sum([len(player.ships) for player in self.opponents]))
 
-        # Distances to enemy ships and shipyard connections
-        self.enemy_distances = dict()
+        # shipyard connections
         self.guarded_shipyards = list()
         self.max_shipyard_connections = 0
         self.nb_connected_shipyards = 0
         for shipyard_position in self.shipyard_positions:
             min_distance = 20
             connections = 0
-            for enemy_position in self.enemy_positions:
-                distance = get_distance(shipyard_position, enemy_position)
-                if distance < min_distance:
-                    min_distance = distance
-            self.enemy_distances[shipyard_position] = min_distance
+
             for shipyard2_pos in self.shipyard_positions:
                 con_distance = get_distance(shipyard_position, shipyard2_pos)
                 if shipyard_position != shipyard2_pos and self.parameters['min_shipyard_distance'] <= con_distance <= \
@@ -482,6 +477,15 @@ class HaliteBot(object):
                         self.max_shipyard_connections = connections
             if connections > 0:
                 self.nb_connected_shipyards += 1
+
+        self.enemy_distances = dict()
+        for pos in range(SIZE ** 2):
+            min_distance = 20
+            for enemy_position in self.enemy_positions:
+                distance = get_distance(pos, enemy_position)
+                if distance < min_distance:
+                    min_distance = distance
+            self.enemy_distances[pos] = min_distance
 
         self.farming_positions = []  # Das Gelbe vom Ei
         self.minor_farming_positions = []  # Das Weiße vom Ei
@@ -632,7 +636,7 @@ class HaliteBot(object):
                                        max_distance - 1) + self.parameters['guarding_radius2']
                     farming_radius = (max_distance if self.max_shipyard_connections >= 2 else
                                       max_distance - 2) - 1
-                    border_radius = farming_radius + 1 if self.max_shipyard_connections >= 2 else farming_radius + 2
+                    border_radius = farming_radius + 1
                     required_in_range = min(3, max(self.parameters['farming_start_shipyards'],
                                                    self.max_shipyard_connections + 1))
                     in_guarding_range = 0
@@ -668,7 +672,7 @@ class HaliteBot(object):
                         if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
                                 self.region_map[pos] == self.player_id:
                             self.minor_farming_positions.append(pos)
-                    if pos not in self.shipyard_positions and in_guarding_border >= required_in_range:
+                    if in_guarding_border >= required_in_range:
                         self.guarding_border.append(pos)
             else:
                 if self.shipyard_distances[pos] <= self.parameters[
@@ -688,7 +692,8 @@ class HaliteBot(object):
         self.minor_farming_positions = [pos for pos in set(self.minor_farming_positions) if
                                         pos not in self.farming_positions]
         self.guarding_border = get_borders(set(self.guarding_border))
-        self.guarding_border = [pos for pos in self.guarding_border if pos not in self.farming_positions]
+        self.guarding_border = [pos for pos in self.guarding_border if
+                                pos not in self.farming_positions and pos not in self.shipyard_positions]
 
         changed = True
         while changed:
@@ -939,7 +944,7 @@ class HaliteBot(object):
         logging.info(
             "*** Ship type breakdown for step " + str(self.step_count) + " (" + str(
                 self.me.halite) + " halite) (spawn cost: " + str(self.spawn_cost) + ") (ship advantage: " + str(
-                self.ship_advantage) + " ***")
+                self.ship_advantage) + ") ***")
         ship_types_values = list(self.ship_types.values())
         for ship_type in set(ship_types_values):
             type_count = ship_types_values.count(ship_type)
@@ -1542,6 +1547,8 @@ class HaliteBot(object):
                                ship_halite) -> float:
         distance_from_ship = get_distance(ship_position, cell_position)
         distance_from_shipyard = self.shipyard_distances[cell_position]
+        ship_enemy_distance = self.enemy_distances[ship_position]
+
         halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
             'map_blur_gamma'] ** distance_from_ship * halite
         if cell_position in self.enemy_positions and distance_from_ship > 1:
@@ -1558,8 +1565,7 @@ class HaliteBot(object):
         elif halite_val == 0:
             ch = 14
         else:
-            ch = int(math.log(self.mining_score_beta * ship_halite / halite_val) * 2.5 + 5.5)
-            ch = clip(ch, 0, 14)
+            ch = clip(int(math.log(self.mining_score_beta * ship_halite / halite_val) * 2.5 + 5.5), 0, 14)
         if distance_from_shipyard == 0:
             mining_steps = 0
             if distance_from_ship == 0:
