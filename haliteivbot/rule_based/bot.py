@@ -462,8 +462,8 @@ class HaliteBot(object):
 
         need_halite = ((self.parameters['second_shipyard_step'] - 4) <= self.step_count <= self.parameters[
             'second_shipyard_step']) or (
-                                  (self.parameters['third_shipyard_step'] - 4) <= self.step_count <= self.parameters[
-                              'third_shipyard_step'])
+                (self.parameters['third_shipyard_step'] - 4) <= self.step_count <= self.parameters[
+            'third_shipyard_step'])
 
         # Distances to enemy ships and shipyard connections
         self.enemy_distances = dict()
@@ -560,7 +560,7 @@ class HaliteBot(object):
             if ship.cell.shipyard is not None:
                 self.ship_position_preferences[ship_index, self.position_to_index[ship.position]] += self.parameters[
                     'move_preference_stay_on_shipyard'] if self.step_count > (
-                            12 + self.first_shipyard_step) else -200  # don't block the shipyard in the early game
+                        12 + self.first_shipyard_step) else -200  # don't block the shipyard in the early game
 
         self.cargo = sum([0] + [ship.halite for ship in self.me.ships])
         self.planned_shipyards.clear()
@@ -745,16 +745,6 @@ class HaliteBot(object):
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
-        if False:  # currently testing a feature
-            if step == 0:
-                # Immediately spawn a shipyard
-                self.me.ships[0].next_action = ShipAction.CONVERT
-                logging.debug("Ship " + str(self.me.ships[0].id) + " converts to a shipyard at the start of the game.")
-                return True
-            elif step == 1:
-                # Immediately spawn a ship
-                self.me.shipyards[0].next_action = ShipyardAction.SPAWN
-                return True
         if step == 0:
             self.plan_shipyard_position()
         if step <= 10 and len(self.me.shipyards) == 0 and len(self.me.ships) == 1:
@@ -1049,7 +1039,8 @@ class HaliteBot(object):
         assigned_scores.sort()
         hunting_proportion = self.parameters['hunting_proportion'] if self.step_count < self.parameters[
             'farming_end'] else self.parameters['hunting_proportion_after_farming']
-        logging.debug("assigned mining scores mean: {}".format(np.mean(assigned_scores)))
+        if len(assigned_scores) > 0:
+            logging.debug("assigned mining scores mean: {}".format(np.mean(assigned_scores)))
         hunting_enabled = board.step > self.parameters['disable_hunting_till'] and (self.ship_count >= self.parameters[
             'hunting_min_ships'] or board.step > self.parameters['spawn_till'])
         hunting_threshold = max(np.mean(assigned_scores) - np.std(assigned_scores) * self.parameters[
@@ -1146,7 +1137,7 @@ class HaliteBot(object):
 
                 guarding_targets = [target for target in guarding_targets if
                                     target not in self.hunting_targets.values() or (
-                                                isinstance(target, Ship) and target.halite > 0)]
+                                            isinstance(target, Ship) and target.halite > 0)]
                 unassigned_defending_ships = [ship for ship in self.guarding_ships if
                                               ship.id not in self.shipyard_guards]
                 assigned_defending_ships = []
@@ -1299,8 +1290,8 @@ class HaliteBot(object):
         ship_pos = TO_INDEX[ship.position]
         ship_position = ship.position
         penalize_farming = not (
-                    self.ship_types[ship.id] == ShipType.DEFENDING and ship.id in self.hunting_targets.keys() and
-                    TO_INDEX[self.hunting_targets[ship.id].position] in self.farming_positions)
+                self.ship_types[ship.id] == ShipType.DEFENDING and ship.id in self.hunting_targets.keys() and
+                TO_INDEX[self.hunting_targets[ship.id].position] in self.farming_positions)
         if self.step_count >= self.parameters['end_start'] and ship.halite == 0:
             enemy_shipyards = [shipyard for player in self.opponents for shipyard in player.shipyards if
                                self.step_count + get_distance(ship_pos, TO_INDEX[shipyard.position]) <= 398]
@@ -1859,7 +1850,7 @@ class HaliteBot(object):
                 self.parameters['harvest_threshold_alpha'] * (
                 1 - clip(self.enemy_hunting_proportion, 0, self.parameters['harvest_threshold_hunting_norm']) /
                 self.parameters['harvest_threshold_hunting_norm']))) * (
-                                 1 - (2 * self.parameters['harvest_threshold_beta'] / 3) + ship_advantage)
+                1 - (2 * self.parameters['harvest_threshold_beta'] / 3) + ship_advantage)
         return int(clip(threshold, 110, 450))
 
 
