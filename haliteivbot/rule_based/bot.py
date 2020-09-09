@@ -882,7 +882,7 @@ class HaliteBot(object):
 
     def spawn_ships(self, board: Board):
         # Spawn a ship if there are none left
-        if len(self.me.ships) == 0 and self.halite >= self.config.spawn_cost:
+        if len(self.me.ships) == 0 and self.halite >= self.config.spawn_cost and self.step_count < 390:
             if len(self.me.shipyards) > 0:
                 self.spawn_ship(self.me.shipyards[0])
         shipyards = self.me.shipyards
@@ -920,8 +920,9 @@ class HaliteBot(object):
         if self.shipyard_count == 0 and self.step_count > 10:
             ship = max(self.me.ships, key=lambda ship: ship.halite)  # TODO: choose the ship with the safest position
             if ship.halite + self.halite >= self.config.convert_cost:
-                self.convert_to_shipyard(ship)
-                self.ship_types[ship.id] = ShipType.CONVERTING
+                if self.step_count <= 385 or self.cargo > 800 or ship.halite >= self.config.convert_cost:
+                    self.convert_to_shipyard(ship)
+                    self.ship_types[ship.id] = ShipType.CONVERTING
 
         ships = self.me.ships.copy()
 
@@ -1234,14 +1235,8 @@ class HaliteBot(object):
                 if destination is not None:
                     destination = destination.position
         if destination is None:
-            if self.halite + ship.halite >= self.config.convert_cost:
-                if self.shipyard_count == 0:  # TODO: remove this
-                    self.convert_to_shipyard(ship)
-                    logging.debug("Returning ship " + str(
-                        ship.id) + " has no shipyard and converts to one at position " + str(ship.position) + ".")
-                    return
-                else:
-                    destination = board.cells[self.planned_shipyards[0]].position
+            if len(self.planned_shipyards) > 0:
+                destination = board.cells[self.planned_shipyards[0]].position
             else:
                 # TODO: mine
                 logging.debug("Returning ship " + str(ship.id) + " has no shipyard to go to.")
