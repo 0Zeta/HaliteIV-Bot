@@ -631,14 +631,12 @@ class HaliteBot(object):
                 continue
             if len(points) > 0:
                 for shipyard_points in points:
-                    max_distance = get_max_distance(shipyard_points)
+                    max_distance = self.parameters[
+                        'max_shipyard_distance']  # doesn't work well with the real max distance
                     guarding_radius = ((max_distance + 1) if self.max_shipyard_connections >= 2 else
                                        max_distance - 1) + self.parameters['guarding_radius2']
                     farming_radius = (max_distance if self.max_shipyard_connections >= 2 else
                                       max_distance - 2) - 1
-                    if self.max_shipyard_connections == 1 and max_distance == 6:
-                        guarding_radius += 1
-                        farming_radius += 1
                     border_radius = farming_radius + 1 if self.max_shipyard_connections >= 2 else farming_radius + 2
                     required_in_range = min(3, max(self.parameters['farming_start_shipyards'],
                                                    self.max_shipyard_connections + 1))
@@ -1472,10 +1470,12 @@ class HaliteBot(object):
         for enemy_pos in self.enemy_positions:
             if get_distance(ship_pos, enemy_pos) < min_distance:
                 min_distance = get_distance(ship_pos, enemy_pos)
-        guards = [1 for guard in self.me.ships if get_distance(TO_INDEX[guard.position], ship_pos) < min_distance or (
-                    get_distance(TO_INDEX[guard.position], ship_pos) == 1 and guard.id in self.ship_types.keys() and
-                    self.ship_types[guard.id] == ShipType.CONSTRUCTION_GUARDING)]
-        if len(guards) == 0:
+        guards = [1 for guard in self.me.ships if
+                  0 < get_distance(TO_INDEX[guard.position], ship_pos) < min_distance or (
+                          get_distance(TO_INDEX[guard.position],
+                                       ship_pos) == 1 and guard.id in self.ship_types.keys() and
+                          self.ship_types[guard.id] == ShipType.CONSTRUCTION_GUARDING)]
+        if len(guards) == 0 and self.ship_count > 5:
             return False
         if ship_pos == self.next_shipyard_position and self.step_count <= self.parameters['shipyard_stop']:
             return True
