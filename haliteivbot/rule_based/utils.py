@@ -190,20 +190,15 @@ def get_regions(players, sigma, halite_clip, threshold=0.1, size=21):
     return regions
 
 
-def get_borders(regions, player_index):
-    borders = np.zeros((SIZE ** 2,), dtype=np.int)
+def get_borders(positions):
+    borders = []
     for pos in range(SIZE ** 2):
-        if regions[pos] == player_index:
+        if pos in positions:
             for pos2 in get_neighbouring_positions(Point.from_index(pos, SIZE)):
-                if regions[TO_INDEX[pos2]] != player_index:
-                    borders[pos] = 1
+                if pos2 not in positions:
+                    borders.append(pos)
                     break
     return borders
-
-
-def get_border_regions(regions, player_index, sigma):
-    borders = get_borders(regions, player_index)
-    return gaussian_filter(borders.reshape((21, 21)).astype(np.float), sigma=sigma, mode='wrap').reshape((-1,))
 
 
 def create_navigation_lists(size):

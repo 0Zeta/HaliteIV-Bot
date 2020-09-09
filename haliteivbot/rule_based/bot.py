@@ -116,7 +116,7 @@ PARAMETERS = {
     'shipyard_stop': 285,
     'spawn_min_dominance': -8.0,
     'spawn_till': 285,
-    'third_shipyard_min_ships': 18,
+    'third_shipyard_min_ships': 17,
     'third_shipyard_step': 40,
     'trading_start': 100,
     'max_intrusion_count': 3,
@@ -521,7 +521,6 @@ class HaliteBot(object):
                 self.player_id]
             self.cargo_map = get_cargo_map(self.me.ships, self.me.shipyards, self.parameters['cargo_map_halite_norm'])
             self.region_map = get_regions(players, 2.5, self.parameters['dominance_map_halite_clip'])
-            self.border_regions = get_border_regions(self.region_map, self.player_id, sigma=1.5)
 
         self.planned_moves.clear()
         self.spawn_limit_reached = self.reached_spawn_limit(board)
@@ -658,7 +657,7 @@ class HaliteBot(object):
                                 in_guarding_range += 1
                             if distance <= farming_radius + 2:
                                 in_minor_farming_range += 1
-                            if distance == border_radius:
+                            if distance <= border_radius:
                                 in_guarding_border += 1
 
                     if guard or (
@@ -672,7 +671,7 @@ class HaliteBot(object):
                         if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
                                 self.region_map[pos] == self.player_id:
                             self.minor_farming_positions.append(pos)
-                    if pos not in self.shipyard_positions and in_guarding_border >= 1 and in_guarding_range >= required_in_range and pos not in self.farming_positions:
+                    if pos not in self.shipyard_positions and in_guarding_border >= required_in_range and in_guarding_range >= required_in_range:
                         self.guarding_border.append(pos)
             else:
                 if self.shipyard_distances[pos] <= self.parameters[
@@ -691,7 +690,8 @@ class HaliteBot(object):
         self.guarding_positions = set(self.guarding_positions)
         self.minor_farming_positions = [pos for pos in set(self.minor_farming_positions) if
                                         pos not in self.farming_positions]
-        self.guarding_border = [pos for pos in set(self.guarding_border) if pos not in self.farming_positions]
+        self.guarding_border = get_borders(set(self.guarding_border))
+        self.guarding_border = [pos for pos in self.guarding_border if pos not in self.farming_positions]
 
     def debug(self):
         if len(self.me.ships) > 0:
