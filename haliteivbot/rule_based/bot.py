@@ -650,6 +650,8 @@ class HaliteBot(object):
                         distance = get_distance(pos, shipyard_pos)
                         if distance <= self.parameters['guarding_radius']:
                             guard = True
+                        if distance <= border_radius:
+                            in_guarding_border += 1
                         if self.parameters['farming_start'] <= self.step_count:
                             if distance <= farming_radius:
                                 in_guarding_range += 1
@@ -658,8 +660,6 @@ class HaliteBot(object):
                                 in_guarding_range += 1
                             if distance <= farming_radius + 2:
                                 in_minor_farming_range += 1
-                            if distance <= border_radius:
-                                in_guarding_border += 1
 
                     if guard or (
                             self.parameters[
@@ -667,12 +667,13 @@ class HaliteBot(object):
                         self.guarding_positions.append(pos)
                     if pos not in self.shipyard_positions and in_farming_range >= required_in_range:
                         self.farming_positions.append(pos)
+                        self.guarding_border.append(pos)
                         break
                     else:
                         if pos not in self.shipyard_positions and in_minor_farming_range >= required_in_range and \
                                 self.region_map[pos] == self.player_id:
                             self.minor_farming_positions.append(pos)
-                    if pos not in self.shipyard_positions and in_guarding_border >= required_in_range and in_guarding_range >= required_in_range:
+                    if pos not in self.shipyard_positions and in_guarding_border >= required_in_range:
                         self.guarding_border.append(pos)
             else:
                 if self.shipyard_distances[pos] <= self.parameters[
@@ -693,6 +694,18 @@ class HaliteBot(object):
                                         pos not in self.farming_positions]
         self.guarding_border = get_borders(set(self.guarding_border))
         self.guarding_border = [pos for pos in self.guarding_border if pos not in self.farming_positions]
+
+        changed = True
+        while changed:
+            changed = False
+            for i in range(len(self.guarding_border)):
+                position = self.guarding_border[i]
+                neighbours = get_adjacent_positions(Point.from_index(position, SIZE))
+                if sum([1 for pos in neighbours if
+                        pos in self.guarding_border or pos in self.shipyard_positions]) < 2:
+                    self.guarding_border.remove(position)
+                    changed = True
+                    break
 
     def debug(self):
         if len(self.me.ships) > 0:

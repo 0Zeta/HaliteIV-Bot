@@ -192,12 +192,11 @@ def get_regions(players, sigma, halite_clip, threshold=0.1, size=21):
 
 def get_borders(positions):
     borders = []
-    for pos in range(SIZE ** 2):
-        if pos in positions:
-            for pos2 in get_neighbouring_positions(Point.from_index(pos, SIZE)):
-                if pos2 not in positions:
-                    borders.append(pos)
-                    break
+    for pos in positions:
+        for pos2 in get_neighbouring_positions(Point.from_index(pos, SIZE)):
+            if TO_INDEX[pos2] not in positions:
+                borders.append(pos)
+                break
     return borders
 
 
