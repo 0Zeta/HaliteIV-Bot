@@ -65,9 +65,9 @@ PARAMETERS = {
     'hunting_score_kappa': 0.1,
     'hunting_score_ship_bonus': 200,
     'hunting_score_ypsilon': 2,
-    'hunting_score_zeta': 0.2,
-    'hunting_threshold': 8,
-    'hunting_score_region': 2.8,
+    'hunting_score_zeta': 0.3,
+    'hunting_threshold': 12,
+    'hunting_score_region': 2.6,
     'map_blur_gamma': 0.9,
     'map_blur_sigma': 0.3579575706817798,
     'map_ultra_blur': 1.75,
@@ -99,7 +99,7 @@ PARAMETERS = {
     'move_preference_longest_axis': 15,
     'move_preference_mining': 125,
     'move_preference_return': 120,
-    'move_preference_stay_on_shipyard': -70,
+    'move_preference_stay_on_shipyard': -130,
     'return_halite': 1000,
     'second_shipyard_min_ships': 16,
     'second_shipyard_step': 30,
@@ -1542,7 +1542,6 @@ class HaliteBot(object):
                                ship_halite) -> float:
         distance_from_ship = get_distance(ship_position, cell_position)
         distance_from_shipyard = self.shipyard_distances[cell_position]
-        ship_enemy_distance = self.enemy_distances[ship_position]
 
         halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
             'map_blur_gamma'] ** distance_from_ship * halite
@@ -1594,6 +1593,8 @@ class HaliteBot(object):
             elif halite < self.parameters[
                 'minor_harvest_threshold'] * self.harvest_threshold and cell_position in self.minor_farming_positions:
                 score *= self.parameters['mining_score_minor_farming_penalty']
+        if self.step_count <= 5 + self.first_shipyard_step and distance_from_shipyard <= 3:
+            score *= 0.05
         return score
 
     def calculate_hunting_score(self, ship: Ship, enemy: Ship) -> float:
