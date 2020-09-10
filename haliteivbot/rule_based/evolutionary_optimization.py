@@ -120,7 +120,10 @@ hyperparameters = {
     'spawn_min_dominance': ('float', (-2, 5)),
     'spawn_till': ('int', (220, 325)),
     'third_shipyard_min_ships': ('int', (15, 22)),
-    'third_shipyard_step': ('int', (40, 100))
+    'third_shipyard_step': ('int', (40, 100)),
+    'mining_score_cargo_norm': ('float', (1.5, 3.5)),
+    'mining_score_alpha_step': ('float', (0.007, 0.015)),
+    'mining_score_alpha_min': ('float', (0.2, 0.35))
 }
 
 frozen_parameters = ['dominance_map_medium_radius', 'dominance_map_small_radius', 'guarding_min_distance_to_shipyard',

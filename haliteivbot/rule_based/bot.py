@@ -36,7 +36,7 @@ PARAMETERS = {
     'guarding_max_distance_to_shipyard': 3,
     'guarding_max_ships_per_shipyard': 4,
     'guarding_min_distance_to_shipyard': 1,
-    'guarding_norm': 0.4,
+    'guarding_norm': 0.6,
     'guarding_radius': 3,
     'guarding_radius2': 0,
     'guarding_ship_advantage_norm': 17,
@@ -89,7 +89,7 @@ PARAMETERS = {
     'mining_score_dominance_norm': 0.35,
     'mining_score_farming_penalty': 0.01,
     'mining_score_gamma': 0.99,
-    'mining_score_juicy': 0.35,
+    'mining_score_juicy': 0.25,
     'mining_score_juicy_end': 0.1,
     'mining_score_start_returning': 50,
     'move_preference_base': 94,
@@ -1624,7 +1624,8 @@ class HaliteBot(object):
         distance_from_ship = get_distance(ship_position, cell_position)
         distance_from_shipyard = self.shipyard_distances[cell_position]
         # mining_score_alpha = clip(self.parameters['mining_score_alpha'] * ship_halite / (self.parameters['mining_score_cargo_norm'] * self.average_halite_per_populated_cell), self.parameters['mining_score_alpha_min'] + self.parameters['mining_score_alpha_step'] * self.step_count, self.parameters['mining_score_alpha'])
-        mining_score_alpha = 1
+        mining_score_alpha = self.parameters[
+            'mining_score_alpha'] if self.step_count > 12 + distance_from_shipyard else 0.5
         halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
             'map_blur_gamma'] ** distance_from_ship * halite
         if cell_position in self.enemy_positions and distance_from_ship > 1:
@@ -1794,7 +1795,8 @@ class HaliteBot(object):
                             neighbour.ship.id not in self.intrusion_positions[TO_INDEX[neighbour.position]] or
                             self.intrusion_positions[TO_INDEX[neighbour.position]][neighbour.ship.id] <=
                             self.parameters['max_intrusion_count'])):
-                        neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
+                        if self.step_count > 35:  # TODO: check whether this is good
+                            neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
                 else:
                     neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
                                        self.parameters['cell_score_neighbour_discount']
