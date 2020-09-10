@@ -20,7 +20,7 @@ hyperparameters = {
     'cargo_map_halite_norm': ('int', (100, 400)),
     'cell_score_dominance': ('float', (1, 8)),
     'cell_score_enemy_halite': ('float', (0.05, 0.5)),
-    'cell_score_farming': ('int', (-500, -100)),
+    'cell_score_farming': ('int', (-150, -10)),
     'cell_score_neighbour_discount': ('float', (0.6, 0.8)),
     'cell_score_ship_halite': ('float', (0.0002, 0.001)),
     'convert_when_attacked_threshold': ('int', (100, 520)),
