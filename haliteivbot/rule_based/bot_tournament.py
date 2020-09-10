@@ -1,4 +1,5 @@
 import logging
+import traceback
 from multiprocessing import Process, Queue
 from random import randrange, sample
 
@@ -82,3 +83,45 @@ class Tournament(object):
 
         return [self.bots[bot_index] for bot_index, _ in
                 sorted(self.ratings.items(), key=lambda item: item[1].mu, reverse=True)]
+
+
+class EarlyTournament(Tournament):
+
+    def __init__(self, bots, steps):
+        super().__init__(bots)
+        self.steps = steps
+
+    def get_fitness(self, step_data):
+        results = []
+        for player in range(4):
+            halite = step_data['observation']['players'][player][0]
+            shipyard_count = len(step_data['observation']['players'][player][1])
+            ship_count = len(step_data['observation']['players'][player][2])
+            cargo = sum([ship_data[1] for ship_data in step_data['observation']['players'][player][2].values()])
+
+            results.append(halite + shipyard_count * 1200 + ship_count * 500 + cargo * 0.7)
+        return results
+
+    def play_game(self, bots, queue):
+        try:
+            env = make("halite", configuration={"size": 21, 'randomSeed': randrange((1 << 32) - 1), "agentTimeout": 90,
+                                                "actTimeout": 18, "runTimeout": 36000, "episodeSteps": self.steps},
+                       debug=True)
+            env.reset(4)
+            shuffled_indices = np.random.permutation(4)
+            bots[:] = [bots[i] for i in shuffled_indices]
+            env.run([wrap_bot(HaliteBot(bot)) if isinstance(bot, dict) else bot for bot in bots])
+            results = self.get_fitness(env.steps[-1][0])
+            results[:] = [results[i] for i in shuffled_indices]
+            for i in range(len(results)):
+                if results[i] is None:
+                    results[i] = -1000
+                    logging.critical("An error occurred with bot " + str(self.bots[self.bot_to_index(bots[i])]) + ".")
+                    logging.critical(results)
+            standings = 3 - np.argsort(results)
+            queue.put((bots, standings))
+        except Exception as exception:
+            logging.critical("An error occurred.")
+            print(exception)
+            traceback.print_exc()
+            queue.put((bots, [0, 0, 0, 0]))
