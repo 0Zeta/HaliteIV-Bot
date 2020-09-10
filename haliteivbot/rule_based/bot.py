@@ -1,6 +1,6 @@
 import sys
 from enum import Enum
-from math import floor, ceil
+from math import ceil
 from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
@@ -81,10 +81,11 @@ PARAMETERS = {
     'min_ships': 20,
     'min_shipyard_distance': 7,
     'mining_score_alpha': 1,
-    'mining_score_cargo_norm': 3,
-    'mining_score_alpha_step': 0.009,
-    'mining_score_alpha_min': 0.3,
+    'mining_score_cargo_norm': 4,
+    'mining_score_alpha_step': 0.008,
+    'mining_score_alpha_min': 0.45,
     'mining_score_beta': 0.95,
+    'mining_score_beta_min': 0.6,
     'mining_score_dominance_clip': 3,
     'mining_score_dominance_norm': 0.35,
     'mining_score_farming_penalty': 0.01,
@@ -97,7 +98,7 @@ PARAMETERS = {
     'move_preference_constructing': 145,
     'move_preference_construction_guarding': 130,
     'move_preference_guarding': 98,
-    'move_preference_guarding_stay': -99,
+    'move_preference_guarding_stay': -110,
     'move_preference_hunting': 105,
     'move_preference_longest_axis': 15,
     'move_preference_mining': 125,
@@ -475,7 +476,8 @@ class HaliteBot(object):
         self.blurred_halite_map = get_blurred_halite_map(self.observation['halite'], self.parameters['map_blur_sigma'])
         self.ultra_blurred_halite_map = get_blurred_halite_map(self.observation['halite'],
                                                                self.parameters['map_ultra_blur'])
-
+        self.min_ultra = np.min(self.ultra_blurred_halite_map)
+        self.max_ultra = np.max(self.ultra_blurred_halite_map)
         self.shipyard_positions = []
         for shipyard in self.me.shipyards:
             self.shipyard_positions.append(TO_INDEX[shipyard.position])
@@ -615,8 +617,7 @@ class HaliteBot(object):
         self.mining_targets.clear()
         self.deposit_targets.clear()
         enemy_cargo = sorted([ship.halite for ship in self.enemies])
-        self.hunting_halite_threshold = enemy_cargo[
-            floor(len(enemy_cargo) * self.parameters['hunting_halite_threshold'])] if len(enemy_cargo) > 0 else 0
+        self.hunting_halite_threshold = 0  # Always hunt with 0 halite
         self.intrusions += len([1 for opponent in self.opponents for ship in opponent.ships if
                                 ship.halite <= self.hunting_halite_threshold and TO_INDEX[
                                     ship.position] in self.farming_positions])
@@ -1625,7 +1626,17 @@ class HaliteBot(object):
         distance_from_shipyard = self.shipyard_distances[cell_position]
         # mining_score_alpha = clip(self.parameters['mining_score_alpha'] * ship_halite / (self.parameters['mining_score_cargo_norm'] * self.average_halite_per_populated_cell), self.parameters['mining_score_alpha_min'] + self.parameters['mining_score_alpha_step'] * self.step_count, self.parameters['mining_score_alpha'])
         mining_score_alpha = self.parameters[
-            'mining_score_alpha'] if self.step_count > 12 + distance_from_shipyard else 0.5
+            'mining_score_alpha'] if self.step_count > 30 + distance_from_shipyard else 0.5
+        mining_score_beta = self.mining_score_beta
+
+        position_quality = self.ultra_blurred_halite_map[ship_position] / self.max_ultra
+        if mining_score_alpha == self.parameters['mining_score_alpha']:
+            mining_score_alpha *= self.parameters['mining_score_alpha_min'] + (
+                        1 - self.parameters['mining_score_alpha_min']) * (1 - position_quality)
+        if mining_score_beta == self.parameters['mining_score_beta']:
+            mining_score_beta *= self.parameters['mining_score_beta_min'] + (
+                    1 - self.parameters['mining_score_beta_min']) * (1 - position_quality)
+
         halite_val = (1 - self.parameters['map_blur_gamma'] ** distance_from_ship) * blurred_halite + self.parameters[
             'map_blur_gamma'] ** distance_from_ship * halite
         if cell_position in self.enemy_positions and distance_from_ship > 1:
@@ -1642,7 +1653,7 @@ class HaliteBot(object):
         elif halite_val == 0:
             ch = 14
         else:
-            ch = clip(int(math.log(self.mining_score_beta * ship_halite / halite_val) * 2.5 + 5.5), 0, 14)
+            ch = clip(int(math.log(mining_score_beta * ship_halite / halite_val) * 2.5 + 5.5), 0, 14)
         if distance_from_shipyard == 0:
             mining_steps = 0
             if distance_from_ship == 0:
@@ -1665,11 +1676,11 @@ class HaliteBot(object):
             safety /= 1.5
             safety += self.parameters['mining_score_dominance_norm'] / 3
         safety += 1 - self.parameters['mining_score_dominance_norm'] / 2
-        if False:
-            print("Distance: " + str(distance_from_ship) + " " + str(distance_from_shipyard) + " mining steps: " + str(
-                mining_steps) + " cargo: " + str(ship_halite) + " ch: " + str(ch) + " halite: " + str(halite))
+        if debug:
+            print(mining_score_alpha)
+            print(mining_score_beta)
         score = self.parameters['mining_score_gamma'] ** (distance_from_ship + mining_steps) * (
-                self.mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * halite_val) * safety / max(
+                mining_score_beta * ship_halite + (1 - 0.75 ** mining_steps) * halite_val) * safety / max(
             distance_from_ship + mining_steps + mining_score_alpha * distance_from_shipyard, 1)
         if distance_from_shipyard == 0 and self.step_count <= 11:
             score *= 0.1  # We don't want to block the shipyard.
