@@ -125,7 +125,9 @@ PARAMETERS = {
     'trading_start': 100,
     'max_intrusion_count': 3,
     'minor_harvest_threshold': 0.55,
-    'mining_score_minor_farming_penalty': 0.15
+    'mining_score_minor_farming_penalty': 0.15,
+    'greed_stop': 35,
+    'greed_min_map_diff': 12
 }
 
 OPTIMAL_MINING_STEPS_TENSOR = [
@@ -1800,7 +1802,9 @@ class HaliteBot(object):
                             neighbour.ship.id not in self.intrusion_positions[TO_INDEX[neighbour.position]] or
                             self.intrusion_positions[TO_INDEX[neighbour.position]][neighbour.ship.id] <=
                             self.parameters['max_intrusion_count'])):
-                        if self.step_count > 35:  # TODO: check whether this is good
+                        if self.step_count > self.parameters['greed_stop'] or self.map_presence_diff[
+                            neighbour.ship.player_id] >= self.parameters[
+                            'greed_min_map_diff']:  # TODO: check whether this is good
                             neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
                 else:
                     neighbour_value += neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \

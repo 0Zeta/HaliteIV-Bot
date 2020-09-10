@@ -124,7 +124,9 @@ hyperparameters = {
     'mining_score_cargo_norm': ('float', (1.5, 3.5)),
     'mining_score_alpha_step': ('float', (0.007, 0.015)),
     'mining_score_alpha_min': ('float', (0.2, 0.35)),
-    'mining_score_beta_min': ('float', (0.25, 0.8))
+    'mining_score_beta_min': ('float', (0.25, 0.8)),
+    'greed_stop': ('int', (30, 50)),
+    'greed_min_map_diff': ('int', (8, 15))
 }
 
 frozen_parameters = ['dominance_map_medium_radius', 'dominance_map_small_radius', 'guarding_min_distance_to_shipyard',
