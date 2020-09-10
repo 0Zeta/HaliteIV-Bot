@@ -1302,10 +1302,6 @@ class HaliteBot(object):
                                                            self.halite_ranking[shipyard.player_id] * 10) - get_distance(
                     ship_pos, TO_INDEX[shipyard.position]), reverse=True)
                 target = enemy_shipyards[0]
-                # Don't mine
-                if ship.cell.halite > 0:
-                    self.change_position_score(ship, ship.position,
-                                               int(-0.8 * self.parameters['move_preference_hunting']))
                 self.prefer_moves(ship, navigate(ship_position, target.position, self.size),
                                   self.farthest_directions[ship_pos][TO_INDEX[target.position]],
                                   self.parameters['move_preference_hunting'] * 2, penalize_farming,
@@ -1318,6 +1314,10 @@ class HaliteBot(object):
             if (isinstance(target, Shipyard) and ship.halite <= self.parameters[
                 'max_halite_attack_shipyard']) or (isinstance(target, Ship) and target.halite > ship.halite):
                 target_position = target.position
+                # Don't mine
+                if ship.cell.halite > 0 and get_distance(ship_pos, TO_INDEX[target_position]) > 1:
+                    self.change_position_score(ship, ship.position,
+                                               int(-0.8 * self.parameters['move_preference_hunting']))
                 self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
                                   self.farthest_directions[ship_pos][TO_INDEX[target_position]],
                                   self.parameters['move_preference_hunting'], penalize_farming,
