@@ -101,9 +101,9 @@ PARAMETERS = {
     'move_preference_return': 120,
     'move_preference_stay_on_shipyard': -130,
     'return_halite': 1000,
-    'second_shipyard_min_ships': 16,
-    'second_shipyard_step': 30,
-    'ship_spawn_threshold': 0.15,
+    'second_shipyard_min_ships': 14,
+    'second_shipyard_step': 28,
+    'ship_spawn_threshold': 0.18,
     'ships_shipyards_threshold': 0.18,
     'shipyard_abandon_dominance': -20,
     'shipyard_conversion_threshold': 2.5,
@@ -117,7 +117,7 @@ PARAMETERS = {
     'spawn_min_dominance': -8.0,
     'spawn_till': 285,
     'third_shipyard_min_ships': 17,
-    'third_shipyard_step': 40,
+    'third_shipyard_step': 50,
     'trading_start': 100,
     'max_intrusion_count': 3,
     'minor_harvest_threshold': 0.55,
@@ -591,8 +591,8 @@ class HaliteBot(object):
         if self.handle_special_steps(board):
             return self.me.next_actions
 
-        self.guard_shipyards(board)
         self.build_shipyards(board)
+        self.guard_shipyards(board)
 
         self.spawn_cost = 2 * self.config.spawn_cost if ((self.next_shipyard_position is not None and (
                 ShipType.CONSTRUCTING in self.ship_types.values() or (
@@ -1384,36 +1384,16 @@ class HaliteBot(object):
 
     def guard_shipyards(self, board: Board):
         shipyard_guards = dict()
+        if len(self.planned_shipyards) > 0:
+            for shipyard_point in self.planned_shipyards:
+                self.guard_position(TO_INDEX[shipyard_point], shipyard_guards)
         for shipyard in self.me.shipyards:
             if shipyard.position in self.planned_moves:
                 continue
             shipyard_position = TO_INDEX[shipyard.position]
             dominance = self.medium_dominance_map[shipyard_position]
 
-            enemy_distance = self.enemy_distances[shipyard_position]
-            min_distance = 20
-            for ship in [ship for ship in self.me.ships if
-                         ship.id not in self.ship_types.keys() or self.ship_types[ship.id] not in [ShipType.CONVERTING,
-                                                                                                   ShipType.CONSTRUCTING]]:
-                distance = get_distance(shipyard_position, TO_INDEX[ship.position])
-                if distance < min_distance and (
-                        ship.halite <= self.hunting_halite_threshold or distance < enemy_distance):
-                    min_distance = distance
-                    shipyard_guards[shipyard_position] = ship
-            if dominance < self.parameters['shipyard_abandon_dominance']:
-                logging.debug("Abandoning shipyard " + str(shipyard.id))
-            elif enemy_distance - 1 <= min_distance and shipyard_position in shipyard_guards.keys():
-                guard = shipyard_guards[shipyard_position]
-                self.shipyard_guards.append(guard.id)
-                self.guarding_ships.append(guard)
-                self.border_guards[guard.id] = shipyard_position
-                self.ship_types[guard.id] = ShipType.GUARDING
-                if enemy_distance <= min_distance:
-                    self.urgent_shipyard_guards.append(guard.id)
-            elif enemy_distance - 2 <= min_distance and shipyard_position in shipyard_guards.keys():
-                guard = shipyard_guards[shipyard_position]
-                if guard.cell.halite > 0:
-                    self.change_position_score(guard, guard.position, -500)  # don't mine
+            min_distance = self.guard_position(shipyard_position, shipyard_guards)
 
             enemies = set(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
                                  get_neighbours(shipyard.cell)))
@@ -1461,6 +1441,34 @@ class HaliteBot(object):
                         self.spawn_ship(shipyard)
                     else:
                         logging.info("Shipyard " + str(shipyard.id) + " cannot be protected.")
+
+    def guard_position(self, shipyard_position, shipyard_guards):
+        enemy_distance = self.enemy_distances[shipyard_position]
+        dominance = self.medium_dominance_map[shipyard_position]
+        min_distance = 20
+        for ship in [ship for ship in self.me.ships if
+                     ship.id not in self.ship_types.keys() or self.ship_types[ship.id] not in [ShipType.CONVERTING,
+                                                                                               ShipType.CONSTRUCTING]]:
+            distance = get_distance(shipyard_position, TO_INDEX[ship.position])
+            if distance < min_distance and (
+                    ship.halite <= self.hunting_halite_threshold or distance < enemy_distance):
+                min_distance = distance
+                shipyard_guards[shipyard_position] = ship
+        if dominance < self.parameters['shipyard_abandon_dominance']:
+            logging.debug("Abandoning shipyard at position " + str(Point.from_index(shipyard_position, SIZE)))
+        elif enemy_distance - 1 <= min_distance and shipyard_position in shipyard_guards.keys():
+            guard = shipyard_guards[shipyard_position]
+            self.shipyard_guards.append(guard.id)
+            self.guarding_ships.append(guard)
+            self.border_guards[guard.id] = shipyard_position
+            self.ship_types[guard.id] = ShipType.GUARDING
+            if enemy_distance <= min_distance:
+                self.urgent_shipyard_guards.append(guard.id)
+        elif enemy_distance - 2 <= min_distance and shipyard_position in shipyard_guards.keys():
+            guard = shipyard_guards[shipyard_position]
+            if guard.cell.halite > 0:
+                self.change_position_score(guard, guard.position, -500)  # don't mine
+        return min_distance
 
     def determine_vulnerable_enemies(self):
         hunting_matrix = get_hunting_matrix(self.me.ships)
@@ -1826,7 +1834,6 @@ class HaliteBot(object):
         self.halite -= self.config.convert_cost
         self.ship_count -= 1
         self.shipyard_count += 1
-        self.planned_shipyards.append(ship.position)
         if self.step_count < 10:
             self.first_shipyard_step = self.step_count
         if TO_INDEX[ship.position] == self.next_shipyard_position:
