@@ -1405,13 +1405,7 @@ class HaliteBot(object):
                                                'move_preference_stay_on_shipyard'])
         else:
             # stay near the shipyard
-            if ship.cell.shipyard is not None:
-                if self.halite < self.spawn_cost or self.step_count > \
-                        self.parameters['spawn_till']:
-                    self.change_position_score(ship, ship.position,
-                                               self.parameters['move_preference_guarding'] - self.parameters[
-                                                   'move_preference_stay_on_shipyard'])
-            elif ship.cell.halite > 0:
+            if ship.cell.halite > 0:
                 self.change_position_score(ship, ship.position, self.parameters['move_preference_guarding_stay'])
             self.prefer_moves(ship, nav(ship_pos, target_position),
                               self.farthest_directions[ship_pos][target_position],
