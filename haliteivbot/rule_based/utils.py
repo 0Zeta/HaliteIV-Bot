@@ -31,9 +31,9 @@ def create_optimal_mining_steps_tensor(alpha, beta, gamma):
         return gamma ** (n1 + m) * (beta * C + (1 - .75 ** m) * 1.02 ** (n1 + m) * H) / (n1 + alpha * n2 + m)
 
     tensor = []
-    for n1 in range(20):
+    for n1 in range(21):
         n_opt = []
-        for n2 in range(20):
+        for n2 in range(21):
             ch_opt = []
             for ch in range(chrange):
                 if ch == 0:
