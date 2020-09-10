@@ -1111,9 +1111,11 @@ class HaliteBot(object):
             assigned_scores) > 0 else -1
 
         for r, c in zip(row, col):
-            if (mining_scores[r][c] < self.parameters['hunting_threshold'] or (
-                    mining_scores[r][c] <= hunting_threshold and self.mining_ships[
-                r].halite <= self.hunting_halite_threshold)) and hunting_enabled:
+            if (mining_scores[r][c] < (
+            self.parameters['hunting_threshold'] if self.step_count > 80 else self.parameters[
+                                                                                  'hunting_threshold'] - 4) or (
+                        mining_scores[r][c] <= hunting_threshold and self.mining_ships[
+                    r].halite <= self.hunting_halite_threshold)) and hunting_enabled:
                 continue
             if target_positions[c] >= 1000:
                 ship_targets[self.mining_ships[r].id] = target_positions[c] % 1000
