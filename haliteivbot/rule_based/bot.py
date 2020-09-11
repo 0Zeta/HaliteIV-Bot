@@ -374,6 +374,8 @@ OPTIMAL_MINING_STEPS_TENSOR = [
      [15, 15, 15, 15, 14, 12, 10, 8, 7, 5, 3, 2, 1, 1, 1], [15, 15, 15, 15, 14, 12, 10, 8, 7, 5, 3, 2, 1, 1, 1],
      [15, 15, 15, 15, 15, 12, 10, 8, 7, 5, 4, 2, 1, 1, 1], [15, 15, 15, 15, 15, 12, 10, 9, 7, 5, 4, 2, 1, 1, 1]]]
 
+SHIPS_SHIPYARDS = [0, 8, 16, 22, 27, 31, 36, 42, 46]
+
 BOT = None
 
 
@@ -936,13 +938,17 @@ class HaliteBot(object):
             'shipyard_stop']) and (self.step_count > 10 or len(self.me.shipyards) > 0)
         if self.step_count < self.parameters['shipyard_stop'] and ((self.parameters[
                                                                         'third_shipyard_step'] <= self.step_count < 200 and self.max_shipyard_connections <= 1 and self.ship_advantage > -10 and self.ship_count >= \
-                                                                    self.parameters['third_shipyard_min_ships']) or (
+                                                                    SHIPS_SHIPYARDS[2]) or (
                                                                            self.parameters[
                                                                                'second_shipyard_step'] <= self.step_count and self.max_shipyard_connections == 0 and self.ship_advantage > -18 and self.ship_count >=
-                                                                           self.parameters['second_shipyard_min_ships']) \
-                                                                   or ((max(self.nb_connected_shipyards, 1) + 1) / len(
-                    self.me.ships) <= self.parameters[
-                                                                           'ships_shipyards_threshold'] and self.ship_advantage >
+                                                                           SHIPS_SHIPYARDS[1]) \
+                                                                   or ((((max(self.nb_connected_shipyards,
+                                                                              1) + 1) < len(SHIPS_SHIPYARDS) and len(
+                    self.me.ships) >= SHIPS_SHIPYARDS[max(self.nb_connected_shipyards, 1) + 1]) or (
+                                                                                (max(self.nb_connected_shipyards,
+                                                                                     1) + 1) / len(self.me.ships) <=
+                                                                                self.parameters[
+                                                                                    'ships_shipyards_threshold'])) and self.ship_advantage >
                                                                        self.parameters[
                                                                            'shipyard_min_ship_advantage'] and self.max_shipyard_connections > 1)):
             if self.next_shipyard_position is None:
@@ -950,8 +956,8 @@ class HaliteBot(object):
             elif self.small_dominance_map[self.next_shipyard_position] >= -3:
                 ships = [ship for ship in self.me.ships if
                          (ship.halite <= self.hunting_halite_threshold or (
-                                     self.step_count <= 45 and self.enemy_distances[
-                                 self.next_shipyard_position] >= 2)) and ship.id not in self.ship_types.keys()]
+                                 self.step_count <= 45 and self.enemy_distances[
+                             self.next_shipyard_position] >= 2)) and ship.id not in self.ship_types.keys()]
                 ships.sort(key=lambda ship: get_distance(TO_INDEX[ship.position], self.next_shipyard_position))
                 cell = board.cells[Point.from_index(self.next_shipyard_position, SIZE)]
                 if len(ships) > 0 and (cell.ship is None or cell.ship.player_id != self.player_id):
