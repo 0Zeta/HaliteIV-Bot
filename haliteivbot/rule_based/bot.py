@@ -594,7 +594,7 @@ class HaliteBot(object):
             else:
                 self.position_to_index[position] = [position_index]
 
-        self.calculate_danger_matrices()
+        self.danger_matrix = get_hunting_matrix(self.enemies)
 
         self.ship_position_preferences = np.full(
             shape=(self.ship_count, nb_positions_in_reach + nb_shipyard_conversions),
@@ -605,25 +605,29 @@ class HaliteBot(object):
                 self.ship_position_preferences[ship_index,
                 nb_positions_in_reach:] = -self.parameters[
                     'convert_when_attacked_threshold']  # TODO: check whether the ship really needs to convert
-            ship_idx = self.ship_to_index[ship]
-            danger_scores = self.danger_matrices[
-                ship_idx, self.positions_in_reach_indices[TO_INDEX[ship.position]]].reshape(-1)
+            cargo = ship.halite
+            danger_scores = []
+            for position in self.positions_in_reach_list[ship.position]:
+                pos = TO_INDEX[position]
+                danger_score = 0
+                for pos2 in self.small_radius_list[TO_INDEX[position]]:
+                    if self.danger_matrix[pos2] < cargo:
+                        danger_score += 2 * 0.6 ** get_distance(pos, pos2)
+                    elif self.danger_matrix[pos2] == cargo:
+                        danger_score += 0.6 ** get_distance(pos, pos2)
+                danger_scores.append(danger_score)
             min_danger = min(danger_scores)
             max_danger = max(danger_scores)
             # if ship.halite > 0 and max_danger - min_danger > 1:
             # print(((danger_scores - min_danger) / (max_danger - min_danger)))
-            for position in self.positions_in_reach_list[ship.position]:
+            for pos_i, position in enumerate(self.positions_in_reach_list[ship.position]):
                 self.ship_position_preferences[
                     ship_index, self.position_to_index[position]] = self.calculate_cell_score(ship,
                                                                                               board.cells[position])
                 if ship.halite > 0 and max_danger - min_danger > 1:
-                    self.ship_position_preferences[ship_index, self.position_to_index[ship.position]] += int((1 - (
-                                self.danger_matrices[ship_idx, TO_INDEX[position]] - min_danger) / (
-                                                                                                                          max_danger - min_danger)) *
-                                                                                                             self.parameters[
-                                                                                                                 'cell_score_danger'] - (
-                                                                                                                         self.parameters[
-                                                                                                                             'cell_score_danger'] // 2))
+                    self.ship_position_preferences[ship_index, self.position_to_index[ship.position]] += int(
+                        (1 - (danger_scores[pos_i] - min_danger) / (max_danger - min_danger)) * self.parameters[
+                            'cell_score_danger'] - (self.parameters['cell_score_danger'] // 2))
 
             if ship.cell.shipyard is not None:
                 self.ship_position_preferences[ship_index, self.position_to_index[ship.position]] += self.parameters[
@@ -1297,19 +1301,6 @@ class HaliteBot(object):
                 for ship in hunting_groups[r]:
                     self.hunting_targets[ship.id] = possible_enemy_targets[step * c // 2][1]
 
-    def calculate_danger_matrices(self):
-        self.danger_matrices = np.zeros((len(self.me.ships), SIZE ** 2), dtype=np.float)
-        enemy_halite_matrix = get_hunting_matrix(self.enemies)
-        for ship in self.me.ships:
-            danger_matrix = np.zeros((SIZE ** 2), dtype=np.int)
-            ship_index = self.ship_to_index[ship]
-            cargo = ship.halite
-            danger_matrix[enemy_halite_matrix < cargo] = 2
-            danger_matrix[enemy_halite_matrix == cargo] = 1
-            for pos in range(SIZE ** 2):
-                self.danger_matrices[ship_index, pos] = sum(
-                    [(0.6 ** get_distance(pos, pos2)) * danger_matrix[pos2] for pos2 in self.small_radius_list[pos]])
-
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
             return self.ship_types[ship.id]
@@ -1654,7 +1645,7 @@ class HaliteBot(object):
         distance_from_shipyard = self.shipyard_distances[cell_position]
         # mining_score_alpha = clip(self.parameters['mining_score_alpha'] * ship_halite / (self.parameters['mining_score_cargo_norm'] * self.average_halite_per_populated_cell), self.parameters['mining_score_alpha_min'] + self.parameters['mining_score_alpha_step'] * self.step_count, self.parameters['mining_score_alpha'])
         mining_score_alpha = self.parameters[
-            'mining_score_alpha'] if self.step_count > 30 + distance_from_shipyard else 0.5
+            'mining_score_alpha'] if self.step_count > 20 + distance_from_shipyard else 0.5
         mining_score_beta = self.mining_score_beta
 
         position_quality = self.ultra_blurred_halite_map[ship_position] / self.max_ultra
