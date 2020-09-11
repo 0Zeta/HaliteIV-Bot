@@ -529,13 +529,19 @@ class HaliteBot(object):
                 self.nb_connected_shipyards += 1
 
         self.enemy_distances = dict()
+        self.enemy_distances2 = dict()
         for pos in range(SIZE ** 2):
             min_distance = 20
+            min_distance2 = 20
             for enemy_position in self.enemy_positions:
                 distance = get_distance(pos, enemy_position)
                 if distance < min_distance:
+                    min_distance2 = min_distance
                     min_distance = distance
+                elif distance < min_distance2:
+                    min_distance2 = distance
             self.enemy_distances[pos] = min_distance
+            self.enemy_distances2[pos] = min_distance2
 
         self.farming_positions = []  # Das Gelbe vom Ei
         self.minor_farming_positions = []  # Das Weiße vom Ei
@@ -1467,7 +1473,7 @@ class HaliteBot(object):
                           self.parameters['move_preference_construction_guarding'], destination=shipyard_point)
 
     def guard_shipyards(self, board: Board):
-        shipyard_guards = dict()
+        shipyard_guards = []
         if len(self.planned_shipyards) > 0:
             for shipyard_point in self.planned_shipyards:
                 self.guard_position(TO_INDEX[shipyard_point], shipyard_guards)
@@ -1478,7 +1484,6 @@ class HaliteBot(object):
             dominance = self.medium_dominance_map[shipyard_position]
 
             min_distance = self.guard_position(shipyard_position, shipyard_guards)
-
             enemies = set(filter(lambda cell: cell.ship is not None and cell.ship.player_id != self.player_id,
                                  get_neighbours(shipyard.cell)))
             max_halite = min([cell.ship.halite for cell in enemies]) if len(enemies) > 0 else 500
@@ -1526,32 +1531,59 @@ class HaliteBot(object):
                     else:
                         logging.info("Shipyard " + str(shipyard.id) + " cannot be protected.")
 
+        self.shipyard_guards = list(set(self.shipyard_guards))
+        self.guarding_ships = list(set(self.guarding_ships))
+
     def guard_position(self, shipyard_position, shipyard_guards):
         enemy_distance = self.enemy_distances[shipyard_position]
+        enemy_distance2 = self.enemy_distances2[shipyard_position]
         dominance = self.medium_dominance_map[shipyard_position]
         min_distance = 20
+        min_distance2 = 20
+        guard = None
+        guard2 = None
         for ship in [ship for ship in self.me.ships if
-                     ship.id not in self.ship_types.keys() or self.ship_types[ship.id] not in [ShipType.CONVERTING,
-                                                                                               ShipType.CONSTRUCTING]]:
+                     (ship.id not in self.ship_types.keys() or self.ship_types[ship.id] not in [ShipType.CONVERTING,
+                                                                                                ShipType.CONSTRUCTING]) and ship.id not in shipyard_guards]:
             distance = get_distance(shipyard_position, TO_INDEX[ship.position])
             if distance < min_distance and (
                     ship.halite <= self.hunting_halite_threshold or distance < enemy_distance):
+                min_distance2 = min_distance
                 min_distance = distance
-                shipyard_guards[shipyard_position] = ship
+                guard2 = guard
+                guard = ship
+            elif distance < min_distance2 and (
+                    ship.halite <= self.hunting_halite_threshold or distance < enemy_distance2):
+                guard2 = ship
+                min_distance2 = distance
+
+        if guard is not None:
+            shipyard_guards.append(guard.id)  # don't append guard2
         if dominance < self.parameters['shipyard_abandon_dominance']:
             logging.debug("Abandoning shipyard at position " + str(Point.from_index(shipyard_position, SIZE)))
-        elif enemy_distance - 1 <= min_distance and shipyard_position in shipyard_guards.keys():
-            guard = shipyard_guards[shipyard_position]
+        elif enemy_distance - 1 <= min_distance and guard is not None:
             self.shipyard_guards.append(guard.id)
             self.guarding_ships.append(guard)
             self.border_guards[guard.id] = shipyard_position
             self.ship_types[guard.id] = ShipType.GUARDING
             if enemy_distance <= min_distance:
                 self.urgent_shipyard_guards.append(guard.id)
-        elif enemy_distance - 2 <= min_distance and shipyard_position in shipyard_guards.keys():
-            guard = shipyard_guards[shipyard_position]
+        elif enemy_distance - 2 <= min_distance and guard is not None:
             if guard.cell.halite > 0:
                 self.change_position_score(guard, guard.position, -500)  # don't mine
+
+        if dominance < self.parameters['shipyard_abandon_dominance']:
+            logging.debug("Abandoning shipyard at position " + str(Point.from_index(shipyard_position, SIZE)))
+        elif enemy_distance2 - 1 <= min_distance2 and guard2 is not None:
+            self.shipyard_guards.append(guard2.id)
+            self.guarding_ships.append(guard2)
+            self.border_guards[guard2.id] = shipyard_position
+            self.ship_types[guard2.id] = ShipType.GUARDING
+            if enemy_distance2 <= min_distance2:
+                self.urgent_shipyard_guards.append(guard2.id)
+        elif enemy_distance2 - 2 <= min_distance2 and guard2 is not None:
+            if guard2.cell.halite > 0:
+                self.change_position_score(guard2, guard2.position, -500)  # don't mine
         return min_distance
 
     def determine_vulnerable_enemies(self):
