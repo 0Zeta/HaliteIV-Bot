@@ -51,7 +51,7 @@ PARAMETERS = {
     'hunting_max_group_distance': 5,
     'hunting_max_group_size': 1,
     'hunting_min_ships': 8,
-    'hunting_proportion': 0.435,
+    'hunting_proportion': 0.45,
     'hunting_proportion_after_farming': 0.35,
     'hunting_score_alpha': 1.1,
     'hunting_score_beta': 0.27,
@@ -102,7 +102,7 @@ PARAMETERS = {
     'move_preference_block_shipyard': -135,
     'move_preference_constructing': 144,
     'move_preference_construction_guarding': 130,
-    'move_preference_guarding': 100,
+    'move_preference_guarding': 102,
     'move_preference_guarding_stay': -126,
     'move_preference_hunting': 105,
     'move_preference_longest_axis': 15,
@@ -1856,7 +1856,7 @@ class HaliteBot(object):
                     break
                 elif neighbour.ship.halite == ship.halite and cell_pos not in self.shipyard_positions:
                     if (cell_pos not in self.farming_positions and self.shipyard_distances[
-                        cell_pos] > 1 and (
+                        cell_pos] > 1 and self.shipyard_distances[TO_INDEX[neighbour.position]] > 1 and (
                                 self.next_shipyard_position is None or get_distance(cell_pos,
                                                                                     self.next_shipyard_position) > 2)) or (
                             not trade and neighbour.shipyard is None and (
