@@ -14,7 +14,7 @@ NB_BASELINE_BOTS = 8
 IGNORE_SELECTION_PROBABILITY = 0.03  # the probability to let another genome survive
 NB_PARENTS = 2
 
-POOL_NAME = ""
+POOL_NAME = "2020-09-11 06-12"
 
 hyperparameters = {
     'cargo_map_halite_norm': ('int', (100, 400)),
@@ -89,10 +89,10 @@ hyperparameters = {
     'min_ships': ('int', (15, 40)),
     'min_shipyard_distance': ('int', (5, 6)),
     'mining_score_alpha': ('float', (0.85, 1.15)),
-    'mining_score_alpha_min': ('float', (0.2, 0.9)),
+    'mining_score_alpha_min': ('float', (0.6, 0.99)),
     'mining_score_alpha_step': ('float', (0.007, 0.015)),
-    'mining_score_beta': ('float', (0.75, 1)),
-    'mining_score_beta_min': ('float', (0.25, 0.9)),
+    'mining_score_beta': ('float', (0.85, 1)),
+    'mining_score_beta_min': ('float', (0.85, 0.99)),
     'mining_score_cargo_norm': ('float', (1.5, 3.5)),
     'mining_score_dominance_clip': ('float', (3, 7)),
     'mining_score_dominance_norm': ('float', (0.2, 2)),
