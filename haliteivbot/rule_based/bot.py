@@ -32,7 +32,7 @@ PARAMETERS = {
     'farming_end': 355,
     'farming_start': 40,
     'farming_start_shipyards': 2,
-    'greed_min_map_diff': 14,
+    'greed_min_map_diff': 20,
     'greed_stop': 37,
     'guarding_aggression_radius': 3,
     'guarding_end': 375,
@@ -91,13 +91,13 @@ PARAMETERS = {
     'mining_score_beta_min': 0.93,
     'mining_score_cargo_norm': 3.5,
     'mining_score_dominance_clip': 3.3,
-    'mining_score_dominance_norm': 0.4,
+    'mining_score_dominance_norm': 0.6,
     'mining_score_farming_penalty': 0.01,
     'mining_score_gamma': 0.99,
     'mining_score_juicy': 0.25,
     'mining_score_juicy_end': 0.1,
     'mining_score_minor_farming_penalty': 0.15,
-    'mining_score_start_returning': 50,
+    'mining_score_start_returning': 35,
     'minor_harvest_threshold': 0.5883198534618292,
     'move_preference_base': 95,
     'move_preference_block_shipyard': -155,
@@ -1220,14 +1220,17 @@ class HaliteBot(object):
                                                                                            TO_INDEX[enemy.position],
                                                                                            TO_INDEX[
                                                                                                shipyard.position]) <= 6])]
-            guarding_threshold_index = max(
+            enemies_in_guarding_zone = len([1 for e in self.enemies if TO_INDEX[e.position] in self.guarding_positions])
+            guarding_threshold_index = min(max(
                 min(ceil(((1 - clip(self.ship_advantage, 0, self.parameters['guarding_ship_advantage_norm']) /
                            self.parameters['guarding_ship_advantage_norm']) * (
                                   clip(self.enemy_hunting_proportion, 0, self.parameters['guarding_norm']) /
                                   self.parameters['guarding_norm'])) * len(assigned_hunting_scores)) - 1,
                     self.parameters['guarding_max_ships_per_shipyard'] * len(endangered_shipyards) - 1,
                     0 if self.step_count >= self.parameters['guarding_end'] else 500),
-                min(len(assigned_hunting_scores) - 1, len(self.me.shipyards))) - len(self.guarding_ships)
+                min(len(assigned_hunting_scores) - 1, len(self.me.shipyards)),
+                len(assigned_hunting_scores) - int(2.5 * enemies_in_guarding_zone)) - len(self.guarding_ships),
+                                           len(self.guarding_border) - 1)
             if guarding_threshold_index > 0:
                 guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
                 for r, c in zip(row, col):

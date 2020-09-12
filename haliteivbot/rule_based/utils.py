@@ -158,7 +158,7 @@ def get_dominance_map(me, opponents, sigma, factor, halite_clip, size=21):
             dominance_map[TO_INDEX[ship.position]] -= clip(halite_clip - ship.halite, 0,
                                                            halite_clip) / halite_clip
         for shipyard in player.shipyards:
-            dominance_map[TO_INDEX[shipyard.position]] -= 1.5
+            dominance_map[TO_INDEX[shipyard.position]] -= 2
     blurred_dominance_map = gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma, mode='wrap')
     return factor * blurred_dominance_map.reshape((-1,))
 
