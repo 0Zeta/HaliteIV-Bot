@@ -5,6 +5,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -723,7 +724,7 @@ class HaliteBot(object):
                                        max_distance - 1) + self.parameters['guarding_radius2']
                     farming_radius = (max_distance if self.max_shipyard_connections >= 2 else
                                       max_distance - 2) - 1
-                    border_radius = farming_radius + 1
+                    border_radius = farming_radius + 2
                     required_in_range = min(3, max(self.parameters['farming_start_shipyards'],
                                                    self.max_shipyard_connections + 1))
                     if required_in_range == 2 and get_max_distance(shipyard_points) == self.parameters[
@@ -824,7 +825,7 @@ class HaliteBot(object):
                     spiegelei[pos] += 1
                 for pos in self.guarding_border:
                     spiegelei[pos] = 10
-                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
