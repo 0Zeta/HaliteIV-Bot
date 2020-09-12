@@ -1,4 +1,3 @@
-import logging
 import math
 
 import numpy as np
@@ -280,7 +279,6 @@ def get_axis(direction):
 def get_triangles(positions, min_distance, max_distance):
     triangles = []
     if len(positions) < 3:
-        logging.error("Trying to compute triangles with less than three positions")
         return triangles
     for p1 in range(len(positions)):
         A = positions[p1]

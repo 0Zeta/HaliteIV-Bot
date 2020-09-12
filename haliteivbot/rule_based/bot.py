@@ -693,14 +693,17 @@ class HaliteBot(object):
         self.move_ships(board)
         self.spawn_ships(board)
         self.last_shipyard_count = len(self.me.shipyards)
+        print(len(self.me.ships) / max(len(self.real_farming_points), 1))
+        print(self.harvest_threshold)
         return self.me.next_actions
 
     def compute_regions(self, board: Board):
         if self.max_shipyard_connections > 0:
-            if self.max_shipyard_connections > 1:
-                points = get_triangles([shipyard.position for shipyard in self.me.shipyards],
-                                       self.parameters['min_shipyard_distance'],
-                                       self.parameters['max_shipyard_distance'])
+            triangles = get_triangles([shipyard.position for shipyard in self.me.shipyards],
+                                      self.parameters['min_shipyard_distance'],
+                                      self.parameters['max_shipyard_distance'])
+            if len(triangles) > 0:
+                points = triangles
             else:
                 points = []
                 for i in range(len(self.shipyard_positions)):
@@ -726,7 +729,7 @@ class HaliteBot(object):
                                       max_distance - 2) - 1
                     border_radius = farming_radius + 2
                     required_in_range = min(3, max(self.parameters['farming_start_shipyards'],
-                                                   self.max_shipyard_connections + 1))
+                                                   len(shipyard_points)))
                     if required_in_range == 2 and get_max_distance(shipyard_points) == self.parameters[
                         'max_shipyard_distance']:
                         guarding_radius += 1
@@ -1229,7 +1232,7 @@ class HaliteBot(object):
                     self.parameters['guarding_max_ships_per_shipyard'] * len(endangered_shipyards) - 1,
                     0 if self.step_count >= self.parameters['guarding_end'] else 500),
                 min(len(assigned_hunting_scores) - 1, len(self.me.shipyards)),
-                len(assigned_hunting_scores) - int(2.5 * enemies_in_guarding_zone)) - len(self.guarding_ships),
+                len(assigned_hunting_scores) - int(2.5 * enemies_in_guarding_zone) - 1) - len(self.guarding_ships),
                                            len(self.guarding_border) - 1)
             if guarding_threshold_index > 0:
                 guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
