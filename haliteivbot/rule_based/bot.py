@@ -6,10 +6,9 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
-from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 
 PARAMETERS = {
     'cargo_map_halite_norm': 200,
@@ -827,7 +826,7 @@ class HaliteBot(object):
                     spiegelei[pos] += 1
                 for pos in self.guarding_border:
                     spiegelei[pos] = 10
-                display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
@@ -1640,8 +1639,11 @@ class HaliteBot(object):
             ship_pos = TO_INDEX[ship.position]
             escape_positions = []
             for pos in self.positions_in_reach_indices[ship_pos]:
-                escape_possibilities = len([int(pos2) for pos2 in np.argwhere(hunting_matrix >= ship.halite) if
-                                            int(pos2) in self.positions_in_reach_indices[pos] and int(pos2) != pos])
+                escape_possibilities = []
+                for pos2 in self.positions_in_reach_indices[pos]:
+                    if pos2 != pos and hunting_matrix[pos2] >= ship.halite:
+                        escape_possibilities.append(pos2)
+                escape_possibilities = len(escape_possibilities)
                 if hunting_matrix[pos] >= ship.halite and escape_possibilities > 1:
                     escape_positions.append(pos)
                 self.escape_count[ship.id + str(pos)] = escape_possibilities
