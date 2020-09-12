@@ -1814,7 +1814,7 @@ class HaliteBot(object):
         enemy_pos = TO_INDEX[enemy.position]
         distance = get_distance(ship_pos, enemy_pos)
         if d_halite < 0:
-            halite_score = -1
+            halite_score = -9999
         elif d_halite == 0:
             halite_score = 0.25 * self.parameters['hunting_score_ship_bonus'] * (1 - self.step_count / 398) / \
                            self.parameters['hunting_score_halite_norm']
