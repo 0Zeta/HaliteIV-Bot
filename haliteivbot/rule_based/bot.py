@@ -8,7 +8,7 @@ from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, Shipy
 
 from haliteivbot.rule_based.utils import *
 
-logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 PARAMETERS = {
     'cargo_map_halite_norm': 200,
@@ -59,7 +59,7 @@ PARAMETERS = {
     'hunting_score_cargo_clip': 1.5,
     'hunting_score_delta': 0.9,
     'hunting_score_farming_position_penalty': 0.8,
-    'hunting_score_gamma': 0.98,
+    'hunting_score_gamma': 0.9,
     'hunting_score_halite_norm': 210,
     'hunting_score_hunt': 7,
     'hunting_score_intercept': 4,
@@ -1039,6 +1039,8 @@ class HaliteBot(object):
                 self.mining_ships.append(ship)
             elif ship_type == ShipType.RETURNING or ship_type == ShipType.ENDING:
                 self.returning_ships.append(ship)
+            elif ship_type == ShipType.HUNTING:
+                self.hunting_ships.append(ship)
 
         self.assign_ship_targets(board)  # also converts some ships to hunting/returning ships
 
@@ -1231,7 +1233,7 @@ class HaliteBot(object):
                     self.parameters['guarding_max_ships_per_shipyard'] * len(endangered_shipyards) - 1,
                     0 if self.step_count >= self.parameters['guarding_end'] else 500),
                 min(len(assigned_hunting_scores) - 1, len(self.me.shipyards)),
-                len(assigned_hunting_scores) - int(2.5 * enemies_in_guarding_zone) - 1) - len(self.guarding_ships),
+                len(assigned_hunting_scores) - int(3 * enemies_in_guarding_zone) - 1) - len(self.guarding_ships),
                                            len(self.guarding_border) - 1)
             if guarding_threshold_index > 0:
                 guarding_threshold = assigned_hunting_scores[guarding_threshold_index]
@@ -1322,12 +1324,16 @@ class HaliteBot(object):
     def get_ship_type(self, ship: Ship, board: Board) -> ShipType:
         if ship.id in self.ship_types.keys():
             return self.ship_types[ship.id]
+        ship_pos = TO_INDEX[ship.position]
         if board.step >= self.parameters['end_start']:
-            if self.shipyard_distances[TO_INDEX[ship.position]] + board.step + self.parameters[
+            if self.shipyard_distances[ship_pos] + board.step + self.parameters[
                 'end_return_extra_moves'] >= 398 and ship.halite >= self.parameters['ending_halite_threshold']:
                 return ShipType.ENDING
         if ship.halite >= self.parameters['return_halite']:
             return ShipType.RETURNING
+        for pos, halite in self.vulnerable_positions:
+            if ship.halite <= halite and get_distance(ship_pos, pos) <= 2:
+                return ShipType.HUNTING
         else:
             return ShipType.MINING
 
@@ -1416,7 +1422,7 @@ class HaliteBot(object):
             else:
                 target = max(self.enemies, key=lambda enemy: self.calculate_hunting_score(ship, enemy))
             if (isinstance(target, Shipyard) and ship.halite <= self.parameters[
-                'max_halite_attack_shipyard']) or (isinstance(target, Ship) and target.halite > ship.halite):
+                'max_halite_attack_shipyard']) or (isinstance(target, Ship) and target.halite >= ship.halite):
                 target_position = target.position
                 target_pos = TO_INDEX[target_position]
                 distance = get_distance(ship_pos, target_pos)
@@ -1635,6 +1641,7 @@ class HaliteBot(object):
         hunting_matrix = get_hunting_matrix(self.me.ships)
         self.vulnerable_ships = dict()
         self.escape_count = dict()
+        self.vulnerable_positions = []
         for ship in self.enemies:
             ship_pos = TO_INDEX[ship.position]
             escape_positions = []
@@ -1649,11 +1656,13 @@ class HaliteBot(object):
                 self.escape_count[ship.id + str(pos)] = escape_possibilities
             if len(escape_positions) == 0:
                 self.vulnerable_ships[ship.id] = -2
+                self.vulnerable_positions.append((TO_INDEX[ship.position], ship.halite))
             elif len(escape_positions) == 1:
                 if escape_positions[0] == ship_pos:
                     self.vulnerable_ships[ship.id] = -1  # stay still
                 else:
                     self.vulnerable_ships[ship.id] = get_direction_to_neighbour(ship_pos, escape_positions[0])
+                self.vulnerable_positions.append((TO_INDEX[ship.position], ship.halite))
         logging.info("Number of vulnerable ships: " + str(len(self.vulnerable_ships)))
 
     def should_convert(self, ship: Ship):
@@ -1848,6 +1857,8 @@ class HaliteBot(object):
                     # We can intercept the target
                     score *= self.parameters['hunting_score_intercept']
                     self.interceptions[ship.id + enemy.id] = target_dir
+            elif distance <= 4:
+                score *= self.parameters['hunting_score_intercept'] / 2
         if len(self.real_farming_points) > 0 and enemy_pos not in self.farming_positions:
             farming_positions_in_the_way = min(
                 [self.get_farming_positions_count_in_between(ship.position, enemy.position, dir) for dir in
@@ -1901,7 +1912,7 @@ class HaliteBot(object):
         for neighbour in get_neighbours(cell):
             if neighbour.ship is not None and neighbour.ship.player_id != self.player_id:
                 if neighbour.ship.halite < ship.halite:  # We really don't want to go to that cell unless it's necessary.
-                    neighbour_value = -(500 + ship.halite) * self.parameters['cell_score_neighbour_discount']
+                    neighbour_value = -(500 + ship.halite) * (self.parameters['cell_score_neighbour_discount'] + 0.15)
                     break
                 elif neighbour.ship.halite == ship.halite and cell_pos not in self.shipyard_positions:
                     if (cell_pos not in self.farming_positions and self.shipyard_distances[
