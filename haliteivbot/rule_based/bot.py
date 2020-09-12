@@ -1,3 +1,4 @@
+import logging
 import sys
 from enum import Enum
 from math import ceil
@@ -44,8 +45,8 @@ PARAMETERS = {
     'guarding_radius2': 0,
     'guarding_ship_advantage_norm': 17,
     'guarding_stop': 342,
-    'harvest_threshold_alpha': 0.25,
-    'harvest_threshold_beta': 0.35,
+    'harvest_threshold_alpha': 0.15,
+    'harvest_threshold_beta': 0.2,
     'harvest_threshold_hunting_norm': 0.65,
     'harvest_threshold_ship_advantage_norm': 15,
     'hunting_halite_threshold': 0.05,
@@ -61,8 +62,8 @@ PARAMETERS = {
     'hunting_score_farming_position_penalty': 0.8,
     'hunting_score_gamma': 0.98,
     'hunting_score_halite_norm': 210,
-    'hunting_score_hunt': 1.8,
-    'hunting_score_intercept': 1.4,
+    'hunting_score_hunt': 7,
+    'hunting_score_intercept': 4,
     'hunting_score_iota': 0.25,
     'hunting_score_kappa': 0.12,
     'hunting_score_region': 2.8,
@@ -75,7 +76,7 @@ PARAMETERS = {
     'map_ultra_blur': 1.75,
     'max_guarding_ships_per_target': 2,
     'max_halite_attack_shipyard': 0,
-    'max_hunting_ships_per_direction': 1,
+    'max_hunting_ships_per_direction': 2,
     'max_intrusion_count': 3,
     'max_ship_advantage': 25,
     'max_shipyard_distance': 8,
@@ -693,8 +694,6 @@ class HaliteBot(object):
         self.move_ships(board)
         self.spawn_ships(board)
         self.last_shipyard_count = len(self.me.shipyards)
-        print(len(self.me.ships) / max(len(self.real_farming_points), 1))
-        print(self.harvest_threshold)
         return self.me.next_actions
 
     def compute_regions(self, board: Board):
@@ -1196,6 +1195,7 @@ class HaliteBot(object):
         hunting_scores = np.zeros(
             (len(self.hunting_ships), len(self.enemies) * 4 * self.parameters['max_hunting_ships_per_direction']))
         hunting_ship_to_idx = {ship.id: idx for idx, ship in enumerate(self.hunting_ships)}
+        self.interceptions = dict()
         for ship_index, ship in enumerate(self.hunting_ships):
             ship_pos = TO_INDEX[ship.position]
             for enemy_index, (direction, enemy_ship) in enumerate(possible_enemy_targets):
@@ -1419,14 +1419,47 @@ class HaliteBot(object):
             if (isinstance(target, Shipyard) and ship.halite <= self.parameters[
                 'max_halite_attack_shipyard']) or (isinstance(target, Ship) and target.halite > ship.halite):
                 target_position = target.position
+                target_pos = TO_INDEX[target_position]
+                distance = get_distance(ship_pos, target_pos)
                 # Don't mine
                 if ship.cell.halite > 0 and get_distance(ship_pos, TO_INDEX[target_position]) > 1:
                     self.change_position_score(ship, ship.position,
                                                int(-0.8 * self.parameters['move_preference_hunting']))
-                self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
-                                  self.farthest_directions[ship_pos][TO_INDEX[target_position]],
-                                  self.parameters['move_preference_hunting'], penalize_farming,
-                                  destination=target.position)
+                if (ship.id + target.id) in self.interceptions.keys():
+                    self.prefer_moves(ship, self.interceptions[ship.id + target.id], [],
+                                      self.parameters['move_preference_hunting'], penalize_farming,
+                                      destination=target.position)
+                else:
+                    if distance > 2 or isinstance(target, Shipyard):
+                        self.prefer_moves(ship, navigate(ship_position, target_position, self.size),
+                                          self.farthest_directions[ship_pos][TO_INDEX[target_position]],
+                                          self.parameters['move_preference_hunting'], penalize_farming,
+                                          destination=target.position)
+                    else:
+                        possible_target_positions = self.positions_in_reach_list[target_position]
+                        possible_moves = []
+                        for position in self.positions_in_reach_list[ship.position]:
+                            if position not in possible_target_positions:
+                                if position != ship.position or self.observation['halite'][TO_INDEX[position]] >= 4 * (
+                                        target.halite - ship.halite):
+                                    self.change_position_score(ship, position,
+                                                               int(-self.parameters['move_preference_hunting'] // 1.2))
+                                else:
+                                    self.change_position_score(ship, position,
+                                                               int(-self.parameters['move_preference_hunting'] // 2))
+                            else:
+                                possible_moves.append(position)
+                        possible_moves.sort(key=lambda pos: self.escape_count[target.id + str(TO_INDEX[pos])],
+                                            reverse=True)  # TODO: positions can have equal escape counts
+                        for i, pos in enumerate(possible_moves):
+                            if pos != ship.position or self.observation['halite'][TO_INDEX[pos]] < 4 * (
+                                    target.halite - ship.halite):
+                                self.change_position_score(ship, pos,
+                                                           int(self.parameters['move_preference_hunting'] / (i + 1)))
+                            elif target.id in self.vulnerable_ships.keys() and self.vulnerable_ships[target.id] == -2:
+                                self.change_position_score(ship, pos, self.parameters['move_preference_hunting'])
+                            else:
+                                self.change_position_score(ship, pos, int(-self.parameters['move_preference_hunting']))
 
     def handle_guarding_ship(self, ship: Ship):
         if ship.id not in self.border_guards.keys():
@@ -1602,10 +1635,16 @@ class HaliteBot(object):
     def determine_vulnerable_enemies(self):
         hunting_matrix = get_hunting_matrix(self.me.ships)
         self.vulnerable_ships = dict()
+        self.escape_count = dict()
         for ship in self.enemies:
             ship_pos = TO_INDEX[ship.position]
-            escape_positions = [int(pos) for pos in np.argwhere(hunting_matrix >= ship.halite) if
-                                int(pos) in self.positions_in_reach_indices[ship_pos]]
+            escape_positions = []
+            for pos in self.positions_in_reach_indices[ship_pos]:
+                escape_possibilities = len([int(pos2) for pos2 in np.argwhere(hunting_matrix >= ship.halite) if
+                                            int(pos2) in self.positions_in_reach_indices[pos] and int(pos2) != pos])
+                if hunting_matrix[pos] >= ship.halite and escape_possibilities > 1:
+                    escape_positions.append(pos)
+                self.escape_count[ship.id + str(pos)] = escape_possibilities
             if len(escape_positions) == 0:
                 self.vulnerable_ships[ship.id] = -2
             elif len(escape_positions) == 1:
@@ -1613,7 +1652,7 @@ class HaliteBot(object):
                     self.vulnerable_ships[ship.id] = -1  # stay still
                 else:
                     self.vulnerable_ships[ship.id] = get_direction_to_neighbour(ship_pos, escape_positions[0])
-        logging.debug("Number of vulnerable ships: " + str(len(self.vulnerable_ships)))
+        logging.info("Number of vulnerable ships: " + str(len(self.vulnerable_ships)))
 
     def should_convert(self, ship: Ship):
         if self.halite + ship.halite < self.config.convert_cost:
@@ -1806,6 +1845,7 @@ class HaliteBot(object):
                     ship_pos, interception_pos):
                     # We can intercept the target
                     score *= self.parameters['hunting_score_intercept']
+                    self.interceptions[ship.id + enemy.id] = target_dir
         if len(self.real_farming_points) > 0 and enemy_pos not in self.farming_positions:
             farming_positions_in_the_way = min(
                 [self.get_farming_positions_count_in_between(ship.position, enemy.position, dir) for dir in
@@ -2003,6 +2043,7 @@ class HaliteBot(object):
             self.ship_position_preferences[:, self.position_to_index[position]] > -50] += 900
 
     def calculate_harvest_threshold(self):
+        ships_farming_points = len(self.me.ships) / max(len(self.real_farming_points), 1)
         threshold = clip(1.09 * self.step_count + 77, 80, 480)
         ship_advantage = self.parameters['harvest_threshold_beta'] * clip(
             self.ship_advantage + self.parameters['harvest_threshold_ship_advantage_norm'], 0,
@@ -2013,6 +2054,7 @@ class HaliteBot(object):
                 1 - clip(self.enemy_hunting_proportion, 0, self.parameters['harvest_threshold_hunting_norm']) /
                 self.parameters['harvest_threshold_hunting_norm']))) * (
                 1 - (2 * self.parameters['harvest_threshold_beta'] / 3) + ship_advantage)
+        threshold = 0.85 * threshold + 0.3 * clip((ships_farming_points - 0.9) / 1.1, 0, 1)
         return int(clip(threshold, 110, 450))
 
 
