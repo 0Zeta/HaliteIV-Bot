@@ -1454,7 +1454,7 @@ class HaliteBot(object):
                                                                int(-self.parameters['move_preference_hunting'] // 2))
                             else:
                                 possible_moves.append(position)
-                        possible_moves.sort(key=lambda pos: self.escape_count[target.id + str(TO_INDEX[pos])],
+                        possible_moves.sort(key=lambda pos: self.escape_count[target.id + str(TO_INDEX[pos] + 1)],
                                             reverse=True)  # TODO: positions can have equal escape counts
                         for i, pos in enumerate(possible_moves):
                             if pos != ship.position or self.observation['halite'][TO_INDEX[pos]] < 4 * (
@@ -1653,7 +1653,7 @@ class HaliteBot(object):
                 escape_possibilities = len(escape_possibilities)
                 if hunting_matrix[pos] >= ship.halite and escape_possibilities > 1:
                     escape_positions.append(pos)
-                self.escape_count[ship.id + str(pos)] = escape_possibilities
+                self.escape_count[ship.id + str(pos + 1)] = escape_possibilities
             if len(escape_positions) == 0:
                 self.vulnerable_ships[ship.id] = -2
                 self.vulnerable_positions.append((TO_INDEX[ship.position], ship.halite))
