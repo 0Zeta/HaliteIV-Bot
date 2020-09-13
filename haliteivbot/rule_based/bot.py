@@ -1462,13 +1462,20 @@ class HaliteBot(object):
                                 logging.critical("Escape position " + str(possible_moves[pos_idx]) + " for ship " + str(
                                     ship.id) + " not in escape keys: " + str(
                                     target.id + str(TO_INDEX[possible_moves[pos_idx]] + 1)))
-                        possible_moves.sort(key=lambda pos: self.escape_count[target.id + str(TO_INDEX[pos] + 1)],
-                                            reverse=True)  # TODO: positions can have equal escape counts
-                        for i, pos in enumerate(possible_moves):
+                        move_ranks = dict()
+                        for i, count in enumerate(sorted(
+                                set([self.escape_count[target.id + str(TO_INDEX[pos] + 1)] for pos in possible_moves]),
+                                reverse=True)):
+                            move_ranks[count] = i
+                        for pos in possible_moves:
                             if pos != ship.position or self.observation['halite'][TO_INDEX[pos]] < 4 * (
                                     target.halite - ship.halite):
                                 self.change_position_score(ship, pos,
-                                                           int(self.parameters['move_preference_hunting'] / (i + 1)))
+                                                           int(self.parameters['move_preference_hunting'] / (move_ranks[
+                                                                                                                 self.escape_count[
+                                                                                                                     target.id + str(
+                                                                                                                         TO_INDEX[
+                                                                                                                             pos] + 1)]] + 1)))
                             elif target.id in self.vulnerable_ships.keys() and self.vulnerable_ships[target.id] == -2:
                                 self.change_position_score(ship, pos, self.parameters['move_preference_hunting'])
                             else:
@@ -2065,7 +2072,7 @@ class HaliteBot(object):
 
     def calculate_harvest_threshold(self):
         ships_farming_points = len(self.me.ships) / max(len(self.real_farming_points), 1)
-        threshold = clip(1.12 * self.step_count + 82, 80, 480)
+        threshold = clip(1.1 * self.step_count + 80, 80, 480)
         ship_advantage = self.parameters['harvest_threshold_beta'] * clip(
             self.ship_advantage + self.parameters['harvest_threshold_ship_advantage_norm'], 0,
             1.5 * self.parameters['harvest_threshold_ship_advantage_norm']) / self.parameters[
