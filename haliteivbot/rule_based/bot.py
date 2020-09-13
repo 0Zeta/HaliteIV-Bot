@@ -27,7 +27,7 @@ PARAMETERS = {
     'dominance_map_small_radius': 3,
     'dominance_map_small_sigma': 1.6,
     'early_second_shipyard': 20,
-    'end_return_extra_moves': 5,
+    'end_return_extra_moves': 3,
     'end_start': 382,
     'ending_halite_threshold': 10,
     'farming_end': 355,
@@ -414,6 +414,7 @@ class HaliteBot(object):
         self.average_halite_per_cell = 0
         self.rank = 0
         self.first_shipyard_step = 0
+        self.farming_end = self.parameters['farming_end']
 
         self.planned_moves = list()  # a list of positions where our ships will be in the next step
         self.planned_shipyards = list()
@@ -672,6 +673,8 @@ class HaliteBot(object):
         self.debug()
 
         self.determine_vulnerable_enemies()
+        if self.step_count < self.farming_end:
+            self.farming_end = self.estimate_farming_end()
 
         if self.handle_special_steps(board):
             return self.me.next_actions
@@ -781,7 +784,7 @@ class HaliteBot(object):
             point = Point.from_index(pos, SIZE)
             if board.cells[point].halite > 0:
                 self.real_farming_points.append(point)
-        if self.step_count < self.parameters['farming_start'] or self.step_count > self.parameters['farming_end']:
+        if self.step_count < self.parameters['farming_start'] or self.step_count > self.farming_end:
             self.farming_positions = []
             self.minor_farming_positions = []
         self.guarding_positions = set(self.guarding_positions)
@@ -1030,12 +1033,11 @@ class HaliteBot(object):
         ships = self.me.ships.copy()
 
         for ship in ships:  # TODO: questionable
-            if ship.cell.shipyard is not None and 30 < self.step_count < self.parameters[
-                'farming_end'] and ship.id not in self.ship_types.keys():
+            if ship.cell.shipyard is not None and 30 < self.step_count < self.farming_end and ship.id not in self.ship_types.keys():
                 self.guarding_ships.append(ship)
                 self.ship_types[ship.id] = ShipType.GUARDING
 
-        if self.step_count >= self.parameters['disable_hunting_till']:
+        if self.parameters['disable_hunting_till'] <= self.step_count <= (self.farming_end + 10):
             ships_for_interception = [ship for ship in self.me.ships if ship.id not in self.ship_types.keys()]
             for target_id in self.vulnerable_ships.keys():
                 safe_direction = self.vulnerable_ships[target_id]
@@ -1155,7 +1157,7 @@ class HaliteBot(object):
             'mining_score_start_returning'] else self.parameters[
             'mining_score_juicy']  # Don't return too often early in the game
 
-        if self.parameters['farming_end'] < self.step_count < self.parameters['end_start']:
+        if self.farming_end < self.step_count < self.parameters['end_start']:
             self.mining_score_beta = self.parameters['mining_score_juicy_end']
 
         mining_scores = np.zeros((len(self.mining_ships), len(mining_positions) + len(dropoff_positions)))
@@ -1178,8 +1180,8 @@ class HaliteBot(object):
 
         assigned_scores = [mining_scores[r][c] for r, c in zip(row, col)]
         assigned_scores.sort()
-        hunting_proportion = self.parameters['hunting_proportion'] if self.step_count < self.parameters[
-            'farming_end'] else self.parameters['hunting_proportion_after_farming']
+        hunting_proportion = self.parameters['hunting_proportion'] if self.step_count < self.farming_end else \
+            self.parameters['hunting_proportion_after_farming']
         if len(assigned_scores) > 0:
             logging.debug("assigned mining scores mean: {}".format(np.mean(assigned_scores)))
         hunting_enabled = board.step > self.parameters['disable_hunting_till'] and (self.ship_count >= self.parameters[
@@ -1807,8 +1809,8 @@ class HaliteBot(object):
             halite_val *= 0.75 ** (distance_from_ship - 1)
         else:
             halite_val = min(1.02 ** distance_from_ship * halite_val, 500)
-        farming_activated = self.parameters['farming_start'] <= (self.step_count + distance_from_ship) < \
-                            self.parameters['farming_end']
+        farming_activated = self.parameters['farming_start'] <= (
+                self.step_count + distance_from_ship) < self.farming_end
         if distance_from_shipyard > 20:
             # There is no shipyard.
             distance_from_shipyard = 20
@@ -2020,6 +2022,25 @@ class HaliteBot(object):
 
     def calculate_player_map_presence(self, player):
         return len(player.ships) + len(player.shipyards)
+
+    def estimate_farming_end(self):
+        farming_positions = [TO_INDEX[point] for point in self.real_farming_points]
+        avg_halite = sum([0] + [self.observation['halite'][pos] for pos in farming_positions]) / max(
+            len(farming_positions), 1)
+        avg_return_distance = sum([0] + [self.shipyard_distances[pos] for pos in farming_positions]) / max(
+            len(farming_positions), 1)
+        avg_ship_distance = sum(
+            [0] + [self.shipyard_distances[TO_INDEX[ship.position]] for ship in self.me.ships]) / max(
+            len(self.me.ships), 1)
+        ship_count = int(len(self.me.ships) * 0.6)  # conservative estimate
+        positions_per_ship = len(farming_positions) / max(ship_count, 1)
+        steps_per_position = ceil(math.log((20 / max(avg_halite, 1)), 0.75))
+        steps_per_ship = positions_per_ship * steps_per_position
+        steps_between_positions = max(ceil(2 * positions_per_ship - 2), 0)
+        steps_per_ship += steps_between_positions + ceil(avg_ship_distance) + ceil(
+            2.25 * avg_return_distance * max(positions_per_ship, 1)) + self.parameters['end_return_extra_moves'] + 9
+        farming_end = clip(398 - ceil(steps_per_ship), 330, 365)
+        return farming_end
 
     def prefer_moves(self, ship, directions, longest_axis, weight, penalize_farming=True, reduce_farming_penalty=False,
                      destination=None):
