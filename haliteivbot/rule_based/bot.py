@@ -1455,6 +1455,12 @@ class HaliteBot(object):
                                                                int(-self.parameters['move_preference_hunting'] // 2))
                             else:
                                 possible_moves.append(position)
+                        for pos_idx in range(len(possible_moves)):
+                            if (target.id + str(TO_INDEX[possible_moves[pos_idx]] + 1)) not in self.escape_count.keys():
+                                self.escape_count[target.id + str(TO_INDEX[possible_moves[pos_idx]] + 1)] = 3
+                                logging.critical("Escape position " + str(possible_moves[pos_idx]) + " for ship " + str(
+                                    ship.id) + " not in escape keys: " + str(
+                                    target.id + str(TO_INDEX[possible_moves[pos_idx]] + 1)))
                         possible_moves.sort(key=lambda pos: self.escape_count[target.id + str(TO_INDEX[pos] + 1)],
                                             reverse=True)  # TODO: positions can have equal escape counts
                         for i, pos in enumerate(possible_moves):
