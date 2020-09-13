@@ -62,8 +62,8 @@ PARAMETERS = {
     'hunting_score_farming_position_penalty': 0.8,
     'hunting_score_gamma': 0.95,
     'hunting_score_halite_norm': 210,
-    'hunting_score_hunt': 7,
-    'hunting_score_intercept': 4,
+    'hunting_score_hunt': 4.5,
+    'hunting_score_intercept': 5,
     'hunting_score_iota': 0.25,
     'hunting_score_kappa': 0.12,
     'hunting_score_region': 2.8,
@@ -470,6 +470,7 @@ class HaliteBot(object):
 
         self.enemies = [ship for player in board.players.values() for ship in player.ships if
                         player.id != self.player_id]
+        self.id_to_enemy = {ship.id: ship for ship in self.enemies}
         self.enemy_positions = [TO_INDEX[ship.position] for ship in self.enemies]
 
         self.average_halite_per_cell = sum([halite for halite in self.observation['halite']]) / self.size ** 2
@@ -1028,11 +1029,45 @@ class HaliteBot(object):
 
         ships = self.me.ships.copy()
 
-        for ship in ships:
+        for ship in ships:  # TODO: questionable
             if ship.cell.shipyard is not None and 30 < self.step_count < self.parameters[
                 'farming_end'] and ship.id not in self.ship_types.keys():
                 self.guarding_ships.append(ship)
                 self.ship_types[ship.id] = ShipType.GUARDING
+
+        if self.step_count >= self.parameters['disable_hunting_till']:
+            ships_for_interception = [ship for ship in self.me.ships if ship.id not in self.ship_types.keys()]
+            for target_id in self.vulnerable_ships.keys():
+                safe_direction = self.vulnerable_ships[target_id]
+                target = self.id_to_enemy[target_id]
+                required_halite = target.halite - 1
+                intercepting_ship = None
+                min_halite = 9999
+                min_distance = 20
+                for ship in ships_for_interception:
+                    if ship.id in self.ship_types.keys():
+                        continue
+                    if ship.halite > required_halite:
+                        continue
+                    if safe_direction == -2 or safe_direction == -1:
+                        if self.danger_matrix[TO_INDEX[ship.position]] > ship.halite and get_distance(
+                                TO_INDEX[ship.position], TO_INDEX[target.position]):
+                            self.ship_types[ship.id] = ShipType.HUNTING
+                        continue
+                    can_intercept, interception_direction, interception_distance, interception_position = self.get_interception(
+                        ship, target, safe_direction)
+                    if not can_intercept:
+                        continue
+                    if interception_distance > min_distance or (
+                            interception_distance == min_distance and ship.halite >= min_halite):
+                        continue
+                    if interception_distance > 3 and ship.halite > self.danger_matrix[interception_position]:
+                        continue
+                    intercepting_ship = ship
+                    min_halite = ship.halite
+                    min_distance = interception_distance
+                if intercepting_ship is not None:
+                    self.ship_types[intercepting_ship.id] = ShipType.HUNTING
 
         for ship in ships:
             ship_type = self.get_ship_type(ship, board)
@@ -1859,17 +1894,8 @@ class HaliteBot(object):
             if distance <= 2:
                 score *= self.parameters['hunting_score_hunt']
             elif safe_direction != -1 and safe_direction != -2:  # The ship can only stay at it's current position or it has no safe position.
-                if safe_direction == ShipAction.WEST or safe_direction == ShipAction.EAST:
-                    # chase along the x-axis
-                    interception_pos = TO_INDEX[Point(ship.position.x, enemy.position.y)]
-                else:
-                    # chase along the y-axis
-                    interception_pos = TO_INDEX[Point(enemy.position.x, ship.position.y)]
-                target_dir = nav(enemy_pos, interception_pos)
-                if (len(target_dir) > 0 and target_dir[0] == safe_direction) and get_distance(enemy_pos,
-                                                                                              interception_pos) >= get_distance(
-                    ship_pos, interception_pos):
-                    # We can intercept the target
+                can_intercept, target_dir, _, _ = self.get_interception(ship, enemy, safe_direction)
+                if can_intercept:
                     score *= self.parameters['hunting_score_intercept']
                     self.interceptions[ship.id + enemy.id] = target_dir
             elif distance <= 4:
@@ -1880,6 +1906,27 @@ class HaliteBot(object):
                  nav(ship_pos, enemy_pos)])
             score *= self.parameters['hunting_score_farming_position_penalty'] ** farming_positions_in_the_way
         return score
+
+    def get_interception(self, ship, enemy, safe_direction):
+        ship_pos = TO_INDEX[ship.position]
+        enemy_pos = TO_INDEX[enemy.position]
+        if safe_direction == ShipAction.WEST or safe_direction == ShipAction.EAST:
+            # chase along the x-axis
+            interception_pos = TO_INDEX[Point(ship.position.x, enemy.position.y)]
+        else:
+            # chase along the y-axis
+            interception_pos = TO_INDEX[Point(enemy.position.x, ship.position.y)]
+        target_dir = nav(enemy_pos, interception_pos)
+        interception_distance = get_distance(ship_pos, interception_pos)
+        interception_direction = nav(ship_pos, interception_pos)
+        if len(interception_direction) == 0 and get_distance(ship_pos, enemy_pos) > 1:
+            interception_direction = nav(ship_pos, enemy_pos)
+        if (len(target_dir) > 0 and target_dir[0] == safe_direction) and get_distance(enemy_pos,
+                                                                                      interception_pos) >= interception_distance:
+            # We can intercept the target
+            return True, interception_direction, interception_distance, interception_pos
+        else:
+            return False, None, 99, None
 
     def calculate_cell_score(self, ship: Ship, cell: Cell) -> float:
         # trade = self.step_count >= self.parameters['trading_start']
