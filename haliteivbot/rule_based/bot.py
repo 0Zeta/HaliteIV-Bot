@@ -6,6 +6,7 @@ from random import random
 
 from kaggle_environments.envs.halite.helpers import Shipyard, Ship, Board, ShipyardAction
 
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -24,7 +25,7 @@ PARAMETERS = {
     'dominance_map_medium_radius': 5,
     'dominance_map_medium_sigma': 2.8,
     'dominance_map_small_radius': 3,
-    'dominance_map_small_sigma': 1.7,
+    'dominance_map_small_sigma': 1.6,
     'early_second_shipyard': 20,
     'end_return_extra_moves': 5,
     'end_start': 382,
@@ -44,8 +45,8 @@ PARAMETERS = {
     'guarding_radius2': 0,
     'guarding_ship_advantage_norm': 17,
     'guarding_stop': 342,
-    'harvest_threshold_alpha': 0.15,
-    'harvest_threshold_beta': 0.2,
+    'harvest_threshold_alpha': 0.25,
+    'harvest_threshold_beta': 0.35,
     'harvest_threshold_hunting_norm': 0.65,
     'harvest_threshold_ship_advantage_norm': 15,
     'hunting_halite_threshold': 0.05,
@@ -59,7 +60,7 @@ PARAMETERS = {
     'hunting_score_cargo_clip': 1.5,
     'hunting_score_delta': 0.9,
     'hunting_score_farming_position_penalty': 0.8,
-    'hunting_score_gamma': 0.9,
+    'hunting_score_gamma': 0.95,
     'hunting_score_halite_norm': 210,
     'hunting_score_hunt': 7,
     'hunting_score_intercept': 4,
@@ -91,13 +92,13 @@ PARAMETERS = {
     'mining_score_beta_min': 0.93,
     'mining_score_cargo_norm': 3.5,
     'mining_score_dominance_clip': 3.3,
-    'mining_score_dominance_norm': 0.6,
+    'mining_score_dominance_norm': 0.4,
     'mining_score_farming_penalty': 0.01,
     'mining_score_gamma': 0.99,
     'mining_score_juicy': 0.25,
     'mining_score_juicy_end': 0.1,
     'mining_score_minor_farming_penalty': 0.15,
-    'mining_score_start_returning': 35,
+    'mining_score_start_returning': 42,
     'minor_harvest_threshold': 0.5883198534618292,
     'move_preference_base': 95,
     'move_preference_block_shipyard': -155,
@@ -567,7 +568,7 @@ class HaliteBot(object):
 
         if len(self.me.ships) > 0:
             self.small_dominance_map = get_new_dominance_map(players,
-                                                             self.parameters['dominance_map_small_sigma'], 25,
+                                                             self.parameters['dominance_map_small_sigma'], 22,
                                                              self.parameters['dominance_map_halite_clip'])[
                 self.player_id]
             self.small_safety_map = get_dominance_map(self.me, self.opponents,
@@ -826,7 +827,7 @@ class HaliteBot(object):
                     spiegelei[pos] += 1
                 for pos in self.guarding_border:
                     spiegelei[pos] = 10
-                # display_matrix(spiegelei.reshape((SIZE, SIZE)))
+                display_matrix(spiegelei.reshape((SIZE, SIZE)))
                 # medium = np.array(self.medium_dominance_map.reshape((21, 21)).round(2), dtype=np.int)
                 # display_matrix(small)
                 # display_matrix(self.small_safety_map.reshape((21, 21)).round(2))
@@ -1897,7 +1898,7 @@ class HaliteBot(object):
                     score += self.parameters['move_preference_block_shipyard']
         if cell.ship is not None and cell.ship.player_id != self.player_id:
             if cell.ship.halite < ship.halite:
-                score -= (500 + ship.halite - 0.5 * cell.ship.halite)
+                score -= (750 + ship.halite - 0.5 * cell.ship.halite)
             elif cell.ship.halite == ship.halite:
                 if (cell_pos not in self.farming_positions or (not trade and cell.shipyard is None and (
                         cell.ship.id not in self.intrusion_positions[cell_pos] or self.intrusion_positions[cell_pos][
@@ -1905,14 +1906,14 @@ class HaliteBot(object):
                     cell_pos] > 1 and (
                         self.next_shipyard_position is None or get_distance(cell_pos,
                                                                             self.next_shipyard_position) > 2):
-                    score -= 350
+                    score -= 450
             else:
                 score += min(cell.ship.halite * self.parameters['cell_score_enemy_halite'], 35)
         neighbour_value = 0
         for neighbour in get_neighbours(cell):
             if neighbour.ship is not None and neighbour.ship.player_id != self.player_id:
                 if neighbour.ship.halite < ship.halite:  # We really don't want to go to that cell unless it's necessary.
-                    neighbour_value = -(500 + ship.halite) * (self.parameters['cell_score_neighbour_discount'] + 0.15)
+                    neighbour_value = -(750 + ship.halite) * (self.parameters['cell_score_neighbour_discount'] + 0.15)
                     break
                 elif neighbour.ship.halite == ship.halite and cell_pos not in self.shipyard_positions:
                     if (cell_pos not in self.farming_positions and self.shipyard_distances[
@@ -1926,7 +1927,7 @@ class HaliteBot(object):
                         if self.step_count > self.parameters['greed_stop'] or self.map_presence_diff[
                             neighbour.ship.player_id] >= self.parameters[
                             'greed_min_map_diff']:  # TODO: check whether this is good
-                            neighbour_value -= 350 * self.parameters['cell_score_neighbour_discount']
+                            neighbour_value -= 450 * self.parameters['cell_score_neighbour_discount']
                 else:
                     neighbour_value += min(neighbour.ship.halite * self.parameters['cell_score_enemy_halite'] * \
                                            self.parameters['cell_score_neighbour_discount'], 25)
@@ -2067,7 +2068,7 @@ class HaliteBot(object):
                 1 - clip(self.enemy_hunting_proportion, 0, self.parameters['harvest_threshold_hunting_norm']) /
                 self.parameters['harvest_threshold_hunting_norm']))) * (
                 1 - (2 * self.parameters['harvest_threshold_beta'] / 3) + ship_advantage)
-        threshold = 0.85 * threshold + 0.3 * clip((ships_farming_points - 0.9) / 1.1, 0, 1)
+        threshold = 0.95 * threshold + 0.1 * clip((ships_farming_points - 0.9) / 1.1, 0, 1)
         return int(clip(threshold, 110, 450))
 
 
