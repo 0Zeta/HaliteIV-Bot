@@ -31,7 +31,7 @@ PARAMETERS = {
     'end_start': 382,
     'ending_halite_threshold': 10,
     'farming_end': 355,
-    'farming_start': 40,
+    'farming_start': 30,
     'farming_start_shipyards': 2,
     'greed_min_map_diff': 20,
     'greed_stop': 37,
@@ -936,7 +936,8 @@ class HaliteBot(object):
                 self.parameters['min_shipyard_distance'] <= self.shipyard_distances[self.next_shipyard_position] <=
                 self.parameters['max_shipyard_distance'] and not in_avoidance_radius and len(
             self.me.shipyards) >= self.last_shipyard_count) and len(
-            self.me.shipyards) > 0:  # TODO: check if the position still creates a good triangle
+            self.me.shipyards) > 0 and self.step_count <= self.parameters[
+            'shipyard_stop']:  # TODO: check if the position still creates a good triangle
             self.plan_shipyard_position()
         converting_disabled = (self.parameters['shipyard_start'] > self.step_count or self.step_count > self.parameters[
             'shipyard_stop']) and (self.step_count > 10 or len(self.me.shipyards) > 0)
@@ -2064,7 +2065,7 @@ class HaliteBot(object):
 
     def calculate_harvest_threshold(self):
         ships_farming_points = len(self.me.ships) / max(len(self.real_farming_points), 1)
-        threshold = clip(1.09 * self.step_count + 77, 80, 480)
+        threshold = clip(1.12 * self.step_count + 82, 80, 480)
         ship_advantage = self.parameters['harvest_threshold_beta'] * clip(
             self.ship_advantage + self.parameters['harvest_threshold_ship_advantage_norm'], 0,
             1.5 * self.parameters['harvest_threshold_ship_advantage_norm']) / self.parameters[
