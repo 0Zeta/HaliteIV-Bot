@@ -1518,21 +1518,21 @@ class HaliteBot(object):
                     )
                     >= self.parameters["min_enemy_shipyard_distance"]
                 ):
+                    point = Point.from_index(pos, SIZE)
+                    half = 0.5 * get_vector(shipyard.position, point)
+                    half = Point(round(half.x), round(half.y))
+                    midpoint = (shipyard.position + half) % SIZE
                     if early_second_shipyard and self.observation["halite"][pos] <= 50:
                         possible_positions.append(
-                            (pos, self.ultra_blurred_halite_map[pos])
+                            (pos, (self.ultra_blurred_halite_map[pos] / 5) + self.get_populated_cells_in_radius_count(TO_INDEX[midpoint]))
                         )
                     else:
-                        point = Point.from_index(pos, SIZE)
-                        half = 0.5 * get_vector(shipyard.position, point)
-                        half = Point(round(half.x), round(half.y))
-                        midpoint = (shipyard.position + half) % SIZE
                         possible_positions.append(
                             (
                                 pos,
                                 self.get_populated_cells_in_radius_count(
                                     TO_INDEX[midpoint]
-                                ),
+                                )
                             )
                         )
         else:
