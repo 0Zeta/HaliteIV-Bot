@@ -1032,11 +1032,6 @@ class HaliteBot(object):
 
         ships = self.me.ships.copy()
 
-        for ship in ships:  # TODO: questionable
-            if ship.cell.shipyard is not None and 30 < self.step_count < self.farming_end and ship.id not in self.ship_types.keys():
-                self.guarding_ships.append(ship)
-                self.ship_types[ship.id] = ShipType.GUARDING
-
         if self.parameters['disable_hunting_till'] <= self.step_count <= (self.farming_end + 10):
             ships_for_interception = [ship for ship in self.me.ships if ship.id not in self.ship_types.keys()]
             for target_id in self.vulnerable_ships.keys():
