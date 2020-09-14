@@ -134,7 +134,8 @@ hyperparameters = {
     'trading_start': ('int', (150, 350)),
     'max_intrusion_count': ('int', (3, 5)),
     'minor_harvest_threshold': ('float', (0.2, 0.7)),
-    'mining_score_minor_farming_penalty': ('float', (0.01, 0.17))
+    'mining_score_minor_farming_penalty': ('float', (0.01, 0.17)),
+    'cell_score_mine_farming': ('int', (-300, -80))
 }
 
 frozen_parameters = ['dominance_map_medium_radius', 'dominance_map_small_radius', 'guarding_min_distance_to_shipyard',

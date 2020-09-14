@@ -16,6 +16,7 @@ PARAMETERS = {
     'cell_score_dominance': 0.5,
     'cell_score_enemy_halite': 0.25,
     'cell_score_farming': -50,
+    'cell_score_mine_farming': -150,
     'cell_score_danger': 70,
     'cell_score_neighbour_discount': 0.6055250554421567,
     'cell_score_ship_halite': 0.0005,
@@ -93,7 +94,7 @@ PARAMETERS = {
     'mining_score_cargo_norm': 3.5,
     'mining_score_dominance_clip': 3.3,
     'mining_score_dominance_norm': 0.4,
-    'mining_score_farming_penalty': 0.01,
+    'mining_score_farming_penalty': 0,
     'mining_score_gamma': 0.99,
     'mining_score_juicy': 0.25,
     'mining_score_juicy_end': 0.1,
@@ -1992,7 +1993,10 @@ class HaliteBot(object):
         score += neighbour_value
         score += self.parameters['cell_score_dominance'] * self.small_dominance_map[cell_pos]
         if cell_pos in self.farming_positions and 0 < cell.halite < self.harvest_threshold:
-            score += self.parameters['cell_score_farming']
+            if TO_INDEX[ship.position] == cell_pos:
+                score += self.parameters['cell_score_mine_farming']
+            else:
+                score += self.parameters['cell_score_farming']
         return score * (1 + self.parameters['cell_score_ship_halite'] * ship.halite)
 
     def calculate_player_score(self, player):
