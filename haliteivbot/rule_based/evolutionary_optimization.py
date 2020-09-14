@@ -136,6 +136,7 @@ hyperparameters = {
     "minor_harvest_threshold": ("float", (0.2, 0.7)),
     "mining_score_minor_farming_penalty": ("float", (0.01, 0.17)),
     "cell_score_mine_farming": ("int", (-300, -80)),
+    'guarding_proportion': ('float', (0.25, 0.6))
 }
 
 frozen_parameters = [

@@ -31,7 +31,7 @@ PARAMETERS = {
     "dominance_map_medium_sigma": 2.8,
     "dominance_map_small_radius": 3,
     "dominance_map_small_sigma": 1.6,
-    "early_second_shipyard": 20,
+    "early_second_shipyard": 30,
     "end_return_extra_moves": 3,
     "end_start": 382,
     "ending_halite_threshold": 10,
@@ -42,6 +42,7 @@ PARAMETERS = {
     "greed_stop": 37,
     "guarding_aggression_radius": 6,
     "guarding_end": 375,
+    'guarding_proportion': 0.35,
     "guarding_max_distance_to_shipyard": 3,
     "guarding_max_ships_per_shipyard": 3,
     "guarding_min_distance_to_shipyard": 1,
@@ -71,7 +72,7 @@ PARAMETERS = {
     "hunting_score_intercept": 2.1,
     "hunting_score_iota": 0.25,
     "hunting_score_kappa": 0.15,
-    "hunting_score_region": 2.8,
+    "hunting_score_region": 2,
     "hunting_score_ship_bonus": 220,
     "hunting_score_ypsilon": 2,
     "hunting_score_zeta": 0.35,
@@ -173,6 +174,7 @@ EARLY_PARAMETERS = {
     "guarding_radius2": 0,
     "guarding_ship_advantage_norm": 17,
     "guarding_stop": 342,
+    'guarding_proportion': 0.5,
     "harvest_threshold_alpha": 0.25,
     "harvest_threshold_beta": 0.35,
     "harvest_threshold_hunting_norm": 0.65,
@@ -223,7 +225,7 @@ EARLY_PARAMETERS = {
     "mining_score_dominance_norm": 0.2,
     "mining_score_farming_penalty": 0.01,
     "mining_score_gamma": 0.9867889914414822,
-    "mining_score_juicy": 0.1520819307033613,
+    "mining_score_juicy": 0.2,
     "mining_score_juicy_end": 0.1,
     "mining_score_minor_farming_penalty": 0.14823668299589474,
     "mining_score_start_returning": 38,
@@ -2151,6 +2153,7 @@ class HaliteBot(object):
                     min(
                         ceil(
                             (
+                                0.5 *
                                 (
                                     1
                                     - clip(
@@ -2168,6 +2171,7 @@ class HaliteBot(object):
                                     )
                                     / self.parameters["guarding_norm"]
                                 )
+                                + 0.5 * self.parameters['guarding_proportion']
                             )
                             * len(assigned_hunting_scores)
                         )
@@ -2181,7 +2185,7 @@ class HaliteBot(object):
                     ),
                     min(len(assigned_hunting_scores) - 1, len(self.me.shipyards)),
                     len(assigned_hunting_scores)
-                    - int(3 * enemies_in_guarding_zone)
+                    - int(5 * enemies_in_guarding_zone)
                     - 1,
                 )
                 - len(self.guarding_ships),
@@ -3527,7 +3531,6 @@ class HaliteBot(object):
             + 9
         )
         farming_end = clip(398 - ceil(steps_per_ship), 325, 365)
-        print(farming_end)
         return farming_end
 
     def prefer_moves(
