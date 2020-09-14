@@ -256,7 +256,7 @@ EARLY_PARAMETERS = {
     "shipyard_start": 30,
     "shipyard_stop": 285,
     "spawn_min_dominance": -6.0,
-    "spawn_till": 285,
+    "spawn_till": 300,
     "third_shipyard_min_ships": 16,
     "third_shipyard_step": 47,
     "trading_start": 164,
@@ -835,6 +835,7 @@ class HaliteBot(object):
         self.rank = 0
         self.first_shipyard_step = 0
         self.farming_end = self.parameters["farming_end"]
+        self.pseudo_shipyard = None
 
         self.planned_moves = (
             list()
@@ -1280,6 +1281,13 @@ class HaliteBot(object):
                                     Point.from_index(pos2, SIZE),
                                 )
                             )
+                if len(points) == 1 and len(points[0]) == 2 and self.parameters['min_shipyard_distance'] <= calculate_distance(points[0][0], points[0][1]) <= self.parameters['max_shipyard_distance']:
+                    if self.pseudo_shipyard is not None:
+                        points[0] = (points[0][0], points[0][1], self.pseudo_shipyard)
+                    else:
+                        self.pseudo_shipyard = Point.from_index(self.plan_shipyard_position(True), SIZE)
+                        if self.pseudo_shipyard is not None:
+                            points[0] = (points[0][0], points[0][1], self.pseudo_shipyard)
         else:
             points = []
 
@@ -1297,12 +1305,12 @@ class HaliteBot(object):
                     guarding_radius = (
                         (max_distance + 1)
                         if self.max_shipyard_connections >= 2
-                        else max_distance - 1
+                        else max_distance
                     ) + self.parameters["guarding_radius2"]
                     farming_radius = (
                         max_distance
                         if self.max_shipyard_connections >= 2
-                        else max_distance - 2
+                        else max_distance - 1
                     ) - 1
                     border_radius = farming_radius + 2
                     required_in_range = min(
@@ -1328,7 +1336,7 @@ class HaliteBot(object):
                     for shipyard_point in shipyard_points:
                         shipyard_pos = TO_INDEX[shipyard_point]
                         distance = get_distance(pos, shipyard_pos)
-                        if distance <= self.parameters["guarding_radius"]:
+                        if distance <= self.parameters["guarding_radius"] and shipyard_point != self.pseudo_shipyard:
                             guard = True
                         if distance <= border_radius:
                             in_guarding_border += 1
@@ -1465,7 +1473,7 @@ class HaliteBot(object):
                 self.ship_types[ship.id] = ShipType.CONSTRUCTING
         return False
 
-    def plan_shipyard_position(self):
+    def plan_shipyard_position(self, preview=False):
         possible_positions = []
         if len(self.me.shipyards) == 0:
             if len(self.me.ships) == 0:
@@ -1595,11 +1603,14 @@ class HaliteBot(object):
                                 )
         if len(possible_positions) > 0:
             possible_positions.sort(key=lambda data: data[1], reverse=True)
-            self.next_shipyard_position = possible_positions[0][0]
-            logging.info(
-                "Planning to place the next shipyard at "
-                + str(Point.from_index(self.next_shipyard_position, SIZE))
-            )
+            if not preview:
+                self.next_shipyard_position = possible_positions[0][0]
+                logging.info(
+                    "Planning to place the next shipyard at "
+                    + str(Point.from_index(self.next_shipyard_position, SIZE))
+                )
+            else:
+                return possible_positions[0][0]
 
     def build_shipyards(self, board: Board):
         if len(self.me.ships) == 0:
