@@ -7,8 +7,16 @@ from scipy.ndimage import gaussian_filter
 
 DIRECTIONS = [ShipAction.NORTH, ShipAction.EAST, ShipAction.SOUTH, ShipAction.WEST]
 NEIGHBOURS = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0)]
-NEIGHBOURS2 = [Point(0, -1), Point(0, 1), Point(-1, 0), Point(1, 0), Point(-1, -1), Point(1, 1), Point(-1, 1),
-               Point(1, -1)]
+NEIGHBOURS2 = [
+    Point(0, -1),
+    Point(0, 1),
+    Point(-1, 0),
+    Point(1, 0),
+    Point(-1, -1),
+    Point(1, 1),
+    Point(-1, 1),
+    Point(1, -1),
+]
 DISTANCES = None
 NAVIGATION = None
 FARTHEST_DIRECTIONS_IDX = None
@@ -27,7 +35,11 @@ def create_optimal_mining_steps_tensor(alpha, beta, gamma):
     chrange = 15
 
     def score(n1, n2, m, H, C):
-        return gamma ** (n1 + m) * (beta * C + (1 - .75 ** m) * 1.02 ** (n1 + m) * H) / (n1 + alpha * n2 + m)
+        return (
+            gamma ** (n1 + m)
+            * (beta * C + (1 - 0.75 ** m) * 1.02 ** (n1 + m) * H)
+            / (n1 + alpha * n2 + m)
+        )
 
     tensor = []
     for n1 in range(22):
@@ -43,7 +55,9 @@ def create_optimal_mining_steps_tensor(alpha, beta, gamma):
                 def h(mine):
                     return -score(n1, n2, mine, 500, CHratio * 500)
 
-                res = scipy.optimize.minimize_scalar(h, bounds=(1, 15), method='Bounded')
+                res = scipy.optimize.minimize_scalar(
+                    h, bounds=(1, 15), method="Bounded"
+                )
                 ch_opt.append(int(round(res.x)))
             n_opt.append(ch_opt)
         tensor.append(n_opt)
@@ -58,21 +72,25 @@ def compute_positions_in_reach():
             (point + NEIGHBOURS[0]) % SIZE,
             (point + NEIGHBOURS[1]) % SIZE,
             (point + NEIGHBOURS[2]) % SIZE,
-            (point + NEIGHBOURS[3]) % SIZE
+            (point + NEIGHBOURS[3]) % SIZE,
         )
 
     def get_in_reach_indices(position: int):
         point = Point.from_index(position, SIZE)
-        return np.array([
-            TO_INDEX[point],
-            TO_INDEX[(point + NEIGHBOURS[0]) % SIZE],
-            TO_INDEX[(point + NEIGHBOURS[1]) % SIZE],
-            TO_INDEX[(point + NEIGHBOURS[2]) % SIZE],
-            TO_INDEX[(point + NEIGHBOURS[3]) % SIZE]
-        ])
+        return np.array(
+            [
+                TO_INDEX[point],
+                TO_INDEX[(point + NEIGHBOURS[0]) % SIZE],
+                TO_INDEX[(point + NEIGHBOURS[1]) % SIZE],
+                TO_INDEX[(point + NEIGHBOURS[2]) % SIZE],
+                TO_INDEX[(point + NEIGHBOURS[3]) % SIZE],
+            ]
+        )
 
     global POSITIONS_IN_REACH, POSITIONS_IN_REACH_INDICES
-    POSITIONS_IN_REACH = {Point.from_index(pos, SIZE): get_in_reach(pos) for pos in range(SIZE ** 2)}
+    POSITIONS_IN_REACH = {
+        Point.from_index(pos, SIZE): get_in_reach(pos) for pos in range(SIZE ** 2)
+    }
     POSITIONS_IN_REACH_INDICES = np.ndarray((SIZE ** 2, 5), dtype=np.int)
     for pos in range(SIZE ** 2):  # really sad, but it's 4 am
         POSITIONS_IN_REACH_INDICES[pos] = get_in_reach_indices(pos)
@@ -93,21 +111,25 @@ def get_max_distance(points):
 
 def get_blurred_halite_map(halite, sigma, multiplier=1, size=21):
     halite_map = np.array(halite).reshape((size, -1))
-    blurred_halite_map = gaussian_filter(halite_map, sigma, mode='wrap')
+    blurred_halite_map = gaussian_filter(halite_map, sigma, mode="wrap")
     return multiplier * blurred_halite_map.reshape((size ** 2,))
 
 
 def get_blurred_conflict_map(me, enemies, alpha, sigma, zeta, size=21):
     fight_map = np.full((size, size), fill_value=1, dtype=np.float)
-    max_halite = [max(ship.halite for ship in player.ships) if len(player.ships) > 0 else 0 for player in
-                  (enemies + [me])]
+    max_halite = [
+        max(ship.halite for ship in player.ships) if len(player.ships) > 0 else 0
+        for player in (enemies + [me])
+    ]
     if len(max_halite) == 0:
         return
     max_halite = max(max_halite)
     if max_halite <= 0:
         return fight_map.reshape((size ** 2,))
-    player_maps = [gaussian_filter(_get_player_map(player, max_halite, size), sigma, mode='wrap') for player in
-                   [me] + enemies]
+    player_maps = [
+        gaussian_filter(_get_player_map(player, max_halite, size), sigma, mode="wrap")
+        for player in [me] + enemies
+    ]
     max_value = max([np.max(player_map) for player_map in player_maps])
     for player_index, player_map in enumerate(player_maps):
         player_map = (player_map / max_value) * zeta + 1
@@ -132,7 +154,9 @@ def get_cargo_map(ships, shipyards, halite_norm, size=21):
         cargo_map[TO_INDEX[ship.position]] += ship.halite / halite_norm
     for shipyard in shipyards:
         cargo_map[TO_INDEX[shipyard.position]] += 700 / halite_norm
-    return 30 * gaussian_filter(cargo_map.reshape((SIZE, SIZE)), sigma=2.5, mode='wrap').reshape((-1,))
+    return 30 * gaussian_filter(
+        cargo_map.reshape((SIZE, SIZE)), sigma=2.5, mode="wrap"
+    ).reshape((-1,))
 
 
 def get_hunting_matrix(ships):
@@ -148,17 +172,21 @@ def get_hunting_matrix(ships):
 def get_dominance_map(me, opponents, sigma, factor, halite_clip, size=21):
     dominance_map = np.zeros((SIZE ** 2), dtype=np.float)
     for ship in me.ships:
-        dominance_map[TO_INDEX[ship.position]] += clip(halite_clip - ship.halite, 0,
-                                                       halite_clip) / halite_clip
+        dominance_map[TO_INDEX[ship.position]] += (
+            clip(halite_clip - ship.halite, 0, halite_clip) / halite_clip
+        )
     for shipyard in me.shipyards:
         dominance_map[TO_INDEX[shipyard.position]] += 1.5
     for player in opponents:
         for ship in player.ships:
-            dominance_map[TO_INDEX[ship.position]] -= clip(halite_clip - ship.halite, 0,
-                                                           halite_clip) / halite_clip
+            dominance_map[TO_INDEX[ship.position]] -= (
+                clip(halite_clip - ship.halite, 0, halite_clip) / halite_clip
+            )
         for shipyard in player.shipyards:
             dominance_map[TO_INDEX[shipyard.position]] -= 1.8
-    blurred_dominance_map = gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma, mode='wrap')
+    blurred_dominance_map = gaussian_filter(
+        dominance_map.reshape((size, size)), sigma=sigma, mode="wrap"
+    )
     return factor * blurred_dominance_map.reshape((-1,))
 
 
@@ -168,15 +196,20 @@ def get_new_dominance_map(players, sigma, factor, halite_clip, size=21):
         player_id = player.id
         dominance_map = np.zeros((size ** 2,), dtype=np.float)
         for ship in player.ships:
-            dominance_map[TO_INDEX[ship.position]] = clip(halite_clip - ship.halite, 0, halite_clip) / halite_clip
+            dominance_map[TO_INDEX[ship.position]] = (
+                clip(halite_clip - ship.halite, 0, halite_clip) / halite_clip
+            )
         for shipyard in player.shipyards:
             dominance_map[TO_INDEX[shipyard.position]] += 1.5
-        dominance_regions[player_id] = factor * gaussian_filter(dominance_map.reshape((size, size)), sigma=sigma,
-                                                                mode='wrap').reshape((-1,))
+        dominance_regions[player_id] = factor * gaussian_filter(
+            dominance_map.reshape((size, size)), sigma=sigma, mode="wrap"
+        ).reshape((-1,))
 
     maxima = np.zeros((4, size ** 2))
     for i in range(4):
-        maxima[i] = np.max(dominance_regions[[j for j in range(4) if j != i], :], axis=0)
+        maxima[i] = np.max(
+            dominance_regions[[j for j in range(4) if j != i], :], axis=0
+        )
     dominance_regions -= maxima
     return dominance_regions
 
@@ -210,7 +243,7 @@ def create_navigation_lists(size):
         1: ShipAction.WEST,
         2: ShipAction.EAST,
         4: ShipAction.NORTH,
-        8: ShipAction.SOUTH
+        8: ShipAction.SOUTH,
     }
 
     idx_to_action_list = dict()
@@ -255,13 +288,17 @@ def create_navigation_lists(size):
     farthest_directions = np.zeros((size ** 4), dtype=np.int)
     farthest_directions[coldist < rowdist] += direction_x[coldist < rowdist]
     farthest_directions[coldist > rowdist] += direction_y[coldist > rowdist]
-    farthest_directions[coldist == rowdist] += direction_x[coldist == rowdist] + direction_y[coldist == rowdist]
+    farthest_directions[coldist == rowdist] += (
+        direction_x[coldist == rowdist] + direction_y[coldist == rowdist]
+    )
 
     global FARTHEST_DIRECTIONS_IDX
     FARTHEST_DIRECTIONS_IDX = farthest_directions.reshape((size ** 2, size ** 2))
 
     global FARTHEST_DIRECTIONS
-    FARTHEST_DIRECTIONS = [[idx_to_action_list[a] for a in b] for b in FARTHEST_DIRECTIONS_IDX]
+    FARTHEST_DIRECTIONS = [
+        [idx_to_action_list[a] for a in b] for b in FARTHEST_DIRECTIONS_IDX
+    ]
 
 
 def dist(a, b):
@@ -271,9 +308,9 @@ def dist(a, b):
 
 def get_axis(direction):
     if direction == ShipAction.NORTH or direction == ShipAction.SOUTH:
-        return 'y'
+        return "y"
     else:
-        return 'x'
+        return "x"
 
 
 def get_triangles(positions, min_distance, max_distance):
@@ -292,11 +329,16 @@ def get_triangles(positions, min_distance, max_distance):
 
 
 def is_triangle(A, B, C, min_distance, max_distance):
-    if (A.x == B.x == C.x) or (
-            A.y == B.y == C.y):
+    if (A.x == B.x == C.x) or (A.y == B.y == C.y):
         return False
-    distances = [calculate_distance(A, B), calculate_distance(A, C), calculate_distance(B, C)]
-    if any([distance < min_distance or distance > max_distance for distance in distances]):
+    distances = [
+        calculate_distance(A, B),
+        calculate_distance(A, C),
+        calculate_distance(B, C),
+    ]
+    if any(
+        [distance < min_distance or distance > max_distance for distance in distances]
+    ):
         return False
     if max(dist(A.x, B.x), dist(A.x, C.x), dist(B.x, C.x)) < 3:
         return False
@@ -322,7 +364,9 @@ def create_radius_list(radius):
 
 def group_ships(ships, max_group_size, max_distance):
     position_to_ship = {TO_INDEX[ship.position]: ship for ship in ships}
-    groups = group_positions([TO_INDEX[ship.position] for ship in ships], max_group_size, max_distance)
+    groups = group_positions(
+        [TO_INDEX[ship.position] for ship in ships], max_group_size, max_distance
+    )
     return [[position_to_ship[position] for position in group] for group in groups]
 
 
@@ -335,17 +379,32 @@ def group_positions(positions, max_group_size, max_distance):
         unfinished_groups = [group for group in groups if len(group) < max_group_size]
         if len(unfinished_groups) == 0:
             break
-        if min([len(group) for group in unfinished_groups]) >= math.ceil(max_group_size / 2):
+        if min([len(group) for group in unfinished_groups]) >= math.ceil(
+            max_group_size / 2
+        ):
             break
         changed = True
         while changed:
             changed = False
-            unfinished_groups = [group for group in groups if len(group) < max_group_size]
-            unfinished_positions = [position for group in unfinished_groups for position in group]
+            unfinished_groups = [
+                group for group in groups if len(group) < max_group_size
+            ]
+            unfinished_positions = [
+                position for group in unfinished_groups for position in group
+            ]
             in_range = {
-                position: [pos2 for pos2 in unfinished_positions if DISTANCES[position][pos2] == current_distance] for
-                position in unfinished_positions}
-            position_to_group = {position: group_id for group_id, group in enumerate(groups) for position in group}
+                position: [
+                    pos2
+                    for pos2 in unfinished_positions
+                    if DISTANCES[position][pos2] == current_distance
+                ]
+                for position in unfinished_positions
+            }
+            position_to_group = {
+                position: group_id
+                for group_id, group in enumerate(groups)
+                for position in group
+            }
             for position, positions_in_range in in_range.items():
                 if len(positions_in_range) == 0:
                     continue
@@ -422,8 +481,13 @@ def get_adjacent_positions(point):
 
 
 def get_hunting_proportion(players, halite_threshold=0):
-    return [sum([1 for ship in player.ships if ship.halite <= halite_threshold]) / len(player.ships) if len(
-        player.ships) > 0 else -1 for player in players]
+    return [
+        sum([1 for ship in player.ships if ship.halite <= halite_threshold])
+        / len(player.ships)
+        if len(player.ships) > 0
+        else -1
+        for player in players
+    ]
 
 
 class Vector(object):
@@ -459,7 +523,7 @@ class Vector(object):
         return Vector(self.x % other, self.y % other)
 
     def __str__(self):
-        return '(%g, %g)' % (self.x, self.y)
+        return "(%g, %g)" % (self.x, self.y)
 
     def __ne__(self, other):
         return not self.__eq__(other)  # reuse __eq__
@@ -472,7 +536,7 @@ def get_excircle_midpoint(A: Point, B: Point, C: Point):
     r = get_orthogonal_vector(AB)
     v = get_orthogonal_vector(AC)
     M1, M2 = 0.5 * Vector(AB.x, AB.y), 0.5 * Vector(AC.x, AC.y)
-    a = (r.y * v.x - r.x * v.y)
+    a = r.y * v.x - r.x * v.y
     if a == 0:
         BC = get_vector(B, C)
         AB_abs = abs(AB)

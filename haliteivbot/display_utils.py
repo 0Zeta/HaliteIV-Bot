@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 
 def display_matrix(matrix):
     plt.figure(figsize=(10, 10))
-    sns.heatmap(pd.DataFrame(matrix), annot=True, cmap='Blues')
+    sns.heatmap(pd.DataFrame(matrix), annot=True, cmap="Blues")
     plt.show()
 
 
@@ -16,5 +16,11 @@ def display_dominance_map(map):
     reshaped_map = map.reshape((4, 21, 21))
     colors = ["Oranges", "Reds", "Greens", "Purples"]
     for i, color in enumerate(colors):
-        sns.heatmap(matrix, mask=(reshaped_map[i, :, :] <= 0), annot=True, cmap=color, cbar=False)
+        sns.heatmap(
+            matrix,
+            mask=(reshaped_map[i, :, :] <= 0),
+            annot=True,
+            cmap=color,
+            cbar=False,
+        )
     plt.show()
