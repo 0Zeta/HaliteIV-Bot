@@ -16,126 +16,126 @@ from haliteivbot.rule_based.utils import *
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 
 PARAMETERS = {
-    'cargo_map_halite_norm': 260,
-    'cell_score_danger': 70,
-    'cell_score_dominance': 0.6,
-    'cell_score_enemy_halite': 0.3125712679108464,
-    'cell_score_farming': -50,
-    'cell_score_mine_farming': -135,
-    'cell_score_neighbour_discount': 0.7533825129372731,
-    'cell_score_ship_halite': 0.00044866834268873795,
-    'convert_when_attacked_threshold': 512,
-    'disable_hunting_till': 61,
-    'dominance_map_halite_clip': 110,
-    'dominance_map_medium_radius': 5,
-    'dominance_map_medium_sigma': 2.8668329912447335,
-    'dominance_map_small_radius': 3,
-    'dominance_map_small_sigma': 1.6,
-    'early_second_shipyard': 30,
-    'end_return_extra_moves': 3,
-    'end_start': 382,
-    'ending_halite_threshold': 10,
-    'farming_end': 355,
-    'farming_start': 30,
-    'farming_start_shipyards': 2,
-    'greed_min_map_diff': 14,
-    'greed_stop': 35,
-    'guarding_aggression_radius': 4,
-    'guarding_end': 375,
-    'guarding_max_distance_to_shipyard': 3,
-    'guarding_max_ships_per_shipyard': 2,
-    'guarding_min_distance_to_shipyard': 1,
-    'guarding_norm': 0.6,
-    'guarding_proportion': 0.35,
-    'guarding_radius': 3,
-    'guarding_radius2': 0,
-    'guarding_ship_advantage_norm': 17,
-    'guarding_stop': 350,
-    'harvest_threshold_alpha': 0.25,
-    'harvest_threshold_beta': 0.35,
-    'harvest_threshold_hunting_norm': 0.65,
-    'harvest_threshold_ship_advantage_norm': 15,
-    'hunting_halite_threshold': 0.05,
-    'hunting_max_group_distance': 5,
-    'hunting_max_group_size': 1,
-    'hunting_min_ships': 8,
-    'hunting_proportion': 0.45,
-    'hunting_proportion_after_farming': 0.35,
-    'hunting_score_alpha': 0.31307190998859874,
-    'hunting_score_beta': 0.33026966299467286,
-    'hunting_score_cargo_clip': 1.91253000892124,
-    'hunting_score_delta': 0.9,
-    'hunting_score_farming_position_penalty': 0.788038154434421,
-    'hunting_score_gamma': 0.96,
-    'hunting_score_halite_norm': 231,
-    'hunting_score_hunt': 4.946925545815921,
-    'hunting_score_intercept': 1.76288571553692,
-    'hunting_score_iota': 0.25,
-    'hunting_score_kappa': 0.15,
-    'hunting_score_region': 2.2346610375368425,
-    'hunting_score_ship_bonus': 220,
-    'hunting_score_ypsilon': 2.0795292787342774,
-    'hunting_score_zeta': 0.35,
-    'hunting_threshold': 10.773402485230406,
-    'map_blur_gamma': 0.9,
-    'map_blur_sigma': 0.5549610080793232,
-    'map_ultra_blur': 1.75,
-    'max_guarding_ships_per_target': 2,
-    'max_halite_attack_shipyard': 0,
-    'max_hunting_ships_per_direction': 2,
-    'max_intrusion_count': 3,
-    'max_ship_advantage': 13,
-    'max_shipyard_distance': 8,
-    'max_shipyards': 12,
-    'min_enemy_shipyard_distance': 4,
-    'min_mining_halite': 27,
-    'min_ships': 20,
-    'min_shipyard_distance': 7,
-    'mining_score_alpha': 0.9981423349911503,
-    'mining_score_alpha_min': 0.6144844412590275,
-    'mining_score_alpha_step': 0.007,
-    'mining_score_beta': 0.9994644750162123,
-    'mining_score_beta_min': 0.93,
-    'mining_score_cargo_norm': 3.5,
-    'mining_score_dominance_clip': 3.3,
-    'mining_score_dominance_norm': 0.5318971956494243,
-    'mining_score_farming_penalty': 0.01,
-    'mining_score_gamma': 0.99,
-    'mining_score_juicy': 0.3,
-    'mining_score_juicy_end': 0.1,
-    'mining_score_minor_farming_penalty': 0.1409853963583642,
-    'mining_score_start_returning': 42,
-    'minor_harvest_threshold': 0.6665460554873913,
-    'move_preference_base': 93,
-    'move_preference_block_shipyard': -116,
-    'move_preference_constructing': 138,
-    'move_preference_construction_guarding': 129,
-    'move_preference_guarding': 95,
-    'move_preference_guarding_stay': -100,
-    'move_preference_hunting': 105,
-    'move_preference_longest_axis': 18,
-    'move_preference_mining': 124,
-    'move_preference_return': 115,
-    'move_preference_stay_on_shipyard': -80,
-    'return_halite': 1533,
-    'second_shipyard_min_ships': 8,
-    'second_shipyard_step': 18,
-    'ship_spawn_threshold': 0.22612643383392095,
-    'ships_shipyards_threshold': 0.17333887987761862,
-    'shipyard_abandon_dominance': -20,
-    'shipyard_conversion_threshold': 2.550354977134987,
-    'shipyard_guarding_attack_probability': 0.5956995945455138,
-    'shipyard_guarding_min_dominance': -15,
-    'shipyard_min_dominance': -1,
-    'shipyard_min_population': 5,
-    'shipyard_min_ship_advantage': -12,
-    'shipyard_start': 30,
-    'shipyard_stop': 285,
-    'spawn_min_dominance': -6.0,
-    'spawn_till': 295,
-    'third_shipyard_min_ships': 17,
-    'third_shipyard_step': 58,
-    'trading_start': 164
+    "cargo_map_halite_norm": 260,
+    "cell_score_danger": 70,
+    "cell_score_dominance": 0.6,
+    "cell_score_enemy_halite": 0.3125712679108464,
+    "cell_score_farming": -50,
+    "cell_score_mine_farming": -135,
+    "cell_score_neighbour_discount": 0.7533825129372731,
+    "cell_score_ship_halite": 0.00044866834268873795,
+    "convert_when_attacked_threshold": 512,
+    "disable_hunting_till": 61,
+    "dominance_map_halite_clip": 110,
+    "dominance_map_medium_radius": 5,
+    "dominance_map_medium_sigma": 2.8668329912447335,
+    "dominance_map_small_radius": 3,
+    "dominance_map_small_sigma": 1.6,
+    "early_second_shipyard": 30,
+    "end_return_extra_moves": 3,
+    "end_start": 382,
+    "ending_halite_threshold": 10,
+    "farming_end": 355,
+    "farming_start": 30,
+    "farming_start_shipyards": 2,
+    "greed_min_map_diff": 14,
+    "greed_stop": 35,
+    "guarding_aggression_radius": 4,
+    "guarding_end": 375,
+    "guarding_max_distance_to_shipyard": 3,
+    "guarding_max_ships_per_shipyard": 2,
+    "guarding_min_distance_to_shipyard": 1,
+    "guarding_norm": 0.6,
+    "guarding_proportion": 0.35,
+    "guarding_radius": 3,
+    "guarding_radius2": 0,
+    "guarding_ship_advantage_norm": 17,
+    "guarding_stop": 350,
+    "harvest_threshold_alpha": 0.25,
+    "harvest_threshold_beta": 0.35,
+    "harvest_threshold_hunting_norm": 0.65,
+    "harvest_threshold_ship_advantage_norm": 15,
+    "hunting_halite_threshold": 0.05,
+    "hunting_max_group_distance": 5,
+    "hunting_max_group_size": 1,
+    "hunting_min_ships": 8,
+    "hunting_proportion": 0.45,
+    "hunting_proportion_after_farming": 0.35,
+    "hunting_score_alpha": 0.31307190998859874,
+    "hunting_score_beta": 0.33026966299467286,
+    "hunting_score_cargo_clip": 1.91253000892124,
+    "hunting_score_delta": 0.9,
+    "hunting_score_farming_position_penalty": 0.788038154434421,
+    "hunting_score_gamma": 0.96,
+    "hunting_score_halite_norm": 231,
+    "hunting_score_hunt": 4.946925545815921,
+    "hunting_score_intercept": 1.76288571553692,
+    "hunting_score_iota": 0.25,
+    "hunting_score_kappa": 0.15,
+    "hunting_score_region": 2.2346610375368425,
+    "hunting_score_ship_bonus": 220,
+    "hunting_score_ypsilon": 2.0795292787342774,
+    "hunting_score_zeta": 0.35,
+    "hunting_threshold": 10.773402485230406,
+    "map_blur_gamma": 0.9,
+    "map_blur_sigma": 0.5549610080793232,
+    "map_ultra_blur": 1.75,
+    "max_guarding_ships_per_target": 2,
+    "max_halite_attack_shipyard": 0,
+    "max_hunting_ships_per_direction": 2,
+    "max_intrusion_count": 3,
+    "max_ship_advantage": 13,
+    "max_shipyard_distance": 8,
+    "max_shipyards": 12,
+    "min_enemy_shipyard_distance": 4,
+    "min_mining_halite": 27,
+    "min_ships": 20,
+    "min_shipyard_distance": 7,
+    "mining_score_alpha": 0.9981423349911503,
+    "mining_score_alpha_min": 0.6144844412590275,
+    "mining_score_alpha_step": 0.007,
+    "mining_score_beta": 0.9994644750162123,
+    "mining_score_beta_min": 0.93,
+    "mining_score_cargo_norm": 3.5,
+    "mining_score_dominance_clip": 3.3,
+    "mining_score_dominance_norm": 0.5318971956494243,
+    "mining_score_farming_penalty": 0.01,
+    "mining_score_gamma": 0.99,
+    "mining_score_juicy": 0.3,
+    "mining_score_juicy_end": 0.1,
+    "mining_score_minor_farming_penalty": 0.1409853963583642,
+    "mining_score_start_returning": 42,
+    "minor_harvest_threshold": 0.6665460554873913,
+    "move_preference_base": 93,
+    "move_preference_block_shipyard": -116,
+    "move_preference_constructing": 138,
+    "move_preference_construction_guarding": 129,
+    "move_preference_guarding": 95,
+    "move_preference_guarding_stay": -100,
+    "move_preference_hunting": 105,
+    "move_preference_longest_axis": 18,
+    "move_preference_mining": 124,
+    "move_preference_return": 115,
+    "move_preference_stay_on_shipyard": -80,
+    "return_halite": 1533,
+    "second_shipyard_min_ships": 8,
+    "second_shipyard_step": 18,
+    "ship_spawn_threshold": 0.22612643383392095,
+    "ships_shipyards_threshold": 0.17333887987761862,
+    "shipyard_abandon_dominance": -20,
+    "shipyard_conversion_threshold": 2.550354977134987,
+    "shipyard_guarding_attack_probability": 0.5956995945455138,
+    "shipyard_guarding_min_dominance": -15,
+    "shipyard_min_dominance": -1,
+    "shipyard_min_population": 5,
+    "shipyard_min_ship_advantage": -12,
+    "shipyard_start": 30,
+    "shipyard_stop": 285,
+    "spawn_min_dominance": -6.0,
+    "spawn_till": 295,
+    "third_shipyard_min_ships": 17,
+    "third_shipyard_step": 58,
+    "trading_start": 164,
 }
 
 EARLY_PARAMETERS = {
@@ -173,7 +173,7 @@ EARLY_PARAMETERS = {
     "guarding_radius2": 0,
     "guarding_ship_advantage_norm": 17,
     "guarding_stop": 342,
-    'guarding_proportion': 0.5,
+    "guarding_proportion": 0.5,
     "harvest_threshold_alpha": 0.25,
     "harvest_threshold_beta": 0.35,
     "harvest_threshold_hunting_norm": 0.65,
@@ -1101,7 +1101,9 @@ class HaliteBot(object):
             shape=(self.ship_count, nb_positions_in_reach + nb_shipyard_conversions),
             fill_value=-999999,
         )  # positions + convert "positions"
-        self.escape_matrix = np.zeros((len(self.me.ships), self.size ** 2), dtype=np.float)
+        self.escape_matrix = np.zeros(
+            (len(self.me.ships), self.size ** 2), dtype=np.float
+        )
         for ship_index, ship in enumerate(self.me.ships):
             if (
                 ship.halite >= self.parameters["convert_when_attacked_threshold"]
@@ -1129,10 +1131,14 @@ class HaliteBot(object):
                         discount = 0.15
                     if self.danger_matrix[pos2] < cargo:
                         danger_score += 2 * discount
-                        self.escape_matrix[ship_index, self.positions_in_reach_indices[pos2]] += 1
+                        self.escape_matrix[
+                            ship_index, self.positions_in_reach_indices[pos2]
+                        ] += 1
                     elif self.danger_matrix[pos2] == cargo:
                         danger_score += discount
-                        self.escape_matrix[ship_index, self.positions_in_reach_indices[pos2]] += 0.5
+                        self.escape_matrix[
+                            ship_index, self.positions_in_reach_indices[pos2]
+                        ] += 0.5
                 danger_scores.append(danger_score)
             min_danger = min(danger_scores)
             max_danger = max(danger_scores)
@@ -1160,7 +1166,7 @@ class HaliteBot(object):
                 ] = self.calculate_cell_score(ship, board.cells[position])
                 if ship.halite > 0 and max_danger - min_danger > 1:
                     self.ship_position_preferences[
-                        ship_index, self.position_to_index[ship.position]
+                        ship_index, self.position_to_index[position]
                     ] += int(
                         (
                             1
@@ -1286,13 +1292,25 @@ class HaliteBot(object):
                                     Point.from_index(pos2, SIZE),
                                 )
                             )
-                if len(points) == 1 and len(points[0]) == 2 and self.parameters['min_shipyard_distance'] <= calculate_distance(points[0][0], points[0][1]) <= self.parameters['max_shipyard_distance']:
+                if (
+                    len(points) == 1
+                    and len(points[0]) == 2
+                    and self.parameters["min_shipyard_distance"]
+                    <= calculate_distance(points[0][0], points[0][1])
+                    <= self.parameters["max_shipyard_distance"]
+                ):
                     if self.pseudo_shipyard is not None:
                         points[0] = (points[0][0], points[0][1], self.pseudo_shipyard)
                     else:
-                        self.pseudo_shipyard = Point.from_index(self.plan_shipyard_position(True), SIZE)
+                        self.pseudo_shipyard = Point.from_index(
+                            self.plan_shipyard_position(True), SIZE
+                        )
                         if self.pseudo_shipyard is not None:
-                            points[0] = (points[0][0], points[0][1], self.pseudo_shipyard)
+                            points[0] = (
+                                points[0][0],
+                                points[0][1],
+                                self.pseudo_shipyard,
+                            )
         else:
             points = []
 
@@ -1341,7 +1359,10 @@ class HaliteBot(object):
                     for shipyard_point in shipyard_points:
                         shipyard_pos = TO_INDEX[shipyard_point]
                         distance = get_distance(pos, shipyard_pos)
-                        if distance <= self.parameters["guarding_radius"] and shipyard_point != self.pseudo_shipyard:
+                        if (
+                            distance <= self.parameters["guarding_radius"]
+                            and shipyard_point != self.pseudo_shipyard
+                        ):
                             guard = True
                         if distance <= border_radius:
                             in_guarding_border += 1
@@ -1519,7 +1540,13 @@ class HaliteBot(object):
                     midpoint = (shipyard.position + half) % SIZE
                     if early_second_shipyard and self.observation["halite"][pos] <= 50:
                         possible_positions.append(
-                            (pos, (self.ultra_blurred_halite_map[pos] / 5) + self.get_populated_cells_in_radius_count(TO_INDEX[midpoint]))
+                            (
+                                pos,
+                                (self.ultra_blurred_halite_map[pos] / 5)
+                                + self.get_populated_cells_in_radius_count(
+                                    TO_INDEX[midpoint]
+                                ),
+                            )
                         )
                     else:
                         possible_positions.append(
@@ -1527,7 +1554,7 @@ class HaliteBot(object):
                                 pos,
                                 self.get_populated_cells_in_radius_count(
                                     TO_INDEX[midpoint]
-                                )
+                                ),
                             )
                         )
         else:
@@ -2158,8 +2185,8 @@ class HaliteBot(object):
                     min(
                         ceil(
                             (
-                                0.5 *
-                                (
+                                0.5
+                                * (
                                     1
                                     - clip(
                                         self.ship_advantage,
@@ -2176,7 +2203,7 @@ class HaliteBot(object):
                                     )
                                     / self.parameters["guarding_norm"]
                                 )
-                                + 0.5 * self.parameters['guarding_proportion']
+                                + 0.5 * self.parameters["guarding_proportion"]
                             )
                             * len(assigned_hunting_scores)
                         )
@@ -3196,7 +3223,16 @@ class HaliteBot(object):
             and distance_from_shipyard <= 3
         ):
             score *= 0.05
-        escape_score = 1 - clip(self.escape_matrix[ship_index, cell_position] - self.mining_score_danger_tolerance, 0, 22) / 22
+        escape_score = (
+            1
+            - clip(
+                self.escape_matrix[ship_index, cell_position]
+                - self.mining_score_danger_tolerance,
+                0,
+                22,
+            )
+            / 22
+        )
         score *= escape_score
         return score
 
