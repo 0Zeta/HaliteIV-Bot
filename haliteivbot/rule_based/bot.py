@@ -1142,8 +1142,7 @@ class HaliteBot(object):
                 danger_scores.append(danger_score)
             min_danger = min(danger_scores)
             max_danger = max(danger_scores)
-            # if ship.halite > 0 and max_danger - min_danger > 1:
-            # print(((danger_scores - min_danger) / (max_danger - min_danger)))
+
             danger_score = (
                 self.parameters["cell_score_danger"]
                 if len(
@@ -1176,6 +1175,24 @@ class HaliteBot(object):
                         * danger_score
                         - (danger_score // 2)
                     )
+            if (
+                len(
+                    [
+                        1
+                        for pos in self.positions_in_reach_indices[
+                            TO_INDEX[ship.position]
+                        ]
+                        if self.danger_matrix[pos] <= ship.halite
+                    ]
+                )
+                >= 4
+                and ship.halite == 0
+                and board.cells[ship.position].halite > 0
+                and self.step_count < 370
+            ):
+                self.ship_position_preferences[
+                    ship_index, self.position_to_index[ship.position]
+                ] -= 70
 
             if ship.cell.shipyard is not None:
                 self.ship_position_preferences[
