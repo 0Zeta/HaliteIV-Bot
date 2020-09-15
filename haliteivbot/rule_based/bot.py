@@ -11,6 +11,7 @@ from kaggle_environments.envs.halite.helpers import (
     ShipyardAction,
 )
 
+from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -1576,7 +1577,7 @@ class HaliteBot(object):
                         )
         else:
             require_dominance = self.nb_connected_shipyards > 2 and (
-                self.map_presence_rank != 0 or self.rank != 0
+                self.map_presence_rank != 0 or self.rank != 0 or self.nb_connected_shipyards >= 4
             )
             avoid_positions = [
                 TO_INDEX[enemy_shipyard.position]
@@ -1629,6 +1630,7 @@ class HaliteBot(object):
                                 self.parameters["min_shipyard_distance"],
                                 self.parameters["max_shipyard_distance"],
                             ):
+                                dominance = self.medium_dominance_map[pos] if require_dominance else 0
                                 midpoint = TO_INDEX[
                                     get_excircle_midpoint(pos1, pos2, point)
                                 ]
@@ -1637,7 +1639,7 @@ class HaliteBot(object):
                                         pos,
                                         self.get_populated_cells_in_radius_count(
                                             midpoint
-                                        ),
+                                        ) + dominance,
                                     )
                                 )
         if len(possible_positions) > 0:
