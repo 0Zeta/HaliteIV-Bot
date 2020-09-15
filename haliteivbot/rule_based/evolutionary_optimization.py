@@ -136,7 +136,7 @@ hyperparameters = {
     "minor_harvest_threshold": ("float", (0.2, 0.7)),
     "mining_score_minor_farming_penalty": ("float", (0.01, 0.17)),
     "cell_score_mine_farming": ("int", (-300, -80)),
-    'guarding_proportion': ('float', (0.25, 0.6))
+    "guarding_proportion": ("float", (0.25, 0.6)),
 }
 
 frozen_parameters = [
@@ -221,7 +221,7 @@ first_genome = {
     "guarding_radius2": 0,
     "guarding_ship_advantage_norm": 17,
     "guarding_stop": 342,
-    'guarding_proportion': 0.5,
+    "guarding_proportion": 0.5,
     "harvest_threshold_alpha": 0.25,
     "harvest_threshold_beta": 0.35,
     "harvest_threshold_hunting_norm": 0.65,
@@ -335,7 +335,7 @@ second_genome = {
     "greed_stop": 37,
     "guarding_aggression_radius": 6,
     "guarding_end": 375,
-    'guarding_proportion': 0.35,
+    "guarding_proportion": 0.35,
     "guarding_max_distance_to_shipyard": 3,
     "guarding_max_ships_per_shipyard": 3,
     "guarding_min_distance_to_shipyard": 1,

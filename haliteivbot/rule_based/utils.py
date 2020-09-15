@@ -23,6 +23,7 @@ FARTHEST_DIRECTIONS_IDX = None
 FARTHEST_DIRECTIONS = None
 POSITIONS_IN_REACH = None
 POSITIONS_IN_REACH_INDICES = None
+POSITIONS_IN_TINY_RADIUS = None
 POSITIONS_IN_SMALL_RADIUS = None
 POSITIONS_IN_MEDIUM_RADIUS = None
 SIZE = 21
@@ -165,7 +166,6 @@ def get_hunting_matrix(ships):
         for position in POSITIONS_IN_REACH_INDICES[TO_INDEX[ship.position]]:
             if hunting_matrix[position] > ship.halite:
                 hunting_matrix[position] = ship.halite
-        # hunting_matrix[hunting_matrix > ship.halite][POSITIONS_IN_REACH_INDICES[TO_INDEX[ship.position]]] = ship.halite
     return hunting_matrix
 
 
@@ -347,12 +347,16 @@ def is_triangle(A, B, C, min_distance, max_distance):
     return True
 
 
-def create_radius_lists(small_radius, medium_radius):
-    global POSITIONS_IN_SMALL_RADIUS
-    global POSITIONS_IN_MEDIUM_RADIUS
+def create_radius_lists(tiny_radius, small_radius, medium_radius):
+    global POSITIONS_IN_TINY_RADIUS, POSITIONS_IN_SMALL_RADIUS, POSITIONS_IN_MEDIUM_RADIUS
+    POSITIONS_IN_TINY_RADIUS = create_radius_list(tiny_radius)
     POSITIONS_IN_SMALL_RADIUS = create_radius_list(small_radius)
     POSITIONS_IN_MEDIUM_RADIUS = create_radius_list(medium_radius)
-    return POSITIONS_IN_SMALL_RADIUS, POSITIONS_IN_MEDIUM_RADIUS
+    return (
+        POSITIONS_IN_TINY_RADIUS,
+        POSITIONS_IN_SMALL_RADIUS,
+        POSITIONS_IN_MEDIUM_RADIUS,
+    )
 
 
 def create_radius_list(radius):

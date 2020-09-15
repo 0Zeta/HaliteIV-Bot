@@ -83,7 +83,7 @@ PARAMETERS = {
     "max_guarding_ships_per_target": 2,
     "max_halite_attack_shipyard": 0,
     "max_hunting_ships_per_direction": 2,
-    "max_intrusion_count": 3,
+    "max_intrusion_count": 2,
     "max_ship_advantage": 13,
     "max_shipyard_distance": 8,
     "max_shipyards": 10,
@@ -132,7 +132,7 @@ PARAMETERS = {
     "shipyard_start": 30,
     "shipyard_stop": 285,
     "spawn_min_dominance": -6.0,
-    "spawn_till": 295,
+    "spawn_till": 290,
     "third_shipyard_min_ships": 17,
     "third_shipyard_step": 58,
     "trading_start": 164,
@@ -874,7 +874,12 @@ class HaliteBot(object):
         ) = compute_positions_in_reach()
         self.farthest_directions_indices = get_farthest_directions_matrix()
         self.farthest_directions = get_farthest_directions_list()
-        self.small_radius_list, self.medium_radius_list = create_radius_lists(
+        (
+            self.tiny_radius_list,
+            self.small_radius_list,
+            self.medium_radius_list,
+        ) = create_radius_lists(
+            2,
             self.parameters["dominance_map_small_radius"],
             self.parameters["dominance_map_medium_radius"],
         )
@@ -1576,7 +1581,9 @@ class HaliteBot(object):
                         )
         else:
             require_dominance = self.nb_connected_shipyards > 2 and (
-                self.map_presence_rank != 0 or self.rank != 0 or self.nb_connected_shipyards >= 4
+                self.map_presence_rank != 0
+                or self.rank != 0
+                or self.nb_connected_shipyards >= 4
             )
             avoid_positions = [
                 TO_INDEX[enemy_shipyard.position]
@@ -1629,7 +1636,11 @@ class HaliteBot(object):
                                 self.parameters["min_shipyard_distance"],
                                 self.parameters["max_shipyard_distance"],
                             ):
-                                dominance = self.medium_dominance_map[pos] if require_dominance else 0
+                                dominance = (
+                                    self.medium_dominance_map[pos]
+                                    if require_dominance
+                                    else 0
+                                )
                                 midpoint = TO_INDEX[
                                     get_excircle_midpoint(pos1, pos2, point)
                                 ]
@@ -1638,7 +1649,8 @@ class HaliteBot(object):
                                         pos,
                                         self.get_populated_cells_in_radius_count(
                                             midpoint
-                                        ) + dominance,
+                                        )
+                                        + dominance,
                                     )
                                 )
         if len(possible_positions) > 0:
@@ -2001,7 +2013,7 @@ class HaliteBot(object):
 
         for shipyard in self.me.shipyards:
             shipyard_pos = TO_INDEX[shipyard.position]
-            # Maybe only return to safe shiypards
+            # Maybe only return to safe shipyards
             # Add each shipyard once for each distance to a ship
             for ship in self.mining_ships:
                 dropoff_positions.add(
@@ -2172,7 +2184,8 @@ class HaliteBot(object):
                 shipyard
                 for player in self.opponents
                 for shipyard in player.shipyards
-                if TO_INDEX[shipyard.position] in self.guarding_positions and len(self.me.shipyards) < 6
+                if TO_INDEX[shipyard.position] in self.guarding_positions
+                and len(self.me.shipyards) < 6
             ]
 
             # Guarding ships
@@ -3252,6 +3265,18 @@ class HaliteBot(object):
             / 22
         )
         score *= escape_score
+        if (
+            escape_score > 0.85
+            and min(self.danger_matrix[self.tiny_radius_list[cell_position]])
+            <= ship_halite
+            and self.step_count > self.parameters["greed_stop"]
+        ):
+            score *= clip(
+                min(self.danger_matrix[self.tiny_radius_list[cell_position]])
+                / (ship_halite + 10),
+                0.25,
+                0.75,
+            )
         return score
 
     def calculate_hunting_score(self, ship: Ship, enemy: Ship) -> float:
