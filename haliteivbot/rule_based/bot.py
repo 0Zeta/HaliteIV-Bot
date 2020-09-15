@@ -11,7 +11,6 @@ from kaggle_environments.envs.halite.helpers import (
     ShipyardAction,
 )
 
-from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -26,7 +25,7 @@ PARAMETERS = {
     "cell_score_neighbour_discount": 0.7533825129372731,
     "cell_score_ship_halite": 0.00044866834268873795,
     "convert_when_attacked_threshold": 512,
-    "disable_hunting_till": 61,
+    "disable_hunting_till": 50,
     "dominance_map_halite_clip": 110,
     "dominance_map_medium_radius": 5,
     "dominance_map_medium_sigma": 2.8668329912447335,
@@ -40,11 +39,11 @@ PARAMETERS = {
     "farming_start": 30,
     "farming_start_shipyards": 2,
     "greed_min_map_diff": 14,
-    "greed_stop": 35,
+    "greed_stop": 30,
     "guarding_aggression_radius": 4,
     "guarding_end": 375,
     "guarding_max_distance_to_shipyard": 3,
-    "guarding_max_ships_per_shipyard": 2,
+    "guarding_max_ships_per_shipyard": 4,
     "guarding_min_distance_to_shipyard": 1,
     "guarding_norm": 0.6,
     "guarding_proportion": 0.35,
@@ -62,22 +61,22 @@ PARAMETERS = {
     "hunting_min_ships": 8,
     "hunting_proportion": 0.45,
     "hunting_proportion_after_farming": 0.35,
-    "hunting_score_alpha": 0.31307190998859874,
+    "hunting_score_alpha": 0.55,
     "hunting_score_beta": 0.33026966299467286,
     "hunting_score_cargo_clip": 1.91253000892124,
     "hunting_score_delta": 0.9,
     "hunting_score_farming_position_penalty": 0.788038154434421,
     "hunting_score_gamma": 0.96,
     "hunting_score_halite_norm": 231,
-    "hunting_score_hunt": 4.946925545815921,
-    "hunting_score_intercept": 1.76288571553692,
+    "hunting_score_hunt": 4,
+    "hunting_score_intercept": 2,
     "hunting_score_iota": 0.25,
     "hunting_score_kappa": 0.15,
-    "hunting_score_region": 2.2346610375368425,
+    "hunting_score_region": 1.9,
     "hunting_score_ship_bonus": 220,
     "hunting_score_ypsilon": 2.0795292787342774,
     "hunting_score_zeta": 0.35,
-    "hunting_threshold": 10.773402485230406,
+    "hunting_threshold": 10,
     "map_blur_gamma": 0.9,
     "map_blur_sigma": 0.5549610080793232,
     "map_ultra_blur": 1.75,
@@ -87,22 +86,22 @@ PARAMETERS = {
     "max_intrusion_count": 3,
     "max_ship_advantage": 13,
     "max_shipyard_distance": 8,
-    "max_shipyards": 12,
+    "max_shipyards": 10,
     "min_enemy_shipyard_distance": 4,
     "min_mining_halite": 27,
     "min_ships": 20,
     "min_shipyard_distance": 7,
     "mining_score_alpha": 0.9981423349911503,
-    "mining_score_alpha_min": 0.6144844412590275,
+    "mining_score_alpha_min": 0.75,
     "mining_score_alpha_step": 0.007,
-    "mining_score_beta": 0.9994644750162123,
+    "mining_score_beta": 0.99,
     "mining_score_beta_min": 0.93,
     "mining_score_cargo_norm": 3.5,
     "mining_score_dominance_clip": 3.3,
     "mining_score_dominance_norm": 0.5318971956494243,
     "mining_score_farming_penalty": 0.01,
     "mining_score_gamma": 0.99,
-    "mining_score_juicy": 0.3,
+    "mining_score_juicy": 0.5,
     "mining_score_juicy_end": 0.1,
     "mining_score_minor_farming_penalty": 0.1409853963583642,
     "mining_score_start_returning": 42,
@@ -126,7 +125,7 @@ PARAMETERS = {
     "shipyard_abandon_dominance": -20,
     "shipyard_conversion_threshold": 2.550354977134987,
     "shipyard_guarding_attack_probability": 0.5956995945455138,
-    "shipyard_guarding_min_dominance": -15,
+    "shipyard_guarding_min_dominance": -7,
     "shipyard_min_dominance": -1,
     "shipyard_min_population": 5,
     "shipyard_min_ship_advantage": -12,
@@ -149,7 +148,7 @@ EARLY_PARAMETERS = {
     "cell_score_neighbour_discount": 0.7533825129372731,
     "cell_score_ship_halite": 0.0005,
     "convert_when_attacked_threshold": 416,
-    "disable_hunting_till": 60,
+    "disable_hunting_till": 50,
     "dominance_map_halite_clip": 112,
     "dominance_map_medium_radius": 5,
     "dominance_map_medium_sigma": 2.847619968321182,
@@ -163,7 +162,7 @@ EARLY_PARAMETERS = {
     "farming_start": 30,
     "farming_start_shipyards": 2,
     "greed_min_map_diff": 18,
-    "greed_stop": 28,
+    "greed_stop": 30,
     "guarding_aggression_radius": 4,
     "guarding_end": 375,
     "guarding_max_distance_to_shipyard": 3,
@@ -216,7 +215,7 @@ EARLY_PARAMETERS = {
     "min_ships": 15,
     "min_shipyard_distance": 7,
     "mining_score_alpha": 0.9597915235789294,
-    "mining_score_alpha_min": 0.601668238389617,
+    "mining_score_alpha_min": 0.65,
     "mining_score_alpha_step": 0.007,
     "mining_score_beta": 0.98,
     "mining_score_beta_min": 0.93,
@@ -225,7 +224,7 @@ EARLY_PARAMETERS = {
     "mining_score_dominance_norm": 0.2,
     "mining_score_farming_penalty": 0.01,
     "mining_score_gamma": 0.9867889914414822,
-    "mining_score_juicy": 0.4,
+    "mining_score_juicy": 0.45,
     "mining_score_juicy_end": 0.1,
     "mining_score_minor_farming_penalty": 0.14823668299589474,
     "mining_score_start_returning": 38,
@@ -249,7 +248,7 @@ EARLY_PARAMETERS = {
     "shipyard_abandon_dominance": -20,
     "shipyard_conversion_threshold": 2.550354977134987,
     "shipyard_guarding_attack_probability": 0.37557884720209034,
-    "shipyard_guarding_min_dominance": -15,
+    "shipyard_guarding_min_dominance": -8,
     "shipyard_min_dominance": -1,
     "shipyard_min_population": 5,
     "shipyard_min_ship_advantage": -12,
@@ -793,7 +792,7 @@ OPTIMAL_MINING_STEPS_TENSOR = [
     ],
 ]
 
-SHIPS_SHIPYARDS = [0, 8, 16, 22, 27, 31, 36, 42, 46]
+SHIPS_SHIPYARDS = [0, 8, 17, 23, 28, 33, 38, 46, 49]
 
 BOT = None
 
@@ -2173,7 +2172,7 @@ class HaliteBot(object):
                 shipyard
                 for player in self.opponents
                 for shipyard in player.shipyards
-                if TO_INDEX[shipyard.position] in self.guarding_positions
+                if TO_INDEX[shipyard.position] in self.guarding_positions and len(self.me.shipyards) < 6
             ]
 
             # Guarding ships
