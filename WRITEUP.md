@@ -1,4 +1,4 @@
-# simple rule-based bot writeup [?th place solution]
+# Simple rule-based bot writeup for Halite IV [?th place solution]
 ## Introduction
 From July to September 2020, my teammate David Frank and I participated in an international AI programming challenge ["Halite by Two Sigma"](https://www.kagle.com/c/halite) which was hosted on Kaggle. I'll represent my team in this post to publish some information on our solution. First of all we want to thank Kaggle and Two Sigma for hosting this competition and providing excellent support which made the whole competition something special. Halite IV was the first programming competition we seriously participated in, so it was a genuinely new and exciting experience for us. The friendly atmosphere and the helpful community made this highly competitive challenge a truly fun way to spend our free time on something meaningful.
 
@@ -48,10 +48,30 @@ We built upon the formula in [this](https://www.kaggle.com/solverworld/optimal-m
 
 ### Hunting
 Ships with bad mining scores and ships that are very likely to catch an enemy ship become hunting ships that try to destroy the ships of our opponents. The maximum amount of hunting ships targeting an enemy from one direction is limited which forced hunting ships to approach their targets from multiple sides increasing the probability of a catch. While our hunting score calculation is wuite complex the most important factors are distance, player score, danger to our ships and shipyards, halite near them and most important dominance. For each position on the map we calculate the dominance as player as their ship advantage (taking cargo values into account) over the other players in the region which is quite similar to the safety matrix with the difference that we treat each player separate.
-[INSERT DOMINANCE AND SAFETY MAP]
+
+![dominance_map](https://user-images.githubusercontent.com/9535190/93397072-19743980-f879-11ea-91e3-c4cd2e2010d2.png)
 
 #### Chasing and intercepting targets
 We boost the hunting scores of targets that can move safely (without risking to get destroyed) to fewer than two cells (especially for nearby hunting ships) and if a target can move in only one direction safely we calculate possible interceptions. For this calculation we simply check whether one of our ships can intercept the target, which is forced to move in one direction, by reaching a cell in front of the target in time.
-[INSERT INTERCEPTION ILLUSTRATION]
+
+![interceptions](https://user-images.githubusercontent.com/9535190/93397985-fd719780-f87a-11ea-913d-433413c83e7d.png)
 
 ### Guarding
+Of course guarding our plantation is a very important part of our strategy. Therefore a certain proportion of our hunting ships, which is determined by many factors like our player score, is turned into guarding ships (those with the worst hunting scores).
+
+#### Shipyard guarding
+We always try to have two ships that have at least the same distance to our shipyard as the two nearest enemies for all of our shipyards to defend them. Apparently this asimple algorithm works quite well when somebody tries to crash into our shipyard with only one ship, but often we cannot defend our shipyards against multiple ships attacking in a short time window as the following guarding ships often have to wait on cells which makes them mine halite, thus they cannot defend the shipyard against ships with 0 halite.
+
+#### Patrolling along borders
+Our border guarding ships fulfill multiple purposes, the most important points being an increase of our dominance, which scares away opponents, and a good positioning of 0 halite-ships around our plantation, which enables promising attacks on enemies within our borders. Similarly to the other scoring functions we calculate a guarding score for every border position for every ship and maximize the combined scores. We improve the guarding scores of border positions near our ship, near shipyards and in regions with bad dominance. Therefore our guarding ships actively improve the dominance in these regions and limit the amount of enemies that get into our plantation.
+
+### Shipyard placement
+Shipyards are easily one of the most important aspects of our strategy as they are crucial for efficient use of our plantation. Well-placed shipyards exert dominance, allow short return distances for mining ships and serve as an entry point into hostile territory. The most important factor for lucarytive plantations is the halite population of an area, which is the amount of cells that contain halite, as only cells with more than 0 halite produce halite. Therefore our bot calculates the next shipyard location each time our ship count exceeds different thresholds. After planning a new shipyard we increase the hunting scores of enemy targets near the planned shipyard site, slowly securing the position (if we succeed). Then we send two ships, one guarding ship that makes sure the newly constructed shipyard isn't immediately destroyed and a constructing ship that converts into a shipyard once it reaches the position. The way we choose our next shipyard position greatly varies with our current shipyard count, our player score, etc.
+- We place the first shipyard near clusters of halite-rich cells to get a good start in the game.
+- The second shipyard is also placed in a halite-rich region, but we also take the halite population in a circle that covers the area between our two shipyards into account.
+- The third shipyard is placed so that the included area maximizes the halite population, but we also try not to place it near enemy shipyards of players that aren't completely out of the game.
+- After the third shipyard we try to maximize halite population and dominance values (using a really blurry dominance map).
+
+
+### Spawning
+For ship spawning we almost always use the simple rule: always spawn until step x; spawn ships at the shipyards with the lowest dominance to reinforce their defenders
