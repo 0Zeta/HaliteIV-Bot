@@ -1,6 +1,6 @@
 # Simple rule-based bot writeup for Halite IV [?th place solution]
 ## Introduction
-From July to September 2020, my teammate David Frank and I participated in an international AI programming challenge ["Halite by Two Sigma"](https://www.kagle.com/c/halite) which was hosted on Kaggle. I'll represent my team in this post to publish some information on our solution. First of all we want to thank Kaggle and Two Sigma for hosting this competition and providing excellent support which made the whole competition something special. Halite IV was the first programming competition we seriously participated in, so it was a genuinely new and exciting experience for us. The friendly atmosphere and the helpful community made this highly competitive challenge a truly fun way to spend our free time on something meaningful.
+From July to September 2020, my teammate David Frank and I participated in an international AI programming challenge ["Halite by Two Sigma"](https://www.kagle.com/c/halite) which was hosted on Kaggle. I'll represent my team in this post to publish some information on our solution. First of all we want to thank Kaggle and Two Sigma for hosting this competition and providing excellent support which made the whole competition something special. Halite IV was the first programming competition we seriously participated in, so it was a genuinely new and exciting experience for us. We also want to thank the whole community for the friendly and helpful atmosphere, which made this highly competitive challenge a truly fun way to spend our free time on something meaningful.
 
 ## Game rules
 The full game rules can be found on the [Kaggle webpage](https://www.kaggle.com/c/halite/overview/halite-rules), but we'll explain the most important features of the game in a simplified way.
@@ -44,6 +44,9 @@ At the start of each turn our bot assigns each ship a ship type based on differe
 #### Scoring functions
 Our bot using different scoring functions, which get computed for each ship, in combination with linear sum assignments for basically everything. Mining ships get assigned the mining target that maximizes the sum of all mining scores, hunting ships choose the target with the highest hunting score, guarding ships patrol on the border with the highest guarding score, etc. This approach proved to be simple and quite effective.
 
+#### Move preferences
+At the end of each turn we use a linear sum assignment to assign each ship an action simultaneously without any order. Specifically for every ship we calculate a move preference score for each of the six available actions. We chose this approach because it allows us to flexibly handle special cases, give different ship types different priorities and easily avoid collisions with enemies (well, at least in theory). These move preference scores are affected by many factors other than the destination of a ship, e.g. the number of safe cells around a position, halite, farming positions on this axis, etc. By handling all ships simultaneously we could improve our bot significantly compared to our old approach, which computed a move order for our ships.
+
 #### Mining
 We built upon the formula in [this](https://www.kaggle.com/solverworld/optimal-mining-with-carried-halite) excellent notebook by [SolverWorld](https://www.kaggle.com/solverworld), but we tuned the approach a bit and added some factors to the calculation. For example we delay the returning of our mining ships when there is still a lot of halite around them to improve mining. We also added many discount factors to express the uncertainty that comes with predicting future states and changed the mining scores of cells according to their respective safety, which describes how many of our ships are near the cell compared to our opponents taking into account how dangerous the ships are (Ships with less halite exert greater dominance). This safety matrix treats all opponents as a single one making our mining ships avoid regions of conflict and zones that are dominated by our opponents.
 
@@ -53,7 +56,7 @@ Ships with bad mining scores and ships that are very likely to catch an enemy sh
 ![dominance_map](https://user-images.githubusercontent.com/9535190/93397072-19743980-f879-11ea-91e3-c4cd2e2010d2.png)
 
 ##### Chasing and intercepting targets
-We boost the hunting scores of targets that can move safely (without risking to get destroyed) to fewer than two cells (especially for nearby hunting ships) and if a target can move in only one direction safely we calculate possible interceptions. For this calculation we simply check whether one of our ships can intercept the target, which is forced to move in one direction, by reaching a cell in front of the target in time.
+We boost the hunting scores of targets that can move safely (without risking to get destroyed or getting into situations that lead to them being surrounded by us) to fewer than two cells (especially for nearby hunting ships) and if a target can move in only one direction safely we calculate possible interceptions. For this calculation we simply check whether one of our ships can intercept the target, which is forced to move in one direction, by reaching a cell in front of the target in time.
 
 ![interceptions](https://user-images.githubusercontent.com/9535190/93397985-fd719780-f87a-11ea-913d-433413c83e7d.png)
 
@@ -73,6 +76,14 @@ Shipyards are easily one of the most important aspects of our strategy as they a
 - The third shipyard is placed so that the included area maximizes the halite population, but we also try not to place it near enemy shipyards of players that aren't completely out of the game.
 - After the third shipyard we try to maximize halite population and dominance values (using a really blurry dominance map).
 
+#### Special regions
+When we have more than one shipyard, we define different regions in the space between/around our shipyards:
+* Farming zone: These positions are the cells we use for growing and harvesting halite.
+* Minor farming zone: These are also farming positions, but they aren't as easy to protect as the real farming positions. Therefore we don't let them grow for as long as the others and we don't penalize ships for travelling over them.
+* Guarding zone: The hunting scores of enemies on these positions get increased and our bot takes 1:1 trades when an enemy ships stays there for too long.
+* Border positons: This is simply a border around our plantations along which our guarding ships patrol.
+[INSERT REGIONS GRAPHIC]
+
 #### Spawning
 For ship spawning we almost always use the simple rule: always spawn until step x; spawn ships at the shipyards with the lowest dominance to reinforce their defenders
 
@@ -89,3 +100,6 @@ Due to our depence on well-placed shipyards and the fact that we cannot simply m
 Every turn we calculate different sets of player scores, taking different metrics into account, to see who is most likely to win, who has the biggest navy, who has the greatest map presence, etc.
 The resulting rankings are used for several decisions, for example we don't want to place a shipyard next to a player that has way more ships, but we want to punish greedy bots with a low ship count that start banking up halite too early by attacking them. Another important point is that we boost the hunting scores for players that are competing for the same place as we are. For example we attack the player with the second highest player when we are first and we try to at least finish in the third place by attacking the worst bot besides us when we are far behind.
 
+### Tuning parameters
+At first we used a simple (badly implemented) evolutionary algorithm to tune our parameters, but as our bot got better and better we couldn't use some quickly implemented bots with different strategies anymore and had to play only against our own bots. For a while we could still achieve quite okay-ish results by limiting the games to 110 turns, thus improving our early game, but it became clear that we couldn't overcome the problems with this approach, namely symmetry, overfitting and little noise leading to some bot snowballing and winning by chance.
+In the end we manually tuned some parameters and wanted to wait until the last day of the competition to optimize them, but sadly I introduced a critical bug the day before, resulting in very poor performance of our final bots.
