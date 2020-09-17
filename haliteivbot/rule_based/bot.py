@@ -3741,7 +3741,7 @@ class HaliteBot(object):
             self.first_shipyard_step = self.step_count
         if TO_INDEX[ship.position] == self.next_shipyard_position:
             self.next_shipyard_position = None
-        if len(self.nb_connected_shipyards) + 1 > 2:
+        if self.nb_connected_shipyards + 1 > 2:
             self.pseudo_shipyard = None
 
     def spawn_ship(self, shipyard: Shipyard):
