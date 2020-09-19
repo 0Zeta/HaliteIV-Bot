@@ -11,10 +11,9 @@ from kaggle_environments.envs.halite.helpers import (
     ShipyardAction,
 )
 
-from haliteivbot.display_utils import display_matrix
 from haliteivbot.rule_based.utils import *
 
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 
 PARAMETERS = {
     "cargo_map_halite_norm": 260,
@@ -1245,8 +1244,6 @@ class HaliteBot(object):
                 else:
                     self.intrusion_positions[position][enemy.id] += 1
 
-        self.debug()
-
         self.determine_vulnerable_enemies()
         if self.step_count < self.farming_end:
             self.farming_end = self.estimate_farming_end()
@@ -1471,37 +1468,6 @@ class HaliteBot(object):
                     self.guarding_border.remove(position)
                     changed = True
                     break
-
-    def debug(self):
-        if len(self.me.ships) > 0:
-            logging.debug(
-                "avg cargo at step "
-                + str(self.step_count)
-                + ": "
-                + str(sum([ship.halite for ship in self.me.ships]) / len(self.me.ships))
-            )
-            if self.step_count % 25 == 0:
-                map = np.zeros((SIZE ** 2,), dtype=np.int)
-                for pos in range(SIZE ** 2):
-                    if pos in self.guarding_positions:
-                        map[pos] += 1
-                    if pos in self.farming_positions:
-                        map[pos] += 1
-                    if pos in self.shipyard_positions:
-                        map[pos] += 5
-                small = self.small_dominance_map.reshape((21, 21)).round(2)
-                spiegelei = np.zeros((SIZE ** 2,), dtype=np.int)
-                for pos in self.farming_positions:
-                    spiegelei[pos] = 2
-                for pos in self.minor_farming_positions:
-                    spiegelei[pos] = 1
-                for pos in self.shipyard_positions:
-                    spiegelei[pos] = 5
-                for pos in self.guarding_positions:
-                    spiegelei[pos] += 1
-                for pos in self.guarding_border:
-                    spiegelei[pos] = 10
-                display_matrix(spiegelei.reshape((21, 21)))
 
     def handle_special_steps(self, board: Board) -> bool:
         step = board.step
