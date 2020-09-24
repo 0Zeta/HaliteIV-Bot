@@ -1,4 +1,4 @@
-# Rule-based bot for Halite IV [preliminary 4th place solution]
+# Rule-based bot for Halite IV [4th place solution]
 ## Introduction
 From July to September 2020, my teammate [David Frank](https://github.com/Dave-Frank-419) and I participated in the AI programming challenge ["Halite by Two Sigma"](https://www.kaggle.com/c/halite) hosted on Kaggle. I'll represent my team in this post to publish some information on our solution. First of all, we want to thank Kaggle and Two Sigma for hosting this competition and providing excellent support, which made the whole competition something special. Halite IV was the first programming competition we seriously participated in, so it was a genuinely new and exciting experience for us. We also want to thank the whole community for the friendly and helpful atmosphere, which made this highly competitive challenge truly a fun way to spend our free time on something interesting.
 
